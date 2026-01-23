@@ -229,6 +229,12 @@ const Pedidos = () => {
       }
     }
 
+    payload.pedidos = payload.pedidos.map((item) => (item.id === nextOrder.id ? nextOrder : item))
+
+    if (!previousOrder) {
+      payload.pedidos = [...payload.pedidos, nextOrder]
+    }
+
     if (nextOrder.status === 'pago' && previousOrder?.status !== 'pago') {
       payload.recibos = [
         ...payload.recibos,
