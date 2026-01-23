@@ -12,6 +12,7 @@ type ProductForm = {
   sku: string
   price: number
   costPrice: number
+  stock: number
   unit: string
   length: number
   width: number
@@ -57,6 +58,7 @@ const Produtos = () => {
     sku: '',
     price: 0,
     costPrice: 0,
+    stock: 0,
     unit: '',
     length: 0,
     width: 0,
@@ -90,6 +92,7 @@ const Produtos = () => {
       sku: '',
       price: 0,
       costPrice: 0,
+      stock: 0,
       unit: '',
       length: 0,
       width: 0,
@@ -139,6 +142,7 @@ const Produtos = () => {
       sku: product.sku ?? '',
       price: product.price,
       costPrice: product.costPrice ?? 0,
+      stock: product.stock ?? 0,
       unit: product.unit ?? '',
       length: product.length ?? 0,
       width: product.width ?? 0,
@@ -190,6 +194,7 @@ const Produtos = () => {
       sku: form.sku.trim() || undefined,
       price: form.price,
       costPrice: form.costPrice,
+      stock: form.stock,
       unit: form.unit.trim() || undefined,
       length: form.length || undefined,
       width: form.width || undefined,
@@ -484,6 +489,20 @@ const Produtos = () => {
                 />
               </div>
               <div className="form__group">
+                <label className="form__label" htmlFor="product-stock">
+                  Estoque inicial
+                </label>
+                <input
+                  id="product-stock"
+                  className="form__input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={form.stock}
+                  onChange={(event) => updateForm({ stock: Number(event.target.value) })}
+                />
+              </div>
+              <div className="form__group">
                 <label className="form__label" htmlFor="product-cost">
                   Preco de custo
                 </label>
@@ -556,6 +575,7 @@ const Produtos = () => {
                     (acc, variant) => acc + (variant.stock ?? 0),
                     0,
                   )
+                  const displayedStock = product.stock !== undefined ? product.stock : totalStock
                   return (
                     <tr key={product.id}>
                       <td>{product.name}</td>
@@ -563,7 +583,7 @@ const Produtos = () => {
                       <td>{formatDimensions(product.length, product.width, product.height)}</td>
                       <td>{product.variants?.length ?? 0}</td>
                       <td>
-                        {totalStock}
+                        {displayedStock}
                         {product.unit ? ` ${product.unit}` : ''}
                       </td>
                       <td>{formatCurrency(product.price)}</td>
