@@ -8,7 +8,7 @@
     "build": "node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "vercel-build": "npm run build"
+    "vercel-build": "npm ci --include=dev && npm run build"
   },
   "dependencies": {
     "react": "^19.2.0",
