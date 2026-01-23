@@ -1,0 +1,21 @@
+.indicadores {
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.indicadores__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.indicadores__title {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-2xl);
+}
+
+.indicadores__subtitle {
+  color: rgba(15, 17, 22, 0.7);
+}

@@ -1,0 +1,21 @@
+.placeholder {
+  padding: var(--spacing-xl);
+}
+
+.placeholder__card {
+  background: var(--color-true-white);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-xl);
+  box-shadow: var(--box-shadow-sm);
+  max-width: 520px;
+}
+
+.placeholder__title {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-2xl);
+  margin-bottom: var(--spacing-sm);
+}
+
+.placeholder__description {
+  color: rgba(15, 17, 22, 0.7);
+}

@@ -1,0 +1,133 @@
+.bi {
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.bi__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.bi__title {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-2xl);
+}
+
+.bi__subtitle {
+  color: rgba(15, 17, 22, 0.7);
+}
+
+.bi__filters {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.bi__filter {
+  min-width: 180px;
+}
+
+.bi__cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-md);
+}
+
+.bi__grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+.bi__tables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.bi__chart {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+  height: 220px;
+  align-items: end;
+}
+
+.bi__bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.bi__bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(170, 255, 0, 0.7), rgba(15, 17, 22, 0.2));
+  border-radius: var(--border-radius-md);
+  min-height: 12px;
+}
+
+.bi__bar-label {
+  font-size: var(--font-size-xs);
+  color: rgba(15, 17, 22, 0.6);
+}
+
+.bi__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.bi__row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: var(--spacing-sm);
+  align-items: center;
+  font-size: var(--font-size-sm);
+}
+
+.bi__row-bar {
+  height: 10px;
+  background: rgba(15, 17, 22, 0.08);
+  border-radius: var(--border-radius-full);
+  overflow: hidden;
+}
+
+.bi__row-fill {
+  display: block;
+  height: 100%;
+  background: rgba(170, 255, 0, 0.7);
+}
+
+.bi__row-label {
+  text-transform: capitalize;
+}
+
+.bi__row-value {
+  font-family: var(--font-family-primary);
+}
+
+@media (max-width: 1024px) {
+  .bi__cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bi__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bi__tables {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .bi__cards {
+    grid-template-columns: 1fr;
+  }
+}

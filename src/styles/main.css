@@ -1,0 +1,128 @@
+@import url("variables.css");
+@import url("fonts.css");
+@import url("reset.css");
+@import url("components/ui.css");
+@import url("components/modal.css");
+@import url("components/app-shell.css");
+@import url("components/login.css");
+@import url("components/placeholder.css");
+@import url("components/data-tools.css");
+@import url("components/table.css");
+@import url("components/orcamentos.css");
+@import url("components/pedidos.css");
+@import url("components/produtos.css");
+@import url("components/producao.css");
+@import url("components/financeiro.css");
+@import url("components/clientes.css");
+@import url("components/fornecedores.css");
+@import url("components/indicadores.css");
+@import url("components/bi.css");
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  background-color: var(--color-sand-light);
+  color: var(--color-ink);
+  font-family: var(--font-family-secondary);
+  overflow: hidden;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: "FILL" 0, "wght" 300, "GRAD" 0, "opsz" 24;
+  font-size: 1.2rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.material-symbols-filled {
+  font-variation-settings: "FILL" 1, "wght" 300, "GRAD" 0, "opsz" 24;
+  font-size: 1.2rem;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-family-primary);
+}
+
+p,
+a,
+blockquote,
+pre,
+dl,
+dd,
+ol,
+ul,
+figure,
+figcaption,
+hr,
+fieldset,
+legend {
+  font-family: var(--font-family-secondary);
+}
+
+.main section {
+  background-color: var(--color-sand-light);
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.main article {
+  background-color: var(--color-sand-light);
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+/*
+* {
+    outline: 1px solid red;
+}
+
+* * {
+    outline: 1px solid orange;
+}
+
+* * * {
+    outline: 1px solid yellow;
+}
+
+* * * * {
+    outline: 1px solid green;
+}
+
+* * * * * {
+    outline: 1px solid blue;
+}
+
+* * * * * * {
+    outline: 2px solid purple;
+}
+
+* * * * * * * {
+    outline: 2px solid pink;
+}
+
+* * * * * * * * {
+    outline: 3px solid cyan;
+}
+
+* * * * * * * * * {
+    outline: 3px solid lime;
+}
+
+* * * * * * * * * * {
+    outline: 4px solid brown;
+}
+*/
