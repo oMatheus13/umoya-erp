@@ -12,13 +12,6 @@ html {
 *::before,
 *::after {
   box-sizing: inherit;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-*::-webkit-scrollbar {
-  width: 0;
-  height: 0;
 }
 
 /* 2. Remove margens e paddings padrão de elementos comuns */

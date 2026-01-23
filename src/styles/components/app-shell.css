@@ -365,52 +365,6 @@
   transform: translateX(-30%);
 }
 
-.chart--bars {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm);
-  background: var(--color-cloud);
-}
-
-.chart--bars::after {
-  content: none;
-}
-
-.chart__bar-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-.chart__bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 120px;
-}
-
-.chart__bar {
-  width: 10px;
-  border-radius: 999px;
-  background: rgba(15, 17, 22, 0.2);
-}
-
-.chart__bar--in {
-  background: rgba(170, 255, 0, 0.6);
-}
-
-.chart__bar--out {
-  background: rgba(15, 17, 22, 0.4);
-}
-
-.chart__label {
-  font-size: var(--font-size-xs);
-  color: rgba(15, 17, 22, 0.6);
-}
-
 .list {
   display: flex;
   flex-direction: column;

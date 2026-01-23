@@ -418,22 +418,8 @@ const Produtos = () => {
                   type="text"
                   value={form.unit}
                   onChange={(event) => updateForm({ unit: event.target.value })}
-                  placeholder="un, m, m², m³, kg..."
-                  list="product-unit-options"
+                  placeholder="un, kg, m, etc"
                 />
-                <datalist id="product-unit-options">
-                  <option value="un">Unidade</option>
-                  <option value="m">Metro linear</option>
-                  <option value="m²">Metro quadrado</option>
-                  <option value="m³">Metro cubico</option>
-                  <option value="kg">Quilograma</option>
-                  <option value="t">Tonelada</option>
-                  <option value="l">Litro</option>
-                  <option value="ml">Mililitro</option>
-                  <option value="cx">Caixa</option>
-                  <option value="barra">Barra</option>
-                  <option value="placa">Placa</option>
-                </datalist>
               </div>
             </div>
 

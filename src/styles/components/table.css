@@ -40,13 +40,3 @@
   gap: 8px;
   flex-wrap: wrap;
 }
-
-.table__select {
-  padding: 6px 10px;
-  border-radius: var(--border-radius-sm);
-  border: 1px solid rgba(15, 17, 22, 0.2);
-  background: var(--color-true-white);
-  font-size: var(--font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
