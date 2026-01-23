@@ -3,7 +3,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
-import type { Client, Order, ProductVariant } from '../types/erp'
+import type { Client, Order, ProductVariant, ProductionOrder } from '../types/erp'
 import { formatCurrency } from '../utils/format'
 import { createId } from '../utils/ids'
 
@@ -199,15 +199,15 @@ const Pedidos = () => {
   }
 
   const applyOrderUpdate = (payload: ReturnType<typeof dataService.getAll>, nextOrder: Order, previousOrder?: Order) => {
-    const previousStatus = previousOrder?.status
     const movingToProduction = nextOrder.status === 'em_producao' || nextOrder.status === 'entregue'
     if (movingToProduction && (!previousOrder || previousOrder.status === 'aguardando_pagamento')) {
       return { error: 'O pedido precisa estar pago antes de iniciar a producao.' }
     }
 
-    const existingProductions = payload.ordensProducao.filter(
+    const existingProductions: ProductionOrder[] = payload.ordensProducao.filter(
       (production) => production.orderId === nextOrder.id,
     )
+
 
     if (nextOrder.status === 'entregue' && previousOrder?.status !== 'entregue') {
       const allFinalized =
@@ -266,45 +266,52 @@ const Pedidos = () => {
         ]),
       )
 
-      const nextProductions = nextOrder.items.map((item) => {
-        const key = `${item.productId}:${item.variantId ?? ''}`
-        const existing = existingByKey.get(key)
-        if (existing) {
-          existingByKey.delete(key)
-          const nextStatus =
-            nextOrder.status === 'entregue'
-              ? 'finalizada'
-              : nextOrder.status === 'em_producao'
-                ? 'em_producao'
-                : existing.status
-          return {
-            ...existing,
-            quantity: item.quantity,
-            productId: item.productId,
-            variantId: item.variantId,
-            status: nextStatus,
-            plannedAt: existing.plannedAt ?? new Date().toISOString(),
-            finishedAt:
-              nextOrder.status === 'entregue'
-                ? existing.finishedAt ?? new Date().toISOString()
-                : existing.finishedAt,
-          }
-        }
-        return {
-          id: createId(),
-          orderId: nextOrder.id,
-          productId: item.productId,
-          variantId: item.variantId,
-          quantity: item.quantity,
-          status: nextOrder.status === 'entregue'
+      const nextProductions: ProductionOrder[] = nextOrder.items.map((item) => {
+      const key = `${item.productId}:${item.variantId ?? ''}`
+      const existing = existingByKey.get(key)
+
+      if (existing) {
+        existingByKey.delete(key)
+
+        const nextStatus: ProductionOrder['status'] =
+          nextOrder.status === 'entregue'
             ? 'finalizada'
             : nextOrder.status === 'em_producao'
               ? 'em_producao'
-              : 'aberta',
-          plannedAt: new Date().toISOString(),
-          finishedAt: nextOrder.status === 'entregue' ? new Date().toISOString() : undefined,
+              : existing.status
+
+        return {
+          ...existing,
+          quantity: item.quantity,
+          productId: item.productId,
+          variantId: item.variantId,
+          status: nextStatus,
+          plannedAt: existing.plannedAt ?? new Date().toISOString(),
+          finishedAt:
+            nextOrder.status === 'entregue'
+              ? existing.finishedAt ?? new Date().toISOString()
+              : existing.finishedAt,
         }
-      })
+      }
+
+      const status: ProductionOrder['status'] =
+        nextOrder.status === 'entregue'
+          ? 'finalizada'
+          : nextOrder.status === 'em_producao'
+            ? 'em_producao'
+            : 'aberta'
+
+      return {
+        id: createId(),
+        orderId: nextOrder.id,
+        productId: item.productId,
+        variantId: item.variantId,
+        quantity: item.quantity,
+        status,
+        plannedAt: new Date().toISOString(),
+        finishedAt: nextOrder.status === 'entregue' ? new Date().toISOString() : undefined,
+      }
+    })
 
       const preserved = Array.from(existingByKey.values()).filter(
         (production) => production.status === 'finalizada',
