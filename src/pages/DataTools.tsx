@@ -93,6 +93,10 @@ const DataTools = () => {
             <span>Financeiro</span>
             <strong>{data.financeiro.length}</strong>
           </div>
+          <div>
+            <span>Funcionarios</span>
+            <strong>{data.funcionarios.length}</strong>
+          </div>
         </div>
         {status && <p className="data-tools__status">{status}</p>}
       </div>

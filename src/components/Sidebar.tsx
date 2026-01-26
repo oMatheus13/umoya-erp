@@ -26,6 +26,7 @@ const Sidebar = ({
     { id: 'financeiro', label: 'Financeiro', icon: 'payments' },
     { id: 'clientes', label: 'Clientes', icon: 'groups' },
     { id: 'fornecedores', label: 'Fornecedores', icon: 'inventory' },
+    { id: 'funcionarios', label: 'Funcionarios', icon: 'badge' },
     { id: 'dados', label: 'Dados', icon: 'cloud_upload' },
   ]
 

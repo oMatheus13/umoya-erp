@@ -12,6 +12,8 @@ type ProductForm = {
   sku: string
   price: number
   costPrice: number
+  laborCost: number
+  laborBasis: 'unidade' | 'metro'
   stock: number
   unit: string
   length: number
@@ -58,6 +60,8 @@ const Produtos = () => {
     sku: '',
     price: 0,
     costPrice: 0,
+    laborCost: 0,
+    laborBasis: 'unidade',
     stock: 0,
     unit: '',
     length: 0,
@@ -92,6 +96,8 @@ const Produtos = () => {
       sku: '',
       price: 0,
       costPrice: 0,
+      laborCost: 0,
+      laborBasis: 'unidade',
       stock: 0,
       unit: '',
       length: 0,
@@ -142,6 +148,8 @@ const Produtos = () => {
       sku: product.sku ?? '',
       price: product.price,
       costPrice: product.costPrice ?? 0,
+      laborCost: product.laborCost ?? 0,
+      laborBasis: product.laborBasis ?? 'unidade',
       stock: product.stock ?? 0,
       unit: product.unit ?? '',
       length: product.length ?? 0,
@@ -183,6 +191,10 @@ const Produtos = () => {
       setStatus('O preco de custo nao pode ser negativo.')
       return
     }
+    if (form.laborCost < 0) {
+      setStatus('O custo de mao de obra nao pode ser negativo.')
+      return
+    }
 
     const payload = dataService.getAll()
     const existingProduct = editingId
@@ -194,6 +206,8 @@ const Produtos = () => {
       sku: form.sku.trim() || undefined,
       price: form.price,
       costPrice: form.costPrice,
+      laborCost: form.laborCost,
+      laborBasis: form.laborBasis,
       stock: form.stock,
       unit: form.unit.trim() || undefined,
       length: form.length || undefined,
@@ -246,6 +260,9 @@ const Produtos = () => {
     }
     return `${values[0] || 0} x ${values[1] || 0} x ${values[2] || 0}`
   }
+
+  const formatLaborBasis = (basis?: Product['laborBasis']) =>
+    basis === 'metro' ? 'metro' : 'unidade'
 
   const formatVariantDimensions = (variant: ProductVariant, product?: Product) => {
     const length = resolveDimensionValue(variant.length, product?.length)
@@ -489,20 +506,6 @@ const Produtos = () => {
                 />
               </div>
               <div className="form__group">
-                <label className="form__label" htmlFor="product-stock">
-                  Estoque inicial
-                </label>
-                <input
-                  id="product-stock"
-                  className="form__input"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={form.stock}
-                  onChange={(event) => updateForm({ stock: Number(event.target.value) })}
-                />
-              </div>
-              <div className="form__group">
                 <label className="form__label" htmlFor="product-cost">
                   Preco de custo
                 </label>
@@ -514,6 +517,53 @@ const Produtos = () => {
                   step="0.01"
                   value={form.costPrice}
                   onChange={(event) => updateForm({ costPrice: Number(event.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="form__row">
+              <div className="form__group">
+                <label className="form__label" htmlFor="product-labor">
+                  Mao de obra (por {formatLaborBasis(form.laborBasis)})
+                </label>
+                <input
+                  id="product-labor"
+                  className="form__input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.laborCost}
+                  onChange={(event) => updateForm({ laborCost: Number(event.target.value) })}
+                />
+              </div>
+              <div className="form__group">
+                <label className="form__label" htmlFor="product-labor-basis">
+                  Base da mao de obra
+                </label>
+                <select
+                  id="product-labor-basis"
+                  className="form__input"
+                  value={form.laborBasis}
+                  onChange={(event) =>
+                    updateForm({ laborBasis: event.target.value as ProductForm['laborBasis'] })
+                  }
+                >
+                  <option value="unidade">Unidade</option>
+                  <option value="metro">Metro linear</option>
+                </select>
+              </div>
+              <div className="form__group">
+                <label className="form__label" htmlFor="product-stock">
+                  Estoque inicial
+                </label>
+                <input
+                  id="product-stock"
+                  className="form__input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={form.stock}
+                  onChange={(event) => updateForm({ stock: Number(event.target.value) })}
                 />
               </div>
             </div>
@@ -558,6 +608,7 @@ const Produtos = () => {
                   <th>Estoque total</th>
                   <th>Preco base</th>
                   <th>Custo base</th>
+                  <th>Mao de obra</th>
                   <th>Status</th>
                   <th>Acoes</th>
                 </tr>
@@ -565,7 +616,7 @@ const Produtos = () => {
               <tbody>
                 {products.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="table__empty">
+                    <td colSpan={10} className="table__empty">
                       Nenhum produto cadastrado ainda.
                     </td>
                   </tr>
@@ -590,6 +641,13 @@ const Produtos = () => {
                       <td>
                         {product.costPrice !== undefined
                           ? formatCurrency(product.costPrice)
+                          : '-'}
+                      </td>
+                      <td>
+                        {product.laborCost !== undefined
+                          ? `${formatCurrency(product.laborCost)} / ${formatLaborBasis(
+                              product.laborBasis,
+                            )}`
                           : '-'}
                       </td>
                       <td>

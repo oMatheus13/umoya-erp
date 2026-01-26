@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
 import type { ProductionOrder } from '../types/erp'
@@ -14,6 +15,7 @@ const statusLabels: Record<ProductionOrder['status'], string> = {
 const Producao = () => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const productionOrders = useMemo(
     () =>
@@ -111,6 +113,41 @@ const Producao = () => {
     setStatus('Ordem de producao criada manualmente.')
   }
 
+  const orderToDelete = deleteId
+    ? data.ordensProducao.find((order) => order.id === deleteId)
+    : null
+
+  const handleDelete = () => {
+    if (!deleteId) {
+      return
+    }
+    const payload = dataService.getAll()
+    const target = payload.ordensProducao.find((order) => order.id === deleteId)
+    if (target && target.status === 'finalizada') {
+      const productIndex = payload.produtos.findIndex(
+        (product) => product.id === target.productId,
+      )
+      if (productIndex >= 0) {
+        const current = payload.produtos[productIndex]
+        const variants = current.variants ?? []
+        const targetVariantId = target.variantId ?? variants[0]?.id
+        payload.produtos[productIndex] = {
+          ...current,
+          variants: variants.map((variant) =>
+            variant.id === targetVariantId
+              ? { ...variant, stock: (variant.stock ?? 0) - target.quantity }
+              : variant,
+          ),
+        }
+      }
+    }
+    payload.ordensProducao = payload.ordensProducao.filter((order) => order.id !== deleteId)
+    dataService.replaceAll(payload)
+    refresh()
+    setStatus('Ordem de producao excluida.')
+    setDeleteId(null)
+  }
+
   return (
     <section className="producao">
       <div className="producao__header">
@@ -172,12 +209,30 @@ const Producao = () => {
                 >
                   Finalizar
                 </button>
+                <button
+                  className="button button--danger"
+                  type="button"
+                  onClick={() => setDeleteId(order.id)}
+                >
+                  Excluir
+                </button>
               </div>
             </div>
           )
         })}
       </div>
       {status && <p className="producao__status">{status}</p>}
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Excluir ordem de producao?"
+        description={
+          orderToDelete
+            ? `A ordem #${orderToDelete.id.slice(0, 6)} sera removida.`
+            : 'Esta acao nao pode ser desfeita.'
+        }
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+      />
     </section>
   )
 }

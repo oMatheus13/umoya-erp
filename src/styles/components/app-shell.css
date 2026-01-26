@@ -324,6 +324,10 @@
   gap: var(--spacing-lg);
 }
 
+.grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .panel {
   background: var(--color-true-white);
   border-radius: var(--border-radius-lg);
@@ -379,12 +383,52 @@
   background: var(--color-cloud);
 }
 
+.rank {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.rank__item {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 1.5fr auto;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.rank__label {
+  font-size: var(--font-size-sm);
+  color: rgba(15, 17, 22, 0.7);
+}
+
+.rank__bar {
+  width: 100%;
+  height: 8px;
+  border-radius: var(--border-radius-full);
+  background: rgba(15, 17, 22, 0.08);
+  overflow: hidden;
+}
+
+.rank__fill {
+  display: block;
+  height: 100%;
+  background: rgba(170, 255, 0, 0.7);
+}
+
+.rank__value {
+  font-size: var(--font-size-sm);
+}
+
 @media (max-width: 1024px) {
   .card-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grid--three {
     grid-template-columns: 1fr;
   }
 }

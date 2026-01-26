@@ -60,13 +60,9 @@ const Dashboard = () => {
     }, 0)
   }, [data.ordensProducao, data.pedidos])
 
-  const recentPayments = useMemo(
-    () =>
-      [...data.financeiro]
-        .filter((entry) => entry.type === 'entrada')
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, 3),
-    [data.financeiro],
+  const recentReceipts = useMemo(
+    () => [...data.recibos].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)).slice(0, 3),
+    [data.recibos],
   )
 
   const recentOrders = useMemo(
@@ -112,6 +108,83 @@ const Dashboard = () => {
     aprovado: 'Aprovados',
     recusado: 'Recusados',
   }
+
+  const monthlyFlow = useMemo(() => {
+    const now = new Date()
+    const months = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)
+      const label = `${String(date.getMonth() + 1).padStart(2, '0')}/${String(
+        date.getFullYear(),
+      ).slice(-2)}`
+      return { label, in: 0, out: 0, key: `${date.getFullYear()}-${date.getMonth()}` }
+    })
+
+    data.financeiro.forEach((entry) => {
+      const date = new Date(entry.createdAt)
+      const key = `${date.getFullYear()}-${date.getMonth()}`
+      const target = months.find((month) => month.key === key)
+      if (target) {
+        if (entry.type === 'entrada') {
+          target.in += entry.amount
+        } else {
+          target.out += entry.amount
+        }
+      }
+    })
+
+    const maxValue = Math.max(1, ...months.flatMap((month) => [month.in, month.out]))
+    return { months, maxValue }
+  }, [data.financeiro])
+
+  const topProducts = useMemo(() => {
+    const totals = new Map<string, number>()
+    data.pedidos.forEach((order) => {
+      order.items.forEach((item) => {
+        totals.set(
+          item.productId,
+          (totals.get(item.productId) ?? 0) + item.quantity * item.unitPrice,
+        )
+      })
+    })
+    return [...totals.entries()]
+      .map(([productId, total]) => ({
+        productId,
+        total,
+        name: getProductName(productId),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 4)
+  }, [data.pedidos, data.produtos])
+
+  const topClients = useMemo(() => {
+    const totals = new Map<string, number>()
+    data.pedidos.forEach((order) => {
+      totals.set(order.clientId, (totals.get(order.clientId) ?? 0) + order.total)
+    })
+    return [...totals.entries()]
+      .map(([clientId, total]) => ({
+        clientId,
+        total,
+        name: getClientName(clientId),
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 4)
+  }, [data.pedidos, data.clientes])
+
+  const topEmployees = useMemo(() => {
+    const totals = new Map<string, number>()
+    data.apontamentos.forEach((log) => {
+      totals.set(log.employeeId, (totals.get(log.employeeId) ?? 0) + log.totalPay)
+    })
+    return [...totals.entries()]
+      .map(([employeeId, total]) => ({
+        employeeId,
+        total,
+        name: data.funcionarios.find((employee) => employee.id === employeeId)?.name ?? 'Funcionario',
+      }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 4)
+  }, [data.apontamentos, data.funcionarios])
 
   return (
     <section className="dashboard">
@@ -173,21 +246,119 @@ const Dashboard = () => {
       <div className="grid">
         <section className="panel">
           <h2 className="panel__title">Fluxo financeiro</h2>
-          <div className="chart" role="img" aria-label="Grafico de linha" />
+          <div className="chart chart--bars" role="img" aria-label="Fluxo financeiro mensal">
+            {monthlyFlow.months.map((month) => (
+              <div key={month.label} className="chart__bar-group">
+                <div className="chart__bars">
+                  <span
+                    className="chart__bar chart__bar--in"
+                    style={{ height: `${(month.in / monthlyFlow.maxValue) * 100}%` }}
+                  />
+                  <span
+                    className="chart__bar chart__bar--out"
+                    style={{ height: `${(month.out / monthlyFlow.maxValue) * 100}%` }}
+                  />
+                </div>
+                <span className="chart__label">{month.label}</span>
+              </div>
+            ))}
+          </div>
         </section>
         <section className="panel">
           <h2 className="panel__title">Pagamentos recentes</h2>
           <div className="list">
-            {recentPayments.length === 0 && (
+            {recentReceipts.length === 0 && (
               <div className="list__item">
                 <span>Nenhum pagamento registrado.</span>
                 <strong>-</strong>
               </div>
             )}
-            {recentPayments.map((entry) => (
-              <div key={entry.id} className="list__item">
-                <span>{entry.description}</span>
-                <strong>{formatCurrency(entry.amount)}</strong>
+            {recentReceipts.map((receipt) => {
+              const order = data.pedidos.find((item) => item.id === receipt.orderId)
+              const clientName = order ? getClientName(order.clientId) : 'Cliente'
+              return (
+                <div key={receipt.id} className="list__item">
+                  <span>{clientName}</span>
+                  <strong>{formatCurrency(receipt.amount)}</strong>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      </div>
+
+      <div className="grid grid--three">
+        <section className="panel">
+          <h2 className="panel__title">Ranking funcionarios</h2>
+          <div className="rank">
+            {topEmployees.length === 0 && (
+              <div className="list__item">
+                <span>Nenhum apontamento registrado.</span>
+                <strong>-</strong>
+              </div>
+            )}
+            {topEmployees.map((entry) => (
+              <div key={entry.employeeId} className="rank__item">
+                <span className="rank__label">{entry.name}</span>
+                <div className="rank__bar">
+                  <span
+                    className="rank__fill"
+                    style={{
+                      width: `${(entry.total / (topEmployees[0]?.total || 1)) * 100}%`,
+                    }}
+                  />
+                </div>
+                <strong className="rank__value">{formatCurrency(entry.total)}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <h2 className="panel__title">Ranking produtos</h2>
+          <div className="rank">
+            {topProducts.length === 0 && (
+              <div className="list__item">
+                <span>Nenhum pedido registrado.</span>
+                <strong>-</strong>
+              </div>
+            )}
+            {topProducts.map((entry) => (
+              <div key={entry.productId} className="rank__item">
+                <span className="rank__label">{entry.name}</span>
+                <div className="rank__bar">
+                  <span
+                    className="rank__fill"
+                    style={{
+                      width: `${(entry.total / (topProducts[0]?.total || 1)) * 100}%`,
+                    }}
+                  />
+                </div>
+                <strong className="rank__value">{formatCurrency(entry.total)}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <h2 className="panel__title">Ranking clientes</h2>
+          <div className="rank">
+            {topClients.length === 0 && (
+              <div className="list__item">
+                <span>Nenhum pedido registrado.</span>
+                <strong>-</strong>
+              </div>
+            )}
+            {topClients.map((entry) => (
+              <div key={entry.clientId} className="rank__item">
+                <span className="rank__label">{entry.name}</span>
+                <div className="rank__bar">
+                  <span
+                    className="rank__fill"
+                    style={{
+                      width: `${(entry.total / (topClients[0]?.total || 1)) * 100}%`,
+                    }}
+                  />
+                </div>
+                <strong className="rank__value">{formatCurrency(entry.total)}</strong>
               </div>
             ))}
           </div>

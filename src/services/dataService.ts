@@ -54,8 +54,15 @@ const normalizeVariants = (product: Product, markChanged: () => void) => {
 
 const normalizeData = (data: ERPData) => {
   let changed = false
+  const ensureArray = <T>(value: T[] | undefined, fallback: T[]) => {
+    if (!Array.isArray(value)) {
+      changed = true
+      return fallback
+    }
+    return value
+  }
 
-  const produtos = data.produtos.map((product) => {
+  const produtos = ensureArray(data.produtos, []).map((product) => {
     const variants = normalizeVariants(product, () => {
       changed = true
     })
@@ -81,17 +88,28 @@ const normalizeData = (data: ERPData) => {
       return item
     })
 
-  const orcamentos = data.orcamentos.map((quote) => ({
+  const clientes = ensureArray(data.clientes, [])
+  const fornecedores = ensureArray(data.fornecedores, [])
+  const materiais = ensureArray(data.materiais, [])
+  const moldes = ensureArray(data.moldes, [])
+  const ordensProducao = ensureArray(data.ordensProducao, [])
+  const consumosMateriais = ensureArray(data.consumosMateriais, [])
+  const orcamentos = ensureArray(data.orcamentos, []).map((quote) => ({
     ...quote,
     items: normalizeItems(quote.items),
   }))
-
-  const pedidos = data.pedidos.map((order) => ({
+  const pedidos = ensureArray(data.pedidos, []).map((order) => ({
     ...order,
     items: normalizeItems(order.items),
   }))
+  const recibos = ensureArray(data.recibos, [])
+  const financeiro = ensureArray(data.financeiro, [])
+  const funcionarios = ensureArray(data.funcionarios, [])
+  const cargos = ensureArray(data.cargos, [])
+  const niveis = ensureArray(data.niveis, [])
+  const apontamentos = ensureArray(data.apontamentos, [])
 
-  const ordensProducao = data.ordensProducao.map((order) => {
+  const normalizedProducao = ordensProducao.map((order) => {
     if (!order.variantId) {
       const fallbackVariant = primaryVariantByProduct.get(order.productId)
       if (fallbackVariant) {
@@ -102,7 +120,24 @@ const normalizeData = (data: ERPData) => {
     return order
   })
 
-  const normalized = { ...data, produtos, orcamentos, pedidos, ordensProducao }
+  const normalized = {
+    ...data,
+    produtos,
+    clientes,
+    fornecedores,
+    materiais,
+    moldes,
+    ordensProducao: normalizedProducao,
+    consumosMateriais,
+    orcamentos,
+    pedidos,
+    recibos,
+    financeiro,
+    funcionarios,
+    cargos,
+    niveis,
+    apontamentos,
+  }
 
   if (changed) {
     saveStorage(normalized)

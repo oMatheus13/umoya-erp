@@ -14,6 +14,10 @@ export const createEmptyState = (): ERPData => ({
   pedidos: [],
   recibos: [],
   financeiro: [],
+  funcionarios: [],
+  cargos: [],
+  niveis: [],
+  apontamentos: [],
 })
 
 export const getStorage = (): ERPData | null => {

@@ -1,6 +1,7 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
+import logotipo from '../assets/brand/logotipo.svg'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
 import type { Client, ProductVariant, Quote } from '../types/erp'
@@ -54,6 +55,7 @@ const Orcamentos = () => {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [printId, setPrintId] = useState<string | null>(null)
   const [form, setForm] = useState<QuoteForm>({
     clientId: '',
     clientName: '',
@@ -332,6 +334,39 @@ const Orcamentos = () => {
       .find((product) => product.id === productId)
       ?.variants?.find((variant) => variant.id === variantId)
 
+  const getProductUnit = (productId: string) =>
+    data.produtos.find((product) => product.id === productId)?.unit ?? ''
+
+  const getProductNameLabel = (item: Quote['items'][number]) => {
+    const productName = getProductName(item.productId)
+    const variant = getVariant(item.productId, item.variantId)
+    if (!variant) {
+      return productName
+    }
+    return `${productName} - ${variant.name}`
+  }
+
+  const printQuote = printId ? data.orcamentos.find((quote) => quote.id === printId) : null
+
+  useEffect(() => {
+    if (!printId || typeof window === 'undefined') {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      window.print()
+    }, 50)
+    return () => window.clearTimeout(timer)
+  }, [printId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+    const handleAfterPrint = () => setPrintId(null)
+    window.addEventListener('afterprint', handleAfterPrint)
+    return () => window.removeEventListener('afterprint', handleAfterPrint)
+  }, [])
+
   const formatItemsSummary = (items: Quote['items']) => {
     if (items.length === 0) {
       return '-'
@@ -415,6 +450,10 @@ const Orcamentos = () => {
     refresh()
   }
 
+  const handlePrint = (quote: Quote) => {
+    setPrintId(quote.id)
+  }
+
   return (
     <section className="orcamentos">
       <div className="orcamentos__header">
@@ -488,7 +527,7 @@ const Orcamentos = () => {
             const itemProduct = data.produtos.find((product) => product.id === item.productId)
             const itemVariants = itemProduct?.variants ?? []
             return (
-              <div key={`item-${index}`} className="panel">
+              <div key={`item-${index}`} className="form__section">
                 <div className="form__row">
                   <div className="form__group">
                     <label className="form__label" htmlFor={`quote-product-${index}`}>
@@ -751,6 +790,13 @@ const Orcamentos = () => {
                           Editar
                         </button>
                         <button
+                          className="button button--ghost"
+                          type="button"
+                          onClick={() => handlePrint(quote)}
+                        >
+                          Imprimir
+                        </button>
+                        <button
                           className="button button--danger"
                           type="button"
                           onClick={() => setDeleteId(quote.id)}
@@ -777,6 +823,76 @@ const Orcamentos = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
+      {printQuote && (
+        <div id="quote-print" className="quote-print">
+          <header className="quote-print__header">
+            <div className="quote-print__brand">
+              <img className="quote-print__logo" src={logotipo} alt="Umoya" />
+              <div>
+                <strong>Umoya</strong>
+                <span>Orcamento #{printQuote.id.slice(0, 8)}</span>
+              </div>
+            </div>
+            <div className="quote-print__meta">
+              <span>Emissao: {formatDateShort(printQuote.createdAt)}</span>
+              <span>Validade: {formatDateShort(printQuote.validUntil)}</span>
+              <span>Status: {statusLabels[printQuote.status]}</span>
+            </div>
+          </header>
+
+          <section className="quote-print__client">
+            <div>
+              <span>Cliente:</span>
+              <strong>{getClientName(printQuote.clientId)}</strong>
+            </div>
+            <div>
+              <span>Contato:</span>
+              <span>______________________________________</span>
+            </div>
+          </section>
+
+          <table className="quote-print__table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qtd</th>
+                <th>Unidade</th>
+                <th>Valor unitario</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printQuote.items.map((item, index) => (
+                <tr key={`${printQuote.id}-item-${index}`}>
+                  <td>{getProductNameLabel(item)}</td>
+                  <td>{item.quantity}</td>
+                  <td>{getProductUnit(item.productId) || '-'}</td>
+                  <td>{formatCurrency(item.unitPrice)}</td>
+                  <td>{formatCurrency(item.quantity * item.unitPrice)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <div className="quote-print__total">
+            <span>Total do orcamento</span>
+            <strong>{formatCurrency(printQuote.total)}</strong>
+          </div>
+
+          <section className="quote-print__signatures">
+            <div className="quote-print__signature">
+              <span>Assinatura do cliente</span>
+              <div className="quote-print__line" />
+              <span>Data: ____/____/______</span>
+            </div>
+            <div className="quote-print__signature">
+              <span>Responsavel Umoya</span>
+              <div className="quote-print__line" />
+              <span>Data: ____/____/______</span>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   )
 }

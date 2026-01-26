@@ -19,6 +19,8 @@ export type Product = {
   name: string
   price: number
   costPrice?: number
+  laborCost?: number
+  laborBasis?: 'unidade' | 'metro'
   sku?: string
   stock?: number
   unit?: string
@@ -139,6 +141,41 @@ export type FinanceEntry = {
   createdAt: string
 }
 
+export type EmployeeRole = {
+  id: UUID
+  name: string
+  multiplier: number
+}
+
+export type EmployeeLevel = {
+  id: UUID
+  name: string
+  multiplier: number
+}
+
+export type Employee = {
+  id: UUID
+  name: string
+  roleId?: UUID
+  levelId?: UUID
+  active?: boolean
+  hiredAt?: string
+}
+
+export type WorkLog = {
+  id: UUID
+  employeeId: UUID
+  productId: UUID
+  variantId?: UUID
+  quantity: number
+  workDate: string
+  createdAt: string
+  unitLaborCost: number
+  roleMultiplier: number
+  levelMultiplier: number
+  totalPay: number
+}
+
 export type ERPData = {
   produtos: Product[]
   clientes: Client[]
@@ -151,4 +188,8 @@ export type ERPData = {
   pedidos: Order[]
   recibos: Receipt[]
   financeiro: FinanceEntry[]
+  funcionarios: Employee[]
+  cargos: EmployeeRole[]
+  niveis: EmployeeLevel[]
+  apontamentos: WorkLog[]
 }

@@ -11,6 +11,7 @@ import Producao from './pages/Producao'
 import Financeiro from './pages/Financeiro'
 import Clientes from './pages/Clientes'
 import Fornecedores from './pages/Fornecedores'
+import Funcionarios from './pages/Funcionarios'
 import Indicadores from './pages/Indicadores'
 import Bi from './pages/Bi'
 import { ensureStorageSeed } from './services/dataService'
@@ -28,6 +29,7 @@ function App() {
     financeiro: 'Financeiro',
     clientes: 'Clientes',
     fornecedores: 'Fornecedores',
+    funcionarios: 'Funcionarios',
     indicadores: 'Indicadores',
     bi: 'BI',
     dados: 'Dados',
@@ -42,6 +44,7 @@ function App() {
     financeiro: ['Inicio', 'Financeiro'],
     clientes: ['Inicio', 'Clientes'],
     fornecedores: ['Inicio', 'Fornecedores'],
+    funcionarios: ['Inicio', 'Funcionarios'],
     indicadores: ['Relatorios', 'Indicadores'],
     bi: ['Relatorios', 'BI'],
     dados: ['Sistema', 'Dados'],
@@ -81,6 +84,9 @@ function App() {
     }
     if (activePage === 'fornecedores') {
       return <Fornecedores />
+    }
+    if (activePage === 'funcionarios') {
+      return <Funcionarios />
     }
     if (activePage === 'indicadores') {
       return <Indicadores />

@@ -611,7 +611,7 @@ const Pedidos = () => {
             const itemProduct = data.produtos.find((product) => product.id === item.productId)
             const itemVariants = itemProduct?.variants ?? []
             return (
-              <div key={`item-${index}`} className="panel">
+              <div key={`item-${index}`} className="form__section">
                 <div className="form__row">
                   <div className="form__group">
                     <label className="form__label" htmlFor={`order-product-${index}`}>
