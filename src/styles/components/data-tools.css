@@ -1,36 +1,56 @@
 .data-tools {
-  padding: var(--spacing-xl);
-  display: flex;
-  flex-direction: column;
+  min-height: 100%;
+  padding: clamp(24px, 3vw, 40px);
+  display: grid;
   gap: var(--spacing-lg);
+  background:
+    radial-gradient(520px 340px at 12% 0%, rgba(170, 255, 0, 0.08), transparent 70%),
+    radial-gradient(420px 300px at 90% 10%, rgba(15, 17, 22, 0.05), transparent 70%),
+    var(--color-cloud);
 }
 
 .data-tools__header {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.data-tools__headline {
+  display: grid;
+  gap: 6px;
+}
+
+.data-tools__eyebrow {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(15, 17, 22, 0.45);
 }
 
 .data-tools__title {
   font-family: var(--font-family-primary);
-  font-size: var(--font-size-2xl);
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
 }
 
 .data-tools__subtitle {
-  color: rgba(15, 17, 22, 0.7);
+  color: rgba(15, 17, 22, 0.6);
+  max-width: 46ch;
 }
 
 .data-tools__grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--spacing-md);
 }
 
 .data-tools__panel {
-  background: var(--color-true-white);
-  border-radius: var(--border-radius-lg);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
   padding: var(--spacing-lg);
-  box-shadow: var(--box-shadow-sm);
+  border: 1px solid rgba(15, 17, 22, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 17, 22, 0.08);
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
@@ -40,20 +60,18 @@
   grid-column: 1 / -1;
 }
 
-.data-tools__file {
-  display: none;
-}
 
 .data-tools__stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--spacing-sm);
 }
 
 .data-tools__stats div {
-  background: var(--color-cloud);
+  background: rgba(255, 255, 255, 0.9);
   padding: var(--spacing-sm);
-  border-radius: var(--border-radius-md);
+  border-radius: 12px;
+  border: 1px solid rgba(15, 17, 22, 0.08);
   display: flex;
   justify-content: space-between;
 }
@@ -71,5 +89,12 @@
 
   .data-tools__stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .data-tools__header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

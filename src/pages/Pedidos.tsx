@@ -61,6 +61,24 @@ const Pedidos = () => {
       form.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0),
     [form.items],
   )
+  const orderSummary = useMemo(() => {
+    return data.pedidos.reduce(
+      (acc, order) => {
+        acc.total += 1
+        if (order.status === 'aguardando_pagamento') {
+          acc.awaiting += 1
+        }
+        if (order.status === 'em_producao') {
+          acc.inProduction += 1
+        }
+        if (order.status !== 'aguardando_pagamento') {
+          acc.confirmedValue += order.total
+        }
+        return acc
+      },
+      { total: 0, awaiting: 0, inProduction: 0, confirmedValue: 0 },
+    )
+  }, [data.pedidos])
   const availableProducts = data.produtos.filter((product) => product.active !== false)
   const hasProducts = availableProducts.length > 0
   const availableClients = useMemo(
@@ -538,23 +556,47 @@ const Pedidos = () => {
 
   return (
     <section className="pedidos">
-      <div className="pedidos__header">
-        <div className="pedidos__header-content">
+      <header className="pedidos__header">
+        <div className="pedidos__headline">
+          <span className="pedidos__eyebrow">Comercial</span>
           <h1 className="pedidos__title">Pedidos</h1>
           <p className="pedidos__subtitle">
             Pedidos sao gerados automaticamente quando um orcamento e aprovado.
           </p>
         </div>
-        <button
-          className="button button--primary"
-          type="button"
-          onClick={openNewModal}
-          disabled={!hasProducts}
-        >
-          Novo pedido
-        </button>
-      </div>
+        <div className="pedidos__actions">
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={openNewModal}
+            disabled={!hasProducts}
+          >
+            Novo pedido
+          </button>
+        </div>
+      </header>
       {status && <p className="form__status">{status}</p>}
+
+      <div className="pedidos__summary">
+        <article className="pedidos__stat">
+          <span className="pedidos__stat-label">Total</span>
+          <strong className="pedidos__stat-value">{orderSummary.total}</strong>
+        </article>
+        <article className="pedidos__stat">
+          <span className="pedidos__stat-label">Aguardando</span>
+          <strong className="pedidos__stat-value">{orderSummary.awaiting}</strong>
+        </article>
+        <article className="pedidos__stat">
+          <span className="pedidos__stat-label">Em producao</span>
+          <strong className="pedidos__stat-value">{orderSummary.inProduction}</strong>
+        </article>
+        <article className="pedidos__stat">
+          <span className="pedidos__stat-label">Receita confirmada</span>
+          <strong className="pedidos__stat-value">
+            {formatCurrency(orderSummary.confirmedValue)}
+          </strong>
+        </article>
+      </div>
 
       <Modal
         open={isModalOpen}
@@ -817,12 +859,15 @@ const Pedidos = () => {
       </Modal>
 
       <div className="pedidos__layout">
-        <div className="pedidos__panel pedidos__panel--list">
+        <section className="pedidos__panel">
           <div className="pedidos__panel-header">
-            <h2>Pedidos recentes</h2>
-            <span>{orders.length} registros</span>
+            <div>
+              <h2>Pedidos recentes</h2>
+              <p>Atualize status e gere producao sem abrir o pedido.</p>
+            </div>
+            <span className="pedidos__panel-meta">{orders.length} registros</span>
           </div>
-          <div className="table-card">
+          <div className="table-card pedidos__table">
             <table className="table">
               <thead>
                 <tr>
@@ -886,7 +931,7 @@ const Pedidos = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
       <ConfirmDialog
         open={!!deleteId}

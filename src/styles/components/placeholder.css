@@ -1,12 +1,20 @@
 .placeholder {
-  padding: var(--spacing-xl);
+  min-height: 100%;
+  padding: clamp(24px, 3vw, 40px);
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(520px 340px at 12% 0%, rgba(170, 255, 0, 0.08), transparent 70%),
+    radial-gradient(420px 300px at 90% 10%, rgba(15, 17, 22, 0.05), transparent 70%),
+    var(--color-cloud);
 }
 
 .placeholder__card {
-  background: var(--color-true-white);
-  border-radius: var(--border-radius-lg);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
   padding: var(--spacing-xl);
-  box-shadow: var(--box-shadow-sm);
+  border: 1px solid rgba(15, 17, 22, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 17, 22, 0.08);
   max-width: 520px;
 }
 
@@ -17,5 +25,5 @@
 }
 
 .placeholder__description {
-  color: rgba(15, 17, 22, 0.7);
+  color: rgba(15, 17, 22, 0.6);
 }

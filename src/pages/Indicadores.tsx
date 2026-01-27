@@ -55,10 +55,13 @@ const Indicadores = () => {
 
   return (
     <section className="indicadores">
-      <div className="indicadores__header">
-        <h1 className="indicadores__title">Indicadores</h1>
-        <p className="indicadores__subtitle">Visao rapida dos principais numeros.</p>
-      </div>
+      <header className="indicadores__header">
+        <div className="indicadores__headline">
+          <span className="indicadores__eyebrow">Resumo</span>
+          <h1 className="indicadores__title">Indicadores</h1>
+          <p className="indicadores__subtitle">Visao rapida dos principais numeros.</p>
+        </div>
+      </header>
 
       <div className="card-grid">
         <article className="card">

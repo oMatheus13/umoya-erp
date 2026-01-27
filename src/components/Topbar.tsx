@@ -2,9 +2,11 @@ import logotipo from '../assets/brand/logotipo.svg'
 
 type TopbarProps = {
   breadcrumbs: string[]
+  userName?: string
+  onLogout?: () => void
 }
 
-const Topbar = ({ breadcrumbs }: TopbarProps) => {
+const Topbar = ({ breadcrumbs, userName, onLogout }: TopbarProps) => {
   return (
     <header className="topbar">
       <div className="topbar__brand">
@@ -30,9 +32,23 @@ const Topbar = ({ breadcrumbs }: TopbarProps) => {
         <span className="material-symbols-outlined" aria-hidden="true">
           notifications
         </span>
-        <span className="material-symbols-outlined" aria-hidden="true">
-          account_circle
-        </span>
+        {userName ? (
+          <div className="topbar__user">
+            <span className="material-symbols-outlined" aria-hidden="true">
+              account_circle
+            </span>
+            <span className="topbar__user-name">{userName}</span>
+            {onLogout && (
+              <button className="topbar__logout" type="button" onClick={onLogout}>
+                Sair
+              </button>
+            )}
+          </div>
+        ) : (
+          <span className="material-symbols-outlined" aria-hidden="true">
+            account_circle
+          </span>
+        )}
       </div>
     </header>
   )

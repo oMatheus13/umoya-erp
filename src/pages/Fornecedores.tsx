@@ -138,15 +138,18 @@ const Fornecedores = () => {
 
   return (
     <section className="fornecedores">
-      <div className="fornecedores__header">
-        <div className="fornecedores__header-content">
+      <header className="fornecedores__header">
+        <div className="fornecedores__headline">
+          <span className="fornecedores__eyebrow">Compras</span>
           <h1 className="fornecedores__title">Fornecedores</h1>
           <p className="fornecedores__subtitle">Gerencie contatos e parceiros de compra.</p>
         </div>
-        <button className="button button--primary" type="button" onClick={openNewModal}>
-          Novo fornecedor
-        </button>
-      </div>
+        <div className="fornecedores__actions">
+          <button className="button button--primary" type="button" onClick={openNewModal}>
+            Novo fornecedor
+          </button>
+        </div>
+      </header>
       {status && <p className="form__status">{status}</p>}
 
       <Modal
@@ -281,12 +284,15 @@ const Fornecedores = () => {
       </Modal>
 
       <div className="fornecedores__layout">
-        <div className="fornecedores__panel fornecedores__panel--list">
+        <section className="fornecedores__panel">
           <div className="fornecedores__panel-header">
-            <h2>Fornecedores cadastrados</h2>
-            <span>{suppliers.length} registros</span>
+            <div>
+              <h2>Fornecedores cadastrados</h2>
+              <p>Base centralizada de contatos e documentos.</p>
+            </div>
+            <span className="fornecedores__panel-meta">{suppliers.length} registros</span>
           </div>
-          <div className="table-card">
+          <div className="table-card fornecedores__table">
             <table className="table">
               <thead>
                 <tr>
@@ -346,7 +352,7 @@ const Fornecedores = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
       <ConfirmDialog
         open={!!deleteId}

@@ -2,24 +2,16 @@ Paleta principal
 
 PANTONE 5463 U
 Hex: #0F1116
-sRGB: 15, 17, 22PANTONE 19-4012 TCX Carbon
-Hex: #000000
-sRGB: 0, 0, 0--
-Hex: #AAFF00
-sRGB: 170, 255, 0PANTONE 11-4201 Cloud Dancer
-Hex: #F0EEE9
-sRGB: 240, 238, 233
+sRGB: 15, 17, 22
 
-paleta de apoio
-
-PANTONE 5463 U
-Hex: #0F1116
-sRGB: 15, 17, 22PANTONE 11-4201 Cloud Dancer
-Hex: #F0EEE9
-sRGB: 240, 238, 233PANTONE 19-4012 TCX Carbon
+PANTONE 19-4012 TCX Carbon
 Hex: #000000
-sRGB: 0, 0, 0--
+sRGB: 0, 0, 0
+
+--
 Hex: #AAFF00
-sRGB: 170, 255, 0PANTONE 11-4201 Cloud Dancer
+sRGB: 170, 255, 0
+
+PANTONE 11-4201 Cloud Dancer
 Hex: #F0EEE9
 sRGB: 240, 238, 233

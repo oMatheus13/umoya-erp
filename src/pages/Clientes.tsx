@@ -131,15 +131,18 @@ const Clientes = () => {
 
   return (
     <section className="clientes">
-      <div className="clientes__header">
-        <div className="clientes__header-content">
+      <header className="clientes__header">
+        <div className="clientes__headline">
+          <span className="clientes__eyebrow">Comercial</span>
           <h1 className="clientes__title">Clientes</h1>
           <p className="clientes__subtitle">Cadastre clientes para orcamentos e pedidos.</p>
         </div>
-        <button className="button button--primary" type="button" onClick={openNewModal}>
-          Novo cliente
-        </button>
-      </div>
+        <div className="clientes__actions">
+          <button className="button button--primary" type="button" onClick={openNewModal}>
+            Novo cliente
+          </button>
+        </div>
+      </header>
       {status && <p className="form__status">{status}</p>}
 
       <Modal
@@ -258,12 +261,15 @@ const Clientes = () => {
       </Modal>
 
       <div className="clientes__layout">
-        <div className="clientes__panel clientes__panel--list">
+        <section className="clientes__panel">
           <div className="clientes__panel-header">
-            <h2>Clientes cadastrados</h2>
-            <span>{clients.length} registros</span>
+            <div>
+              <h2>Clientes cadastrados</h2>
+              <p>Base pronta para orcamentos e pedidos.</p>
+            </div>
+            <span className="clientes__panel-meta">{clients.length} registros</span>
           </div>
-          <div className="table-card">
+          <div className="table-card clientes__table">
             <table className="table">
               <thead>
                 <tr>
@@ -319,7 +325,7 @@ const Clientes = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
       <ConfirmDialog
         open={!!deleteId}

@@ -143,49 +143,52 @@ const Bi = () => {
 
   return (
     <section className="bi">
-      <div className="bi__header">
-        <div>
+      <header className="bi__header">
+        <div className="bi__headline">
+          <span className="bi__eyebrow">Inteligencia</span>
           <h1 className="bi__title">BI</h1>
           <p className="bi__subtitle">Analise o desempenho e as tendencias do negocio.</p>
         </div>
-        <div className="bi__filters">
-          <div className="bi__filter">
-            <label className="form__label" htmlFor="bi-range">
-              Periodo
-            </label>
-            <select
-              id="bi-range"
-              className="form__input"
-              value={range}
-              onChange={(event) => setRange(event.target.value as RangeOption)}
-            >
-              <option value="7">Ultimos 7 dias</option>
-              <option value="30">Ultimos 30 dias</option>
-              <option value="90">Ultimos 90 dias</option>
-              <option value="180">Ultimos 6 meses</option>
-              <option value="365">Ultimo ano</option>
-              <option value="all">Tudo</option>
-            </select>
-          </div>
-          <div className="bi__filter">
-            <label className="form__label" htmlFor="bi-status">
-              Status
-            </label>
-            <select
-              id="bi-status"
-              className="form__input"
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as 'todos' | 'pago' | 'entregue')
-              }
-            >
-              <option value="todos">Todos</option>
-              <option value="pago">Pago</option>
-              <option value="entregue">Entregue</option>
-            </select>
+        <div className="bi__actions">
+          <div className="bi__filters">
+            <div className="bi__filter">
+              <label className="form__label" htmlFor="bi-range">
+                Periodo
+              </label>
+              <select
+                id="bi-range"
+                className="form__input"
+                value={range}
+                onChange={(event) => setRange(event.target.value as RangeOption)}
+              >
+                <option value="7">Ultimos 7 dias</option>
+                <option value="30">Ultimos 30 dias</option>
+                <option value="90">Ultimos 90 dias</option>
+                <option value="180">Ultimos 6 meses</option>
+                <option value="365">Ultimo ano</option>
+                <option value="all">Tudo</option>
+              </select>
+            </div>
+            <div className="bi__filter">
+              <label className="form__label" htmlFor="bi-status">
+                Status
+              </label>
+              <select
+                id="bi-status"
+                className="form__input"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as 'todos' | 'pago' | 'entregue')
+                }
+              >
+                <option value="todos">Todos</option>
+                <option value="pago">Pago</option>
+                <option value="entregue">Entregue</option>
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      </header>
 
       <div className="bi__cards">
         <article className="card">
@@ -243,7 +246,7 @@ const Bi = () => {
       <div className="bi__tables">
         <section className="panel">
           <h2 className="panel__title">Top produtos</h2>
-          <div className="table-card">
+          <div className="table-card bi__table">
             <table className="table">
               <thead>
                 <tr>
@@ -271,7 +274,7 @@ const Bi = () => {
         </section>
         <section className="panel">
           <h2 className="panel__title">Top clientes</h2>
-          <div className="table-card">
+          <div className="table-card bi__table">
             <table className="table">
               <thead>
                 <tr>

@@ -7,8 +7,19 @@ import type {
   Quote,
   Receipt,
 } from '../types/erp'
-import { createEmptyState, getStorage, saveStorage } from './storage'
+import { createEmptyState, DEFAULT_LEVELS, DEFAULT_ROLES, getStorage, saveStorage } from './storage'
 import { createId } from '../utils/ids'
+
+type RemoteSync = (data: ERPData) => void | Promise<void>
+
+let remoteSync: RemoteSync | null = null
+
+const saveAndSync = (data: ERPData) => {
+  saveStorage(data)
+  if (remoteSync) {
+    void remoteSync(data)
+  }
+}
 
 export type DataService = {
   getAll: () => ERPData
@@ -105,9 +116,20 @@ const normalizeData = (data: ERPData) => {
   const recibos = ensureArray(data.recibos, [])
   const financeiro = ensureArray(data.financeiro, [])
   const funcionarios = ensureArray(data.funcionarios, [])
-  const cargos = ensureArray(data.cargos, [])
-  const niveis = ensureArray(data.niveis, [])
+  const defaultRoles = DEFAULT_ROLES.map((role) => ({ ...role }))
+  const defaultLevels = DEFAULT_LEVELS.map((level) => ({ ...level }))
+  const cargos = ensureArray(data.cargos, defaultRoles)
+  const niveis = ensureArray(data.niveis, defaultLevels)
+  if (cargos.length === 0) {
+    changed = true
+    cargos.push(...defaultRoles)
+  }
+  if (niveis.length === 0) {
+    changed = true
+    niveis.push(...defaultLevels)
+  }
   const apontamentos = ensureArray(data.apontamentos, [])
+  const usuarios = ensureArray(data.usuarios, [])
 
   const normalizedProducao = ordensProducao.map((order) => {
     if (!order.variantId) {
@@ -137,10 +159,11 @@ const normalizeData = (data: ERPData) => {
     cargos,
     niveis,
     apontamentos,
+    usuarios,
   }
 
   if (changed) {
-    saveStorage(normalized)
+    saveAndSync(normalized)
   }
 
   return normalized
@@ -148,37 +171,41 @@ const normalizeData = (data: ERPData) => {
 
 export const dataService: DataService = {
   getAll: () => normalizeData(getStorage() ?? createEmptyState()),
-  replaceAll: (data) => saveStorage(data),
+  replaceAll: (data) => saveAndSync(data),
   exportJson: () => JSON.stringify(normalizeData(getStorage() ?? createEmptyState()), null, 2),
   importJson: (payload) => {
     const parsed = JSON.parse(payload) as ERPData
-    saveStorage(parsed)
+    saveAndSync(parsed)
   },
   upsertQuote: (quote) => {
     const data = getStorage() ?? createEmptyState()
     data.orcamentos = upsert(data.orcamentos, quote)
-    saveStorage(data)
+    saveAndSync(data)
   },
   upsertOrder: (order) => {
     const data = getStorage() ?? createEmptyState()
     data.pedidos = upsert(data.pedidos, order)
-    saveStorage(data)
+    saveAndSync(data)
   },
   addReceipt: (receipt) => {
     const data = getStorage() ?? createEmptyState()
     data.recibos = [...data.recibos, receipt]
-    saveStorage(data)
+    saveAndSync(data)
   },
   addFinanceEntry: (entry) => {
     const data = getStorage() ?? createEmptyState()
     data.financeiro = [...data.financeiro, entry]
-    saveStorage(data)
+    saveAndSync(data)
   },
 }
 
 export const ensureStorageSeed = () => {
   const current = getStorage()
   if (!current) {
-    saveStorage(createEmptyState())
+    saveAndSync(createEmptyState())
   }
+}
+
+export const setRemoteSync = (handler: RemoteSync | null) => {
+  remoteSync = handler
 }

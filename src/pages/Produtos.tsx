@@ -81,6 +81,23 @@ const Produtos = () => {
     () => data.produtos.find((product) => product.id === selectedProductId) ?? null,
     [data.produtos, selectedProductId],
   )
+  const productSummary = useMemo(() => {
+    return data.produtos.reduce(
+      (acc, product) => {
+        acc.total += 1
+        if (product.active !== false) {
+          acc.active += 1
+        }
+        const variants = product.variants ?? []
+        acc.variants += variants.length
+        const variantStock = variants.reduce((sum, variant) => sum + (variant.stock ?? 0), 0)
+        const stock = product.stock !== undefined ? product.stock : variantStock
+        acc.stock += stock
+        return acc
+      },
+      { total: 0, active: 0, variants: 0, stock: 0 },
+    )
+  }, [data.produtos])
 
   const updateForm = (patch: Partial<ProductForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
@@ -382,18 +399,40 @@ const Produtos = () => {
 
   return (
     <section className="produtos">
-      <div className="produtos__header">
-        <div className="produtos__header-content">
+      <header className="produtos__header">
+        <div className="produtos__headline">
+          <span className="produtos__eyebrow">Catalogo</span>
           <h1 className="produtos__title">Produtos</h1>
           <p className="produtos__subtitle">
             Cadastre produtos e controle variacoes com estoque independente.
           </p>
         </div>
-        <button className="button button--primary" type="button" onClick={openProductModal}>
-          Novo produto
-        </button>
-      </div>
+        <div className="produtos__actions">
+          <button className="button button--primary" type="button" onClick={openProductModal}>
+            Novo produto
+          </button>
+        </div>
+      </header>
       {status && <p className="form__status">{status}</p>}
+
+      <div className="produtos__summary">
+        <article className="produtos__stat">
+          <span className="produtos__stat-label">Total</span>
+          <strong className="produtos__stat-value">{productSummary.total}</strong>
+        </article>
+        <article className="produtos__stat">
+          <span className="produtos__stat-label">Ativos</span>
+          <strong className="produtos__stat-value">{productSummary.active}</strong>
+        </article>
+        <article className="produtos__stat">
+          <span className="produtos__stat-label">Variacoes</span>
+          <strong className="produtos__stat-value">{productSummary.variants}</strong>
+        </article>
+        <article className="produtos__stat">
+          <span className="produtos__stat-label">Estoque total</span>
+          <strong className="produtos__stat-value">{productSummary.stock}</strong>
+        </article>
+      </div>
 
       <Modal
         open={isProductModalOpen}
@@ -592,12 +631,15 @@ const Produtos = () => {
       </Modal>
 
       <div className="produtos__layout">
-        <div className="produtos__panel produtos__panel--list">
+        <section className="produtos__panel">
           <div className="produtos__panel-header">
-            <h2>Produtos cadastrados</h2>
-            <span>{products.length} registros</span>
+            <div>
+              <h2>Produtos cadastrados</h2>
+              <p>Visao geral de custos, estoque e precos base.</p>
+            </div>
+            <span className="produtos__panel-meta">{products.length} registros</span>
           </div>
-          <div className="table-card">
+          <div className="table-card produtos__table">
             <table className="table">
               <thead>
                 <tr>
@@ -686,7 +728,7 @@ const Produtos = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
 
       <Modal
@@ -843,12 +885,13 @@ const Produtos = () => {
       </Modal>
 
       <div className="produtos__variants">
-        <div className="produtos__panel produtos__panel--list">
+        <section className="produtos__panel">
           <div className="produtos__panel-header">
             <div className="produtos__panel-title">
               <h2>Variacoes do produto</h2>
+              <p>Controle medidas, estoque e precos por variacao.</p>
               <select
-                className="form__input"
+                className="form__input produtos__panel-select"
                 value={selectedProductId ?? ''}
                 onChange={(event) => setSelectedProductId(event.target.value)}
               >
@@ -863,7 +906,7 @@ const Produtos = () => {
               </select>
             </div>
             <div className="produtos__panel-actions">
-              <span>{variants.length} registros</span>
+              <span className="produtos__panel-meta">{variants.length} registros</span>
               <button
                 className="button button--primary"
                 type="button"
@@ -875,7 +918,7 @@ const Produtos = () => {
             </div>
           </div>
           {variantStatus && <p className="form__status">{variantStatus}</p>}
-          <div className="table-card">
+          <div className="table-card produtos__table">
             <table className="table">
               <thead>
                 <tr>
@@ -935,7 +978,7 @@ const Produtos = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
       <ConfirmDialog
         open={!!deleteProductId}

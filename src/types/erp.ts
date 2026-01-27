@@ -158,6 +158,7 @@ export type Employee = {
   name: string
   roleId?: UUID
   levelId?: UUID
+  cpf?: string
   active?: boolean
   hiredAt?: string
 }
@@ -176,6 +177,19 @@ export type WorkLog = {
   totalPay: number
 }
 
+export type UserAccount = {
+  id: UUID
+  employeeId?: UUID
+  name: string
+  email: string
+  cpf?: string
+  passwordHash?: string
+  role?: 'admin' | 'funcionario'
+  createdAt: string
+  lastLoginAt?: string
+  active?: boolean
+}
+
 export type ERPData = {
   produtos: Product[]
   clientes: Client[]
@@ -192,4 +206,5 @@ export type ERPData = {
   cargos: EmployeeRole[]
   niveis: EmployeeLevel[]
   apontamentos: WorkLog[]
+  usuarios: UserAccount[]
 }

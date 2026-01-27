@@ -1,0 +1,309 @@
+.dashboard {
+  min-height: 100%;
+  padding: clamp(24px, 3vw, 40px);
+  display: grid;
+  gap: var(--spacing-lg);
+  background:
+    radial-gradient(600px 360px at 15% 0%, rgba(170, 255, 0, 0.08), transparent 70%),
+    radial-gradient(420px 300px at 90% 10%, rgba(15, 17, 22, 0.06), transparent 70%),
+    var(--color-cloud);
+}
+
+.dashboard__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--spacing-lg);
+}
+
+.dashboard__headline {
+  display: grid;
+  gap: 6px;
+}
+
+.dashboard__eyebrow {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(15, 17, 22, 0.45);
+}
+
+.dashboard__title {
+  font-family: var(--font-family-primary);
+  font-size: clamp(2rem, 3.2vw, 3rem);
+  letter-spacing: -0.02em;
+}
+
+.dashboard__subtitle {
+  color: rgba(15, 17, 22, 0.6);
+  max-width: 46ch;
+}
+
+.dashboard__meta {
+  display: grid;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  color: rgba(15, 17, 22, 0.5);
+  text-align: right;
+}
+
+.dashboard__meta strong {
+  font-size: var(--font-size-base);
+  color: var(--color-ink);
+}
+
+.dashboard__summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--spacing-md);
+}
+
+.dashboard__stat {
+  position: relative;
+  padding: var(--spacing-sm);
+  border-radius: 16px;
+  background: var(--color-true-white);
+  border: 1px solid rgba(15, 17, 22, 0.08);
+  box-shadow: 0 8px 20px rgba(15, 17, 22, 0.08);
+  display: grid;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.dashboard__stat::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(170, 255, 0, 0.7), transparent 70%);
+  opacity: 0.6;
+}
+
+.dashboard__stat-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(15, 17, 22, 0.5);
+}
+
+.dashboard__stat-value {
+  font-family: var(--font-family-primary);
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: var(--font-weight-regular);
+}
+
+.dashboard__stat-meta {
+  font-size: var(--font-size-xs);
+  color: rgba(15, 17, 22, 0.55);
+}
+
+.dashboard__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.dashboard__panel {
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 18px;
+  border: 1px solid rgba(15, 17, 22, 0.08);
+  padding: var(--spacing-lg);
+  display: grid;
+  gap: var(--spacing-md);
+  box-shadow: 0 12px 28px rgba(15, 17, 22, 0.08);
+}
+
+.dashboard__panel--chart {
+  min-height: 320px;
+}
+
+.dashboard__panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.dashboard__panel-title {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-lg);
+}
+
+.dashboard__panel-subtitle {
+  font-size: var(--font-size-sm);
+  color: rgba(15, 17, 22, 0.55);
+}
+
+.dashboard__legend {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+  font-size: var(--font-size-xs);
+  color: rgba(15, 17, 22, 0.6);
+}
+
+.dashboard__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard__legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.dashboard__legend-dot--in {
+  background: var(--color-lime);
+}
+
+.dashboard__legend-dot--out {
+  background: rgba(15, 17, 22, 0.45);
+}
+
+.dashboard__chart {
+  height: 220px;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+  align-items: end;
+  padding-top: var(--spacing-sm);
+}
+
+.dashboard__chart-group {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+  height: 100%;
+}
+
+.dashboard__chart-bars {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  align-items: end;
+  height: 100%;
+}
+
+.dashboard__chart-bar {
+  width: 100%;
+  min-height: 6px;
+  border-radius: 999px;
+}
+
+.dashboard__chart-bar--in {
+  background: linear-gradient(180deg, rgba(170, 255, 0, 0.95), rgba(170, 255, 0, 0.2));
+}
+
+.dashboard__chart-bar--out {
+  background: linear-gradient(180deg, rgba(15, 17, 22, 0.6), rgba(15, 17, 22, 0.15));
+}
+
+.dashboard__chart-label {
+  font-size: var(--font-size-xs);
+  color: rgba(15, 17, 22, 0.45);
+  text-align: center;
+}
+
+.dashboard__alert-grid {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.dashboard__alert {
+  display: grid;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-md);
+  background: rgba(15, 17, 22, 0.04);
+}
+
+.dashboard__alert-title {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(15, 17, 22, 0.5);
+}
+
+.dashboard__mini-list {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboard__mini-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+}
+
+.dashboard__mini-item strong {
+  color: var(--color-ink);
+}
+
+.dashboard__list {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard__list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: var(--border-radius-md);
+  background: rgba(15, 17, 22, 0.04);
+}
+
+.dashboard__list-item strong {
+  font-weight: var(--font-weight-semibold);
+}
+
+.dashboard__empty {
+  font-size: var(--font-size-sm);
+  color: rgba(15, 17, 22, 0.45);
+  padding: 4px 0;
+}
+
+@media (max-width: 1200px) {
+  .dashboard__summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .dashboard__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__panel--chart {
+    min-height: 280px;
+  }
+
+  .dashboard__chart {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .dashboard__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .dashboard__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__panel {
+    padding: var(--spacing-md);
+  }
+
+  .dashboard__chart {
+    gap: 10px;
+  }
+}

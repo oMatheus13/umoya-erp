@@ -122,33 +122,36 @@ const Financeiro = () => {
 
   return (
     <section className="financeiro">
-      <div className="financeiro__header">
-        <div className="financeiro__header-content">
-          <h1 className="financeiro__title">Financeiro</h1>
+      <header className="financeiro__header">
+        <div className="financeiro__headline">
+          <span className="financeiro__eyebrow">Financeiro</span>
+          <h1 className="financeiro__title">Fluxo de caixa</h1>
           <p className="financeiro__subtitle">Controle entradas, saidas e saldo.</p>
         </div>
-        <button className="button button--primary" type="button" onClick={openNewModal}>
-          Novo lancamento
-        </button>
-      </div>
+        <div className="financeiro__actions">
+          <button className="button button--primary" type="button" onClick={openNewModal}>
+            Novo lancamento
+          </button>
+        </div>
+      </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="financeiro__cards">
-        <article className="card">
-          <span className="card__label">Caixa atual</span>
-          <span className="card__value">{formatCurrency(totalBalance)}</span>
+      <div className="financeiro__summary">
+        <article className="financeiro__stat">
+          <span className="financeiro__stat-label">Caixa atual</span>
+          <strong className="financeiro__stat-value">{formatCurrency(totalBalance)}</strong>
         </article>
-        <article className="card">
-          <span className="card__label">Entradas do mes</span>
-          <span className="card__value">{formatCurrency(monthIn)}</span>
+        <article className="financeiro__stat">
+          <span className="financeiro__stat-label">Entradas do mes</span>
+          <strong className="financeiro__stat-value">{formatCurrency(monthIn)}</strong>
         </article>
-        <article className="card">
-          <span className="card__label">Saidas do mes</span>
-          <span className="card__value">{formatCurrency(monthOut)}</span>
+        <article className="financeiro__stat">
+          <span className="financeiro__stat-label">Saidas do mes</span>
+          <strong className="financeiro__stat-value">{formatCurrency(monthOut)}</strong>
         </article>
-        <article className="card">
-          <span className="card__label">Saldo do mes</span>
-          <span className="card__value">{formatCurrency(monthBalance)}</span>
+        <article className="financeiro__stat">
+          <span className="financeiro__stat-label">Saldo do mes</span>
+          <strong className="financeiro__stat-value">{formatCurrency(monthBalance)}</strong>
         </article>
       </div>
 
@@ -233,12 +236,15 @@ const Financeiro = () => {
       </Modal>
 
       <div className="financeiro__layout">
-        <div className="financeiro__panel financeiro__panel--list">
+        <section className="financeiro__panel">
           <div className="financeiro__panel-header">
-            <h2>Ultimos lancamentos</h2>
-            <span>{entries.length} registros</span>
+            <div>
+              <h2>Ultimos lancamentos</h2>
+              <p>Registros por categoria e impacto no saldo.</p>
+            </div>
+            <span className="financeiro__panel-meta">{entries.length} registros</span>
           </div>
-          <div className="table-card">
+          <div className="table-card financeiro__table">
             <table className="table">
               <thead>
                 <tr>
@@ -287,7 +293,7 @@ const Financeiro = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
       <ConfirmDialog
         open={!!deleteId}

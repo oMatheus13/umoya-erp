@@ -1,21 +1,47 @@
 .indicadores {
-  padding: var(--spacing-xl);
-  display: flex;
-  flex-direction: column;
+  min-height: 100%;
+  padding: clamp(24px, 3vw, 40px);
+  display: grid;
   gap: var(--spacing-lg);
+  background:
+    radial-gradient(520px 340px at 12% 0%, rgba(170, 255, 0, 0.08), transparent 70%),
+    radial-gradient(420px 300px at 90% 10%, rgba(15, 17, 22, 0.05), transparent 70%),
+    var(--color-cloud);
 }
 
 .indicadores__header {
   display: flex;
-  flex-direction: column;
-  gap: var(--spacing-xs);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.indicadores__headline {
+  display: grid;
+  gap: 6px;
+}
+
+.indicadores__eyebrow {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(15, 17, 22, 0.45);
 }
 
 .indicadores__title {
   font-family: var(--font-family-primary);
-  font-size: var(--font-size-2xl);
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
 }
 
 .indicadores__subtitle {
-  color: rgba(15, 17, 22, 0.7);
+  color: rgba(15, 17, 22, 0.6);
+  max-width: 46ch;
+}
+
+@media (max-width: 720px) {
+  .indicadores__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }

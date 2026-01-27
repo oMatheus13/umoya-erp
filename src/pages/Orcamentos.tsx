@@ -69,6 +69,22 @@ const Orcamentos = () => {
       form.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0),
     [form.items],
   )
+  const quoteSummary = useMemo(() => {
+    return data.orcamentos.reduce(
+      (acc, quote) => {
+        acc.total += 1
+        if (quote.status === 'aprovado') {
+          acc.approved += 1
+        }
+        if (quote.status === 'rascunho' || quote.status === 'enviado') {
+          acc.pending += 1
+          acc.pendingValue += quote.total
+        }
+        return acc
+      },
+      { total: 0, pending: 0, approved: 0, pendingValue: 0 },
+    )
+  }, [data.orcamentos])
   const availableProducts = data.produtos.filter((product) => product.active !== false)
   const hasProducts = availableProducts.length > 0
   const availableClients = useMemo(
@@ -456,21 +472,47 @@ const Orcamentos = () => {
 
   return (
     <section className="orcamentos">
-      <div className="orcamentos__header">
-        <div className="orcamentos__header-content">
+      <header className="orcamentos__header">
+        <div className="orcamentos__headline">
+          <span className="orcamentos__eyebrow">Comercial</span>
           <h1 className="orcamentos__title">Orcamentos</h1>
-          <p className="orcamentos__subtitle">Crie, acompanhe e aprove propostas rapidamente.</p>
+          <p className="orcamentos__subtitle">
+            Propostas claras, aprovacao rapida e conversao automatica em pedidos.
+          </p>
         </div>
-        <button
-          className="button button--primary"
-          type="button"
-          onClick={openNewModal}
-          disabled={!hasProducts}
-        >
-          Novo orcamento
-        </button>
-      </div>
+        <div className="orcamentos__actions">
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={openNewModal}
+            disabled={!hasProducts}
+          >
+            Novo orcamento
+          </button>
+        </div>
+      </header>
       {status && <p className="form__status">{status}</p>}
+
+      <div className="orcamentos__summary">
+        <article className="orcamentos__stat">
+          <span className="orcamentos__stat-label">Total</span>
+          <strong className="orcamentos__stat-value">{quoteSummary.total}</strong>
+        </article>
+        <article className="orcamentos__stat">
+          <span className="orcamentos__stat-label">Pendentes</span>
+          <strong className="orcamentos__stat-value">{quoteSummary.pending}</strong>
+        </article>
+        <article className="orcamentos__stat">
+          <span className="orcamentos__stat-label">Aprovados</span>
+          <strong className="orcamentos__stat-value">{quoteSummary.approved}</strong>
+        </article>
+        <article className="orcamentos__stat">
+          <span className="orcamentos__stat-label">Valor em aberto</span>
+          <strong className="orcamentos__stat-value">
+            {formatCurrency(quoteSummary.pendingValue)}
+          </strong>
+        </article>
+      </div>
 
       <Modal
         open={isModalOpen}
@@ -732,12 +774,15 @@ const Orcamentos = () => {
       </Modal>
 
       <div className="orcamentos__layout">
-        <div className="orcamentos__panel orcamentos__panel--list">
+        <section className="orcamentos__panel">
           <div className="orcamentos__panel-header">
-            <h2>Ultimos orcamentos</h2>
-            <span>{quotes.length} registros</span>
+            <div>
+              <h2>Ultimos orcamentos</h2>
+              <p>Atualize status e transforme em pedidos com 1 clique.</p>
+            </div>
+            <span className="orcamentos__panel-meta">{quotes.length} registros</span>
           </div>
-          <div className="table-card">
+          <div className="table-card orcamentos__table">
             <table className="table">
               <thead>
                 <tr>
@@ -810,7 +855,7 @@ const Orcamentos = () => {
               </tbody>
             </table>
           </div>
-        </div>
+        </section>
       </div>
       <ConfirmDialog
         open={!!deleteId}

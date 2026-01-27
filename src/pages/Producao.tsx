@@ -24,6 +24,24 @@ const Producao = () => {
       ),
     [data.ordensProducao],
   )
+  const productionSummary = useMemo(() => {
+    return productionOrders.reduce(
+      (acc, order) => {
+        acc.total += 1
+        if (order.status === 'aberta') {
+          acc.open += 1
+        }
+        if (order.status === 'em_producao') {
+          acc.active += 1
+        }
+        if (order.status === 'finalizada') {
+          acc.done += 1
+        }
+        return acc
+      },
+      { total: 0, open: 0, active: 0, done: 0 },
+    )
+  }, [productionOrders])
 
   const getOrder = (id: string) => data.pedidos.find((order) => order.id === id)
   const getClientName = (id: string) =>
@@ -150,78 +168,114 @@ const Producao = () => {
 
   return (
     <section className="producao">
-      <div className="producao__header">
-        <div>
+      <header className="producao__header">
+        <div className="producao__headline">
+          <span className="producao__eyebrow">Operacao</span>
           <h1 className="producao__title">Producao</h1>
           <p className="producao__subtitle">
             Ordens sao criadas automaticamente quando um pedido e marcado como pago.
           </p>
         </div>
-        <button className="button button--ghost" type="button" onClick={handleManualOrder}>
-          Criar ordem manual
-        </button>
+        <div className="producao__actions">
+          <button className="button button--ghost" type="button" onClick={handleManualOrder}>
+            Criar ordem manual
+          </button>
+        </div>
+      </header>
+
+      {status && <p className="producao__status">{status}</p>}
+
+      <div className="producao__summary">
+        <article className="producao__stat">
+          <span className="producao__stat-label">Total</span>
+          <strong className="producao__stat-value">{productionSummary.total}</strong>
+        </article>
+        <article className="producao__stat">
+          <span className="producao__stat-label">Abertas</span>
+          <strong className="producao__stat-value">{productionSummary.open}</strong>
+        </article>
+        <article className="producao__stat">
+          <span className="producao__stat-label">Em producao</span>
+          <strong className="producao__stat-value">{productionSummary.active}</strong>
+        </article>
+        <article className="producao__stat">
+          <span className="producao__stat-label">Finalizadas</span>
+          <strong className="producao__stat-value">{productionSummary.done}</strong>
+        </article>
       </div>
 
-      <div className="producao__list">
-        {productionOrders.length === 0 && (
-          <div className="producao__empty">
-            Nenhuma ordem criada. Marque pedidos como pagos para gerar producao.
-          </div>
-        )}
-        {productionOrders.map((order) => {
-          const pedido = getOrder(order.orderId)
-          const item = pedido?.items[0]
-          const productId = item?.productId ?? order.productId
-          const variant = productId ? getVariant(productId, item?.variantId ?? order.variantId) : undefined
-          return (
-            <div key={order.id} className="producao__card">
-              <div className="producao__info">
-                <strong>Ordem #{order.id.slice(0, 6)}</strong>
-                <span>{pedido ? getClientName(pedido.clientId) : 'Pedido'}</span>
-                <span>
-                  {productId ? getProductName(productId) : 'Produto'}
-                  {variant ? ` • ${variant.name}` : ''}
-                  {' • '}
-                  {order.quantity}
-                </span>
-              </div>
-              <div className="producao__meta">
-                <span className={`badge badge--${order.status}`}>
-                  {statusLabels[order.status]}
-                </span>
-                <span>Inicio: {formatDateShort(order.plannedAt ?? '')}</span>
-                <span>Fim: {formatDateShort(order.finishedAt ?? '')}</span>
-              </div>
-              <div className="producao__actions">
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  onClick={() => handleStart(order)}
-                  disabled={order.status !== 'aberta'}
-                >
-                  Iniciar
-                </button>
-                <button
-                  className="button button--primary"
-                  type="button"
-                  onClick={() => handleFinish(order)}
-                  disabled={order.status !== 'em_producao'}
-                >
-                  Finalizar
-                </button>
-                <button
-                  className="button button--danger"
-                  type="button"
-                  onClick={() => setDeleteId(order.id)}
-                >
-                  Excluir
-                </button>
-              </div>
+      <div className="producao__layout">
+        <section className="producao__panel">
+          <div className="producao__panel-header">
+            <div>
+              <h2>Ordens recentes</h2>
+              <p>Movimente as ordens para iniciar ou finalizar a producao.</p>
             </div>
-          )
-        })}
+            <span className="producao__panel-meta">{productionOrders.length} registros</span>
+          </div>
+          <div className="producao__list">
+            {productionOrders.length === 0 && (
+              <div className="producao__empty">
+                Nenhuma ordem criada. Marque pedidos como pagos para gerar producao.
+              </div>
+            )}
+            {productionOrders.map((order) => {
+              const pedido = getOrder(order.orderId)
+              const item = pedido?.items[0]
+              const productId = item?.productId ?? order.productId
+              const variant = productId
+                ? getVariant(productId, item?.variantId ?? order.variantId)
+                : undefined
+              return (
+                <div key={order.id} className="producao__card">
+                  <div className="producao__info">
+                    <strong>Ordem #{order.id.slice(0, 6)}</strong>
+                    <span>{pedido ? getClientName(pedido.clientId) : 'Pedido'}</span>
+                    <span>
+                      {productId ? getProductName(productId) : 'Produto'}
+                      {variant ? ` • ${variant.name}` : ''}
+                      {' • '}
+                      {order.quantity}
+                    </span>
+                  </div>
+                  <div className="producao__meta">
+                    <span className={`badge badge--${order.status}`}>
+                      {statusLabels[order.status]}
+                    </span>
+                    <span>Inicio: {formatDateShort(order.plannedAt ?? '')}</span>
+                    <span>Fim: {formatDateShort(order.finishedAt ?? '')}</span>
+                  </div>
+                  <div className="producao__actions">
+                    <button
+                      className="button button--ghost"
+                      type="button"
+                      onClick={() => handleStart(order)}
+                      disabled={order.status !== 'aberta'}
+                    >
+                      Iniciar
+                    </button>
+                    <button
+                      className="button button--primary"
+                      type="button"
+                      onClick={() => handleFinish(order)}
+                      disabled={order.status !== 'em_producao'}
+                    >
+                      Finalizar
+                    </button>
+                    <button
+                      className="button button--danger"
+                      type="button"
+                      onClick={() => setDeleteId(order.id)}
+                    >
+                      Excluir
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
       </div>
-      {status && <p className="producao__status">{status}</p>}
       <ConfirmDialog
         open={!!deleteId}
         title="Excluir ordem de producao?"
