@@ -20,6 +20,7 @@ type OrderItemForm = {
 type OrderForm = {
   clientId: string
   clientName: string
+  obraId: string
   items: OrderItemForm[]
   paymentMethod: string
   status: Order['status']
@@ -51,6 +52,7 @@ const Pedidos = () => {
   const [form, setForm] = useState<OrderForm>({
     clientId: '',
     clientName: '',
+    obraId: '',
     items: [createEmptyItem()],
     paymentMethod: '',
     status: 'aguardando_pagamento',
@@ -85,6 +87,10 @@ const Pedidos = () => {
     () => [...data.clientes].sort((a, b) => a.name.localeCompare(b.name)),
     [data.clientes],
   )
+  const selectedClient = form.clientId
+    ? data.clientes.find((client) => client.id === form.clientId)
+    : null
+  const clientObras = selectedClient?.obras ?? []
 
   const updateForm = (patch: Partial<OrderForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
@@ -112,6 +118,7 @@ const Pedidos = () => {
     setForm({
       clientId: '',
       clientName: '',
+      obraId: '',
       items: [createEmptyItem()],
       paymentMethod: '',
       status: 'aguardando_pagamento',
@@ -438,6 +445,7 @@ const Pedidos = () => {
     const order: Order = {
       id: existingOrder?.id ?? createId(),
       clientId: resolvedClient.id,
+      obraId: form.clientId ? form.obraId || undefined : undefined,
       items,
       total,
       paymentMethod: form.paymentMethod,
@@ -498,6 +506,7 @@ const Pedidos = () => {
     setForm({
       clientId: order.clientId,
       clientName: getClientName(order.clientId),
+      obraId: order.obraId ?? '',
       items: order.items.map((item) => {
         const variant = item.variantId ? getVariant(item.productId, item.variantId) : undefined
         return {
@@ -531,6 +540,7 @@ const Pedidos = () => {
       (order) => order.orderId !== deleteId,
     )
     payload.recibos = payload.recibos.filter((receipt) => receipt.orderId !== deleteId)
+    payload.entregas = payload.entregas.filter((delivery) => delivery.orderId !== deleteId)
     dataService.replaceAll(payload)
     refresh()
     setStatus('Pedido excluido.')
@@ -616,9 +626,14 @@ const Pedidos = () => {
               onChange={(event) => {
                 const value = event.target.value
                 const selected = data.clientes.find((client) => client.id === value)
+                const obraId =
+                  selected && selected.obras && selected.obras.length === 1
+                    ? selected.obras[0].id
+                    : ''
                 updateForm({
                   clientId: value,
                   clientName: value ? selected?.name ?? '' : '',
+                  obraId,
                 })
               }}
             >
@@ -646,6 +661,29 @@ const Pedidos = () => {
             />
             {form.clientId && (
               <p className="form__help">Limpe o cliente cadastrado para digitar outro.</p>
+            )}
+          </div>
+
+          <div className="form__group">
+            <label className="form__label" htmlFor="order-obra">
+              Obra do cliente
+            </label>
+            <select
+              id="order-obra"
+              className="form__input"
+              value={form.obraId}
+              onChange={(event) => updateForm({ obraId: event.target.value })}
+              disabled={!form.clientId || clientObras.length === 0}
+            >
+              <option value="">Selecionar obra</option>
+              {clientObras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.name}
+                </option>
+              ))}
+            </select>
+            {form.clientId && clientObras.length === 0 && (
+              <p className="form__help">Nenhuma obra cadastrada para este cliente.</p>
             )}
           </div>
 

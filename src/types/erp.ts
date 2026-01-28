@@ -41,6 +41,16 @@ export type Client = {
   city?: string
   notes?: string
   active?: boolean
+  obras?: ClientObra[]
+}
+
+export type ClientObra = {
+  id: UUID
+  name: string
+  address: string
+  city?: string
+  notes?: string
+  active?: boolean
 }
 
 export type Supplier = {
@@ -60,6 +70,11 @@ export type Material = {
   name: string
   unit?: string
   cost?: number
+  marketUnitPrice?: number
+  marketLotPrice?: number
+  lotSize?: number
+  notes?: string
+  active?: boolean
 }
 
 export type Mold = {
@@ -78,6 +93,7 @@ export type QuoteItem = {
 export type Quote = {
   id: UUID
   clientId: UUID
+  obraId?: UUID
   items: QuoteItem[]
   total: number
   validUntil: string
@@ -96,6 +112,7 @@ export type OrderItem = {
 export type Order = {
   id: UUID
   clientId: UUID
+  obraId?: UUID
   items: OrderItem[]
   total: number
   paymentMethod: string
@@ -112,6 +129,45 @@ export type Receipt = {
   issuedAt: string
 }
 
+export type PurchaseItem = {
+  id: UUID
+  type: 'material' | 'extra'
+  materialId?: UUID
+  description: string
+  quantity?: number
+  unitPrice?: number
+  pricingMode?: 'unit' | 'lot'
+  total: number
+}
+
+export type PurchaseRecord = {
+  id: UUID
+  supplierId?: UUID
+  purchaseDate?: string
+  notes?: string
+  items: PurchaseItem[]
+  total: number
+  createdAt: string
+}
+
+export type Delivery = {
+  id: UUID
+  orderId: UUID
+  productionOrderId: UUID
+  clientId: UUID
+  obraId?: UUID
+  address?: string
+  status: 'pendente' | 'em_rota' | 'entregue'
+  createdAt: string
+  scheduledAt?: string
+  vehicle?: string
+  driver?: string
+  isPartial?: boolean
+  proofType?: 'foto' | 'assinatura'
+  proofNote?: string
+  occurrence?: string
+}
+
 export type ProductionOrder = {
   id: UUID
   orderId: UUID
@@ -122,6 +178,7 @@ export type ProductionOrder = {
   status: 'aberta' | 'em_producao' | 'finalizada'
   plannedAt?: string
   finishedAt?: string
+  source?: 'pedido' | 'estoque'
 }
 
 export type MaterialConsumption = {
@@ -139,6 +196,23 @@ export type FinanceEntry = {
   amount: number
   category?: string
   createdAt: string
+}
+
+export type CompanyProfile = {
+  name: string
+  tradeName?: string
+  document?: string
+  stateRegistration?: string
+  email?: string
+  phone?: string
+  street?: string
+  number?: string
+  neighborhood?: string
+  city?: string
+  state?: string
+  zip?: string
+  website?: string
+  notes?: string
 }
 
 export type EmployeeRole = {
@@ -201,7 +275,10 @@ export type ERPData = {
   orcamentos: Quote[]
   pedidos: Order[]
   recibos: Receipt[]
+  comprasHistorico: PurchaseRecord[]
+  entregas: Delivery[]
   financeiro: FinanceEntry[]
+  empresa: CompanyProfile
   funcionarios: Employee[]
   cargos: EmployeeRole[]
   niveis: EmployeeLevel[]

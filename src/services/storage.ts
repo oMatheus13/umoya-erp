@@ -22,6 +22,10 @@ export const DEFAULT_LEVELS: EmployeeLevel[] = [
   { id: 'level-lider', name: 'Lider', multiplier: 1.5 },
 ]
 
+export const DEFAULT_COMPANY = {
+  name: 'Umoya',
+}
+
 export const createEmptyState = (): ERPData => ({
   produtos: [],
   clientes: [],
@@ -33,7 +37,10 @@ export const createEmptyState = (): ERPData => ({
   orcamentos: [],
   pedidos: [],
   recibos: [],
+  comprasHistorico: [],
+  entregas: [],
   financeiro: [],
+  empresa: { ...DEFAULT_COMPANY },
   funcionarios: [],
   cargos: DEFAULT_ROLES.map((role) => ({ ...role })),
   niveis: DEFAULT_LEVELS.map((level) => ({ ...level })),

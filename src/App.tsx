@@ -9,7 +9,12 @@ import Pedidos from './pages/Pedidos'
 import Placeholder from './pages/Placeholder'
 import Producao from './pages/Producao'
 import Financeiro from './pages/Financeiro'
+import Estoque from './pages/Estoque'
+import Compras from './pages/Compras'
+import Entregas from './pages/Entregas'
 import Clientes from './pages/Clientes'
+import Materiais from './pages/Materiais'
+import Empresa from './pages/Empresa'
 import Fornecedores from './pages/Fornecedores'
 import Funcionarios from './pages/Funcionarios'
 import Indicadores from './pages/Indicadores'
@@ -38,35 +43,81 @@ function App() {
   })
 
   const pageTitles: Record<string, string> = {
-    dashboard: 'Visao geral',
-    orcamentos: 'Orcamentos',
-    pedidos: 'Pedidos',
-    produtos: 'Produtos',
-    producao: 'Producao',
-    financeiro: 'Financeiro',
-    clientes: 'Clientes',
+    dashboard: 'Painel',
+    clientes: 'Clientes e obras',
+    produtos: 'Produtos e pecas',
+    'cadastros-materiais': 'Materia-prima',
     fornecedores: 'Fornecedores',
+    'cadastros-tabelas': 'Tabelas',
+    orcamentos: 'Orcamentos',
+    pedidos: 'Pedido de venda',
+    producao: 'Ordens de producao',
+    'producao-lotes': 'Lotes',
+    'producao-refugo': 'Refugo e retrabalho',
+    estoque: 'Estoque',
+    compras: 'Compras',
+    entregas: 'Logistica e entregas',
+    financeiro: 'Financeiro',
+    fiscal: 'Fiscal',
     funcionarios: 'Funcionarios',
+    'rh-presenca': 'Presenca',
+    'rh-pagamentos': 'Pagamentos',
+    'rh-historico': 'Historico',
+    'rh-ocorrencias': 'Ocorrencias',
+    qualidade: 'Qualidade e manutencao',
     indicadores: 'Indicadores',
     bi: 'BI',
-    dados: 'Dados',
-    configuracoes: 'Configuracoes',
+    'relatorios-producao': 'Producao por periodo',
+    'relatorios-vendas': 'Vendas por cliente e obra',
+    'relatorios-consumo': 'Consumo de material',
+    'config-usuarios': 'Usuarios e permissoes',
+    'config-empresa': 'Empresa',
+    configuracoes: 'Parametros',
+    'config-integracoes': 'Integracoes',
+    dados: 'Backup e exportacao',
+    'auditoria-log': 'Log de acoes',
+    'auditoria-historico': 'Historico de alteracoes',
+    'auditoria-backup': 'Backup automatico',
+    'auditoria-acesso': 'Controle de acesso',
   }
 
   const breadcrumbMap: Record<string, string[]> = {
-    dashboard: ['Inicio', 'Visao geral'],
-    orcamentos: ['Inicio', 'Orcamentos'],
-    pedidos: ['Inicio', 'Pedidos'],
-    produtos: ['Inicio', 'Produtos'],
-    producao: ['Inicio', 'Producao'],
-    financeiro: ['Inicio', 'Financeiro'],
-    clientes: ['Inicio', 'Clientes'],
-    fornecedores: ['Inicio', 'Fornecedores'],
-    funcionarios: ['Inicio', 'Funcionarios'],
+    dashboard: ['Painel'],
+    clientes: ['Cadastros', 'Clientes e obras'],
+    produtos: ['Cadastros', 'Produtos e pecas'],
+    'cadastros-materiais': ['Cadastros', 'Materia-prima'],
+    fornecedores: ['Cadastros', 'Fornecedores'],
+    'cadastros-tabelas': ['Cadastros', 'Tabelas'],
+    orcamentos: ['Vendas', 'Orcamentos'],
+    pedidos: ['Vendas', 'Pedido de venda'],
+    producao: ['Producao', 'Ordens de producao'],
+    'producao-lotes': ['Producao', 'Lotes'],
+    'producao-refugo': ['Producao', 'Refugo e retrabalho'],
+    estoque: ['Estoque'],
+    compras: ['Compras'],
+    entregas: ['Logistica e entregas'],
+    financeiro: ['Financeiro'],
+    fiscal: ['Fiscal'],
+    funcionarios: ['RH', 'Funcionarios'],
+    'rh-presenca': ['RH', 'Presenca'],
+    'rh-pagamentos': ['RH', 'Pagamentos'],
+    'rh-historico': ['RH', 'Historico'],
+    'rh-ocorrencias': ['RH', 'Ocorrencias'],
+    qualidade: ['Qualidade e manutencao'],
     indicadores: ['Relatorios', 'Indicadores'],
     bi: ['Relatorios', 'BI'],
-    dados: ['Sistema', 'Dados'],
-    configuracoes: ['Sistema', 'Configuracoes'],
+    'relatorios-producao': ['Relatorios', 'Producao por periodo'],
+    'relatorios-vendas': ['Relatorios', 'Vendas por cliente e obra'],
+    'relatorios-consumo': ['Relatorios', 'Consumo de material'],
+    'config-usuarios': ['Configuracoes', 'Usuarios e permissoes'],
+    'config-empresa': ['Configuracoes', 'Empresa'],
+    configuracoes: ['Configuracoes', 'Parametros'],
+    'config-integracoes': ['Configuracoes', 'Integracoes'],
+    dados: ['Configuracoes', 'Backup e exportacao'],
+    'auditoria-log': ['Auditoria', 'Log de acoes'],
+    'auditoria-historico': ['Auditoria', 'Historico de alteracoes'],
+    'auditoria-backup': ['Auditoria', 'Backup automatico'],
+    'auditoria-acesso': ['Auditoria', 'Controle de acesso'],
   }
 
   const breadcrumbs = breadcrumbMap[activePage] ?? ['Inicio', pageTitles[activePage] ?? 'Modulo']
@@ -153,11 +204,11 @@ function App() {
     setCurrentUser(null)
     setIsAuthenticated(false)
     setActivePage('dashboard')
-  }
+    }
 
   const renderPage = () => {
     if (activePage === 'dashboard') {
-      return <Dashboard />
+      return <Dashboard onNavigate={setActivePage} />
     }
     if (activePage === 'orcamentos') {
       return <Orcamentos />
@@ -171,11 +222,26 @@ function App() {
     if (activePage === 'producao') {
       return <Producao />
     }
+    if (activePage === 'estoque') {
+      return <Estoque />
+    }
+    if (activePage === 'compras') {
+      return <Compras />
+    }
+    if (activePage === 'entregas') {
+      return <Entregas />
+    }
     if (activePage === 'financeiro') {
       return <Financeiro />
     }
     if (activePage === 'clientes') {
       return <Clientes />
+    }
+    if (activePage === 'cadastros-materiais') {
+      return <Materiais />
+    }
+    if (activePage === 'config-empresa') {
+      return <Empresa />
     }
     if (activePage === 'fornecedores') {
       return <Fornecedores />

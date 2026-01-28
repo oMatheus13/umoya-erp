@@ -152,7 +152,12 @@
 .quote-print__brand {
   display: flex;
   gap: 16px;
-  align-items: center;
+  align-items: flex-start;
+}
+
+.quote-print__brand-info {
+  display: grid;
+  gap: 4px;
 }
 
 .quote-print__brand strong {
@@ -167,6 +172,13 @@
 
 .quote-print__logo {
   width: 140px;
+}
+
+.quote-print__company {
+  display: grid;
+  gap: 2px;
+  font-size: 11px;
+  color: rgba(15, 17, 22, 0.7);
 }
 
 .quote-print__meta {

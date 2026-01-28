@@ -7,7 +7,14 @@ import type {
   Quote,
   Receipt,
 } from '../types/erp'
-import { createEmptyState, DEFAULT_LEVELS, DEFAULT_ROLES, getStorage, saveStorage } from './storage'
+import {
+  createEmptyState,
+  DEFAULT_COMPANY,
+  DEFAULT_LEVELS,
+  DEFAULT_ROLES,
+  getStorage,
+  saveStorage,
+} from './storage'
 import { createId } from '../utils/ids'
 
 type RemoteSync = (data: ERPData) => void | Promise<void>
@@ -99,7 +106,10 @@ const normalizeData = (data: ERPData) => {
       return item
     })
 
-  const clientes = ensureArray(data.clientes, [])
+  const clientes = ensureArray(data.clientes, []).map((client) => ({
+    ...client,
+    obras: Array.isArray(client.obras) ? client.obras : [],
+  }))
   const fornecedores = ensureArray(data.fornecedores, [])
   const materiais = ensureArray(data.materiais, [])
   const moldes = ensureArray(data.moldes, [])
@@ -114,7 +124,20 @@ const normalizeData = (data: ERPData) => {
     items: normalizeItems(order.items),
   }))
   const recibos = ensureArray(data.recibos, [])
+  const comprasHistorico = ensureArray(data.comprasHistorico, []).map((purchase) => {
+    if (!Array.isArray(purchase.items)) {
+      changed = true
+      return { ...purchase, items: [] }
+    }
+    return purchase
+  })
+  const entregas = ensureArray(data.entregas, [])
   const financeiro = ensureArray(data.financeiro, [])
+  let empresa = data.empresa && typeof data.empresa === 'object' ? data.empresa : null
+  if (!empresa) {
+    changed = true
+    empresa = { ...DEFAULT_COMPANY }
+  }
   const funcionarios = ensureArray(data.funcionarios, [])
   const defaultRoles = DEFAULT_ROLES.map((role) => ({ ...role }))
   const defaultLevels = DEFAULT_LEVELS.map((level) => ({ ...level }))
@@ -154,7 +177,10 @@ const normalizeData = (data: ERPData) => {
     orcamentos,
     pedidos,
     recibos,
+    comprasHistorico,
+    entregas,
     financeiro,
+    empresa: { ...DEFAULT_COMPANY, ...empresa },
     funcionarios,
     cargos,
     niveis,

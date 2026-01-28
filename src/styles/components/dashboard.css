@@ -53,48 +53,129 @@
 }
 
 .dashboard__summary {
+  background: var(--color-true-white);
+  border-radius: 18px;
+  border: 1px solid rgba(15, 17, 22, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 17, 22, 0.08);
+  padding: var(--spacing-lg);
+}
+
+.dashboard__summary-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--spacing-md);
 }
 
-.dashboard__stat {
-  position: relative;
-  padding: var(--spacing-sm);
-  border-radius: 16px;
-  background: var(--color-true-white);
-  border: 1px solid rgba(15, 17, 22, 0.08);
-  box-shadow: 0 8px 20px rgba(15, 17, 22, 0.08);
+.dashboard__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--spacing-lg);
+  align-items: start;
+}
+
+.dashboard__section {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.dashboard__section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--spacing-md);
+}
+
+.dashboard__section-title {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-lg);
+}
+
+.dashboard__section-subtitle {
+  font-size: var(--font-size-sm);
+  color: rgba(15, 17, 22, 0.55);
+}
+
+.dashboard__summary-item {
   display: grid;
   gap: 6px;
-  overflow: hidden;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(15, 17, 22, 0.08);
 }
 
-.dashboard__stat::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: linear-gradient(90deg, rgba(170, 255, 0, 0.7), transparent 70%);
-  opacity: 0.6;
+.dashboard__summary-item:nth-last-child(-n + 2) {
+  border-bottom: none;
 }
 
-.dashboard__stat-label {
+.dashboard__summary-label {
   font-size: var(--font-size-xs);
   text-transform: uppercase;
   letter-spacing: 0.18em;
   color: rgba(15, 17, 22, 0.5);
 }
 
-.dashboard__stat-value {
+.dashboard__summary-value {
   font-family: var(--font-family-primary);
   font-size: clamp(1.2rem, 2vw, 1.6rem);
   font-weight: var(--font-weight-regular);
 }
 
-.dashboard__stat-meta {
+.dashboard__summary-meta {
+  font-size: var(--font-size-xs);
+  color: rgba(15, 17, 22, 0.55);
+}
+
+.dashboard__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-md);
+}
+
+.dashboard__section--actions .dashboard__actions {
+  grid-template-columns: 1fr;
+}
+
+.dashboard__action {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 17, 22, 0.08);
+  background: var(--color-true-white);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.dashboard__action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(15, 17, 22, 0.08);
+}
+
+.dashboard__action-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 17, 22, 0.08);
+  color: var(--color-ink);
+  font-size: 22px;
+  line-height: 1;
+  text-align: center;
+  transform: translateY(1px);
+}
+
+.dashboard__action-title {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-ink);
+}
+
+.dashboard__action-meta {
+  display: block;
   font-size: var(--font-size-xs);
   color: rgba(15, 17, 22, 0.55);
 }
@@ -270,7 +351,15 @@
 }
 
 @media (max-width: 1200px) {
-  .dashboard__summary {
+  .dashboard__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard__section--actions .dashboard__actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -295,7 +384,19 @@
     align-items: flex-start;
   }
 
-  .dashboard__summary {
+  .dashboard__summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard__summary-item {
+    border-bottom: 1px solid rgba(15, 17, 22, 0.08);
+  }
+
+  .dashboard__summary-item:last-child {
+    border-bottom: none;
+  }
+
+  .dashboard__actions {
     grid-template-columns: 1fr;
   }
 

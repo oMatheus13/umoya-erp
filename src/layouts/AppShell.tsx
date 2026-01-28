@@ -23,6 +23,7 @@ const AppShell = ({
   onLogout,
 }: AppShellProps) => {
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const isCollapsed = sidebarMode !== 'expanded'
   const isHoverMode = sidebarMode === 'hover'
 
@@ -34,8 +35,11 @@ const AppShell = ({
     if (isHoverMode && isSidebarHovered) {
       classes.push('app--sidebar-hover')
     }
+    if (isMobileSidebarOpen) {
+      classes.push('app--mobile-sidebar-open')
+    }
     return classes.join(' ')
-  }, [isCollapsed, isHoverMode, isSidebarHovered])
+  }, [isCollapsed, isHoverMode, isSidebarHovered, isMobileSidebarOpen])
 
   const handleHoverChange = (next: boolean) => {
     if (!isHoverMode) {
@@ -56,15 +60,34 @@ const AppShell = ({
     setIsSidebarHovered(sidebar ? sidebar.matches(':hover') : false)
   }, [sidebarMode])
 
+  const handleNavigate = (page: string) => {
+    onNavigate(page)
+    setIsMobileSidebarOpen(false)
+  }
+
   return (
     <div className={appClassName}>
       <Sidebar
         activePage={activePage}
-        onNavigate={onNavigate}
+        onNavigate={handleNavigate}
         onHoverChange={handleHoverChange}
       />
+      {isMobileSidebarOpen && (
+        <button
+          className="app__overlay"
+          type="button"
+          onClick={() => setIsMobileSidebarOpen(false)}
+          aria-label="Fechar menu"
+        />
+      )}
       <main className="app__main">
-        <Topbar breadcrumbs={breadcrumbs} userName={userName} onLogout={onLogout} />
+        <Topbar
+          breadcrumbs={breadcrumbs}
+          userName={userName}
+          onLogout={onLogout}
+          onMenuToggle={() => setIsMobileSidebarOpen((prev) => !prev)}
+          isMenuOpen={isMobileSidebarOpen}
+        />
         <div className="app__content">{children}</div>
       </main>
     </div>

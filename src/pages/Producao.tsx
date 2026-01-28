@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
 import type { ProductionOrder } from '../types/erp'
@@ -15,7 +16,13 @@ const statusLabels: Record<ProductionOrder['status'], string> = {
 const Producao = () => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
+  const [isManualOpen, setIsManualOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [manualForm, setManualForm] = useState({
+    productId: '',
+    variantId: '',
+    quantity: 1,
+  })
 
   const productionOrders = useMemo(
     () =>
@@ -52,6 +59,35 @@ const Producao = () => {
     data.produtos
       .find((product) => product.id === productId)
       ?.variants?.find((variant) => variant.id === variantId)
+
+  const availableProducts = data.produtos.filter((product) => product.active !== false)
+
+  const resetManualForm = () => {
+    const firstProduct = availableProducts[0]
+    const firstVariant = firstProduct?.variants?.[0]
+    setManualForm({
+      productId: firstProduct?.id ?? '',
+      variantId: firstVariant?.id ?? '',
+      quantity: 1,
+    })
+  }
+
+  const handleManualProductChange = (productId: string) => {
+    const product = data.produtos.find((item) => item.id === productId)
+    const firstVariant = product?.variants?.[0]
+    setManualForm((prev) => ({
+      ...prev,
+      productId,
+      variantId: firstVariant?.id ?? '',
+    }))
+  }
+
+  const handleManualVariantChange = (variantId: string) => {
+    setManualForm((prev) => ({
+      ...prev,
+      variantId,
+    }))
+  }
 
   const updateProduction = (next: ProductionOrder) => {
     const payload = dataService.getAll()
@@ -104,31 +140,72 @@ const Producao = () => {
         }
       }
     }
+    const linkedOrder = payload.pedidos.find((item) => item.id === order.orderId)
+    const linkedClient = linkedOrder
+      ? payload.clientes.find((client) => client.id === linkedOrder.clientId)
+      : undefined
+    const linkedObra = linkedOrder?.obraId
+      ? linkedClient?.obras?.find((obra) => obra.id === linkedOrder.obraId)
+      : undefined
+    const hasDelivery = payload.entregas.some(
+      (delivery) => delivery.productionOrderId === order.id,
+    )
+    if (linkedOrder && linkedObra && !hasDelivery) {
+      payload.entregas = [
+        ...payload.entregas,
+        {
+          id: createId(),
+          orderId: linkedOrder.id,
+          productionOrderId: order.id,
+          clientId: linkedOrder.clientId,
+          obraId: linkedObra.id,
+          address: linkedObra.address,
+          status: 'pendente',
+          createdAt: new Date().toISOString(),
+          scheduledAt: new Date().toISOString().slice(0, 10),
+        },
+      ]
+    }
     dataService.replaceAll(payload)
     refresh()
     setStatus(`Ordem ${order.id.slice(0, 6)} finalizada.`)
   }
 
   const handleManualOrder = () => {
-    const payload = dataService.getAll()
-    const firstOrder = payload.pedidos[0]
-    if (!firstOrder) {
-      setStatus('Nenhum pedido disponivel para abrir producao.')
+    if (availableProducts.length === 0) {
+      setStatus('Cadastre produtos para criar ordens manuais.')
       return
     }
+    setStatus(null)
+    resetManualForm()
+    setIsManualOpen(true)
+  }
+
+  const handleManualSubmit = () => {
+    if (!manualForm.productId) {
+      setStatus('Selecione um produto.')
+      return
+    }
+    if (manualForm.quantity <= 0) {
+      setStatus('Informe uma quantidade valida.')
+      return
+    }
+    const payload = dataService.getAll()
     const next: ProductionOrder = {
       id: createId(),
-      orderId: firstOrder.id,
-      productId: firstOrder.items[0]?.productId ?? '',
-      variantId: firstOrder.items[0]?.variantId,
-      quantity: firstOrder.items[0]?.quantity ?? 0,
+      orderId: `estoque_${createId()}`,
+      productId: manualForm.productId,
+      variantId: manualForm.variantId || undefined,
+      quantity: manualForm.quantity,
       status: 'aberta',
       plannedAt: new Date().toISOString(),
+      source: 'estoque',
     }
     payload.ordensProducao = [...payload.ordensProducao, next]
     dataService.replaceAll(payload)
     refresh()
-    setStatus('Ordem de producao criada manualmente.')
+    setStatus('Ordem de producao criada para estoque.')
+    setIsManualOpen(false)
   }
 
   const orderToDelete = deleteId
@@ -160,6 +237,9 @@ const Producao = () => {
       }
     }
     payload.ordensProducao = payload.ordensProducao.filter((order) => order.id !== deleteId)
+    payload.entregas = payload.entregas.filter(
+      (delivery) => delivery.productionOrderId !== deleteId,
+    )
     dataService.replaceAll(payload)
     refresh()
     setStatus('Ordem de producao excluida.')
@@ -226,11 +306,17 @@ const Producao = () => {
               const variant = productId
                 ? getVariant(productId, item?.variantId ?? order.variantId)
                 : undefined
+              const sourceLabel =
+                order.source === 'estoque'
+                  ? 'Estoque interno'
+                  : pedido
+                    ? getClientName(pedido.clientId)
+                    : 'Pedido'
               return (
                 <div key={order.id} className="producao__card">
                   <div className="producao__info">
                     <strong>Ordem #{order.id.slice(0, 6)}</strong>
-                    <span>{pedido ? getClientName(pedido.clientId) : 'Pedido'}</span>
+                    <span>{sourceLabel}</span>
                     <span>
                       {productId ? getProductName(productId) : 'Produto'}
                       {variant ? ` • ${variant.name}` : ''}
@@ -276,6 +362,87 @@ const Producao = () => {
           </div>
         </section>
       </div>
+      <Modal
+        open={isManualOpen}
+        onClose={() => setIsManualOpen(false)}
+        title="Nova ordem para estoque"
+        size="lg"
+      >
+        <div className="form">
+          <div className="form__group">
+            <label className="form__label" htmlFor="manual-product">
+              Produto
+            </label>
+            <select
+              id="manual-product"
+              className="form__input"
+              value={manualForm.productId}
+              onChange={(event) => handleManualProductChange(event.target.value)}
+            >
+              <option value="">Selecionar produto</option>
+              {availableProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="manual-variant">
+                Variacao
+              </label>
+              <select
+                id="manual-variant"
+                className="form__input"
+                value={manualForm.variantId}
+                onChange={(event) => handleManualVariantChange(event.target.value)}
+                disabled={!manualForm.productId}
+              >
+                <option value="">Selecionar variacao</option>
+                {data.produtos
+                  .find((product) => product.id === manualForm.productId)
+                  ?.variants?.map((variant) => (
+                    <option key={variant.id} value={variant.id}>
+                      {variant.name}
+                    </option>
+                  )) ?? null}
+              </select>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="manual-quantity">
+                Quantidade
+              </label>
+              <input
+                id="manual-quantity"
+                className="form__input"
+                type="number"
+                min="0"
+                step="1"
+                value={manualForm.quantity}
+                onChange={(event) =>
+                  setManualForm((prev) => ({
+                    ...prev,
+                    quantity: Number(event.target.value),
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <div className="form__actions">
+            <button className="button button--primary" type="button" onClick={handleManualSubmit}>
+              Criar ordem
+            </button>
+            <button
+              className="button button--ghost"
+              type="button"
+              onClick={() => setIsManualOpen(false)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </Modal>
       <ConfirmDialog
         open={!!deleteId}
         title="Excluir ordem de producao?"

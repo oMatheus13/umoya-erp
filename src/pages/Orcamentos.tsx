@@ -21,6 +21,7 @@ type QuoteItemForm = {
 type QuoteForm = {
   clientId: string
   clientName: string
+  obraId: string
   validUntil: string
   status: Quote['status']
   items: QuoteItemForm[]
@@ -59,6 +60,7 @@ const Orcamentos = () => {
   const [form, setForm] = useState<QuoteForm>({
     clientId: '',
     clientName: '',
+    obraId: '',
     validUntil: createDefaultDate(),
     status: 'rascunho',
     items: [createEmptyItem()],
@@ -91,6 +93,10 @@ const Orcamentos = () => {
     () => [...data.clientes].sort((a, b) => a.name.localeCompare(b.name)),
     [data.clientes],
   )
+  const selectedClient = form.clientId
+    ? data.clientes.find((client) => client.id === form.clientId)
+    : null
+  const clientObras = selectedClient?.obras ?? []
 
   const updateForm = (patch: Partial<QuoteForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
@@ -119,6 +125,7 @@ const Orcamentos = () => {
     setForm({
       clientId: '',
       clientName: '',
+      obraId: '',
       validUntil: createDefaultDate(),
       status: 'rascunho',
       items: [createEmptyItem()],
@@ -289,6 +296,7 @@ const Orcamentos = () => {
     const quote: Quote = {
       id: existingQuote?.id ?? createId(),
       clientId: resolvedClient.id,
+      obraId: form.clientId ? form.obraId || undefined : undefined,
       items,
       total,
       validUntil: form.validUntil,
@@ -305,6 +313,7 @@ const Orcamentos = () => {
         {
           id: orderId,
           clientId: quote.clientId,
+          obraId: quote.obraId,
           items: quote.items,
           total: quote.total,
           paymentMethod: 'a definir',
@@ -363,6 +372,16 @@ const Orcamentos = () => {
   }
 
   const printQuote = printId ? data.orcamentos.find((quote) => quote.id === printId) : null
+  const company = data.empresa
+  const companyName = company.tradeName?.trim() || company.name || 'Umoya'
+  const companyLegal =
+    company.tradeName && company.name && company.tradeName !== company.name ? company.name : ''
+  const companyDocument = company.document?.trim() || ''
+  const addressLine = [company.street, company.number, company.neighborhood]
+    .filter(Boolean)
+    .join(', ')
+  const cityLine = [company.city, company.state, company.zip].filter(Boolean).join(' - ')
+  const contactLine = [company.phone, company.email, company.website].filter(Boolean).join(' • ')
 
   useEffect(() => {
     if (!printId || typeof window === 'undefined') {
@@ -400,6 +419,7 @@ const Orcamentos = () => {
     setForm({
       clientId: quote.clientId,
       clientName: getClientName(quote.clientId),
+      obraId: quote.obraId ?? '',
       validUntil: quote.validUntil,
       status: quote.status,
       items: quote.items.map((item) => {
@@ -449,6 +469,7 @@ const Orcamentos = () => {
         {
           id: orderId,
           clientId: target.clientId,
+          obraId: target.obraId,
           items: target.items,
           total: target.total,
           paymentMethod: 'a definir',
@@ -532,9 +553,14 @@ const Orcamentos = () => {
               onChange={(event) => {
                 const value = event.target.value
                 const selected = data.clientes.find((client) => client.id === value)
+                const obraId =
+                  selected && selected.obras && selected.obras.length === 1
+                    ? selected.obras[0].id
+                    : ''
                 updateForm({
                   clientId: value,
                   clientName: value ? selected?.name ?? '' : '',
+                  obraId,
                 })
               }}
             >
@@ -562,6 +588,29 @@ const Orcamentos = () => {
             />
             {form.clientId && (
               <p className="form__help">Limpe o cliente cadastrado para digitar outro.</p>
+            )}
+          </div>
+
+          <div className="form__group">
+            <label className="form__label" htmlFor="quote-obra">
+              Obra do cliente
+            </label>
+            <select
+              id="quote-obra"
+              className="form__input"
+              value={form.obraId}
+              onChange={(event) => updateForm({ obraId: event.target.value })}
+              disabled={!form.clientId || clientObras.length === 0}
+            >
+              <option value="">Selecionar obra</option>
+              {clientObras.map((obra) => (
+                <option key={obra.id} value={obra.id}>
+                  {obra.name}
+                </option>
+              ))}
+            </select>
+            {form.clientId && clientObras.length === 0 && (
+              <p className="form__help">Nenhuma obra cadastrada para este cliente.</p>
             )}
           </div>
 
@@ -872,10 +921,17 @@ const Orcamentos = () => {
         <div id="quote-print" className="quote-print">
           <header className="quote-print__header">
             <div className="quote-print__brand">
-              <img className="quote-print__logo" src={logotipo} alt="Umoya" />
-              <div>
-                <strong>Umoya</strong>
+              <img className="quote-print__logo" src={logotipo} alt={companyName} />
+              <div className="quote-print__brand-info">
+                <strong>{companyName}</strong>
+                {companyLegal && <span>{companyLegal}</span>}
                 <span>Orcamento #{printQuote.id.slice(0, 8)}</span>
+                <div className="quote-print__company">
+                  {companyDocument && <span>CNPJ/CPF: {companyDocument}</span>}
+                  {addressLine && <span>{addressLine}</span>}
+                  {cityLine && <span>{cityLine}</span>}
+                  {contactLine && <span>{contactLine}</span>}
+                </div>
               </div>
             </div>
             <div className="quote-print__meta">
@@ -931,7 +987,7 @@ const Orcamentos = () => {
               <span>Data: ____/____/______</span>
             </div>
             <div className="quote-print__signature">
-              <span>Responsavel Umoya</span>
+              <span>Responsavel {companyName}</span>
               <div className="quote-print__line" />
               <span>Data: ____/____/______</span>
             </div>

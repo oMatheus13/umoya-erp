@@ -4,12 +4,27 @@ type TopbarProps = {
   breadcrumbs: string[]
   userName?: string
   onLogout?: () => void
+  onMenuToggle?: () => void
+  isMenuOpen?: boolean
 }
 
-const Topbar = ({ breadcrumbs, userName, onLogout }: TopbarProps) => {
+const Topbar = ({ breadcrumbs, userName, onLogout, onMenuToggle, isMenuOpen }: TopbarProps) => {
   return (
     <header className="topbar">
       <div className="topbar__brand">
+        {onMenuToggle && (
+          <button
+            className="topbar__menu"
+            type="button"
+            onClick={onMenuToggle}
+            aria-label="Abrir menu"
+            aria-expanded={isMenuOpen}
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              menu
+            </span>
+          </button>
+        )}
         <img className="topbar__logo" src={logotipo} alt="Umoya ERP" />
         <div className="topbar__breadcrumbs" aria-label="Breadcrumb">
           {breadcrumbs.map((crumb, index) => (

@@ -1,0 +1,437 @@
+import { useMemo, useState, type FormEvent } from 'react'
+import ConfirmDialog from '../components/ConfirmDialog'
+import Modal from '../components/Modal'
+import { dataService } from '../services/dataService'
+import { useERPData } from '../store/appStore'
+import type { Material } from '../types/erp'
+import { formatCurrency } from '../utils/format'
+import { createId } from '../utils/ids'
+
+type MaterialForm = {
+  name: string
+  unit: string
+  cost: number
+  marketUnitPrice: number
+  marketLotPrice: number
+  lotSize: number
+  notes: string
+  active: boolean
+}
+
+const Materiais = () => {
+  const { data, refresh } = useERPData()
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [form, setForm] = useState<MaterialForm>({
+    name: '',
+    unit: '',
+    cost: 0,
+    marketUnitPrice: 0,
+    marketLotPrice: 0,
+    lotSize: 0,
+    notes: '',
+    active: true,
+  })
+
+  const updateForm = (patch: Partial<MaterialForm>) => {
+    setForm((prev) => ({ ...prev, ...patch }))
+  }
+
+  const resetForm = () => {
+    setForm({
+      name: '',
+      unit: '',
+      cost: 0,
+      marketUnitPrice: 0,
+      marketLotPrice: 0,
+      lotSize: 0,
+      notes: '',
+      active: true,
+    })
+    setEditingId(null)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setStatus(null)
+    resetForm()
+  }
+
+  const openNewModal = () => {
+    setStatus(null)
+    resetForm()
+    setIsModalOpen(true)
+  }
+
+  const handleEdit = (material: Material) => {
+    setEditingId(material.id)
+    setForm({
+      name: material.name,
+      unit: material.unit ?? '',
+      cost: material.cost ?? 0,
+      marketUnitPrice: material.marketUnitPrice ?? 0,
+      marketLotPrice: material.marketLotPrice ?? 0,
+      lotSize: material.lotSize ?? 0,
+      notes: material.notes ?? '',
+      active: material.active ?? true,
+    })
+    setStatus(null)
+    setIsModalOpen(true)
+  }
+
+  const toOptionalNumber = (value: number) => (value > 0 ? value : undefined)
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!form.name.trim()) {
+      setStatus('Informe o nome do material.')
+      return
+    }
+    if (form.cost < 0 || form.marketUnitPrice < 0 || form.marketLotPrice < 0) {
+      setStatus('Os valores nao podem ser negativos.')
+      return
+    }
+    if (form.lotSize < 0) {
+      setStatus('O tamanho do lote nao pode ser negativo.')
+      return
+    }
+
+    const payload = dataService.getAll()
+    const next: Material = {
+      id: editingId ?? createId(),
+      name: form.name.trim(),
+      unit: form.unit.trim() || undefined,
+      cost: toOptionalNumber(form.cost),
+      marketUnitPrice: toOptionalNumber(form.marketUnitPrice),
+      marketLotPrice: toOptionalNumber(form.marketLotPrice),
+      lotSize: toOptionalNumber(form.lotSize),
+      notes: form.notes.trim() || undefined,
+      active: form.active,
+    }
+
+    if (editingId) {
+      payload.materiais = payload.materiais.map((item) =>
+        item.id === editingId ? next : item,
+      )
+    } else {
+      payload.materiais = [...payload.materiais, next]
+    }
+
+    dataService.replaceAll(payload)
+    refresh()
+    setStatus(editingId ? 'Material atualizado.' : 'Material cadastrado.')
+    setIsModalOpen(false)
+    resetForm()
+  }
+
+  const materials = useMemo(
+    () => [...data.materiais].sort((a, b) => a.name.localeCompare(b.name)),
+    [data.materiais],
+  )
+
+  const summary = useMemo(() => {
+    return materials.reduce(
+      (acc, material) => {
+        acc.total += 1
+        if (material.active !== false) {
+          acc.active += 1
+        }
+        if (material.marketUnitPrice || material.cost) {
+          acc.unitPricing += 1
+        }
+        if (material.marketLotPrice) {
+          acc.lotPricing += 1
+        }
+        return acc
+      },
+      { total: 0, active: 0, unitPricing: 0, lotPricing: 0 },
+    )
+  }, [materials])
+
+  const materialToDelete = deleteId
+    ? data.materiais.find((material) => material.id === deleteId)
+    : null
+
+  const handleDelete = () => {
+    if (!deleteId) {
+      return
+    }
+    const payload = dataService.getAll()
+    payload.materiais = payload.materiais.filter((material) => material.id !== deleteId)
+    dataService.replaceAll(payload)
+    refresh()
+    setStatus('Material excluido.')
+    setDeleteId(null)
+  }
+
+  const formatValue = (value?: number) => (value ? formatCurrency(value) : '-')
+
+  return (
+    <section className="materiais">
+      <header className="materiais__header">
+        <div className="materiais__headline">
+          <span className="materiais__eyebrow">Cadastros</span>
+          <h1 className="materiais__title">Materia-prima</h1>
+          <p className="materiais__subtitle">
+            Precos de mercado, unidades e referencias para compras.
+          </p>
+        </div>
+        <div className="materiais__actions">
+          <button className="button button--primary" type="button" onClick={openNewModal}>
+            Novo material
+          </button>
+        </div>
+      </header>
+      {status && <p className="form__status">{status}</p>}
+
+      <div className="materiais__summary">
+        <article className="materiais__stat">
+          <span className="materiais__stat-label">Materiais cadastrados</span>
+          <strong className="materiais__stat-value">{summary.total}</strong>
+        </article>
+        <article className="materiais__stat">
+          <span className="materiais__stat-label">Com preco por unidade</span>
+          <strong className="materiais__stat-value">{summary.unitPricing}</strong>
+        </article>
+        <article className="materiais__stat">
+          <span className="materiais__stat-label">Com preco por lote</span>
+          <strong className="materiais__stat-value">{summary.lotPricing}</strong>
+        </article>
+        <article className="materiais__stat">
+          <span className="materiais__stat-label">Materiais ativos</span>
+          <strong className="materiais__stat-value">{summary.active}</strong>
+        </article>
+      </div>
+
+      <Modal
+        open={isModalOpen}
+        onClose={closeModal}
+        title={editingId ? 'Editar material' : 'Novo material'}
+        size="lg"
+      >
+        <form className="form" onSubmit={handleSubmit}>
+          <div className="form__group">
+            <label className="form__label" htmlFor="material-name">
+              Nome
+            </label>
+            <input
+              id="material-name"
+              className="form__input"
+              type="text"
+              value={form.name}
+              onChange={(event) => updateForm({ name: event.target.value })}
+              placeholder="Ex: Cimento CP II"
+            />
+          </div>
+
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-unit">
+                Unidade de medida
+              </label>
+              <input
+                id="material-unit"
+                className="form__input"
+                type="text"
+                value={form.unit}
+                onChange={(event) => updateForm({ unit: event.target.value })}
+                placeholder="kg, m3, saco..."
+              />
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-cost">
+                Custo interno
+              </label>
+              <input
+                id="material-cost"
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.cost}
+                onChange={(event) => updateForm({ cost: Number(event.target.value) })}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-market-unit">
+                Valor de mercado (unidade)
+              </label>
+              <input
+                id="material-market-unit"
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.marketUnitPrice}
+                onChange={(event) =>
+                  updateForm({ marketUnitPrice: Number(event.target.value) })
+                }
+                placeholder="0.00"
+              />
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-market-lot">
+                Valor de mercado (lote)
+              </label>
+              <input
+                id="material-market-lot"
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.marketLotPrice}
+                onChange={(event) =>
+                  updateForm({ marketLotPrice: Number(event.target.value) })
+                }
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div className="form__group">
+            <label className="form__label" htmlFor="material-lot-size">
+              Tamanho do lote
+            </label>
+            <input
+              id="material-lot-size"
+              className="form__input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.lotSize}
+              onChange={(event) => updateForm({ lotSize: Number(event.target.value) })}
+              placeholder="Quantidade por lote"
+            />
+            <p className="form__help">
+              Use quando o material e comprado em lotes (ex: 40 sacos).
+            </p>
+          </div>
+
+          <div className="form__group">
+            <label className="form__label" htmlFor="material-notes">
+              Observacoes
+            </label>
+            <textarea
+              id="material-notes"
+              className="form__input form__textarea"
+              value={form.notes}
+              onChange={(event) => updateForm({ notes: event.target.value })}
+              placeholder="Qualidade, fornecedor preferencial, etc."
+            />
+          </div>
+
+          <label className="form__checkbox">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(event) => updateForm({ active: event.target.checked })}
+            />
+            Material ativo
+          </label>
+
+          <div className="form__actions">
+            <button className="button button--primary" type="submit">
+              {editingId ? 'Atualizar' : 'Salvar material'}
+            </button>
+            {editingId && (
+              <button className="button button--ghost" type="button" onClick={closeModal}>
+                Cancelar
+              </button>
+            )}
+          </div>
+          {status && <p className="form__status">{status}</p>}
+        </form>
+      </Modal>
+
+      <div className="materiais__layout">
+        <section className="materiais__panel">
+          <div className="materiais__panel-header">
+            <div>
+              <h2>Materia-prima cadastrada</h2>
+              <p>Referencia para compras e estoque minimo.</p>
+            </div>
+            <span className="materiais__panel-meta">{materials.length} registros</span>
+          </div>
+          <div className="table-card materiais__table">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Unidade</th>
+                  <th>Mercado/unidade</th>
+                  <th>Mercado/lote</th>
+                  <th>Lote</th>
+                  <th>Status</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {materials.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="table__empty">
+                      Nenhum material cadastrado ainda.
+                    </td>
+                  </tr>
+                )}
+                {materials.map((material) => (
+                  <tr key={material.id}>
+                    <td>{material.name}</td>
+                    <td>{material.unit ?? '-'}</td>
+                    <td>{formatValue(material.marketUnitPrice ?? material.cost)}</td>
+                    <td>{formatValue(material.marketLotPrice)}</td>
+                    <td>{material.lotSize ?? '-'}</td>
+                    <td>
+                      <span
+                        className={`badge ${material.active !== false ? 'badge--aprovado' : 'badge--rascunho'}`}
+                      >
+                        {material.active !== false ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="table__actions">
+                        <button
+                          className="button button--ghost"
+                          type="button"
+                          onClick={() => handleEdit(material)}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="button button--danger"
+                          type="button"
+                          onClick={() => setDeleteId(material.id)}
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Excluir material?"
+        description={
+          materialToDelete
+            ? `O material ${materialToDelete.name} sera removido.`
+            : 'Esta acao nao pode ser desfeita.'
+        }
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+      />
+    </section>
+  )
+}
+
+export default Materiais

@@ -3,8 +3,17 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
-import type { Client } from '../types/erp'
+import type { Client, ClientObra } from '../types/erp'
 import { createId } from '../utils/ids'
+
+type ClientObraForm = {
+  id: string
+  name: string
+  address: string
+  city: string
+  notes: string
+  active: boolean
+}
 
 type ClientForm = {
   name: string
@@ -14,6 +23,7 @@ type ClientForm = {
   city: string
   notes: string
   active: boolean
+  obras: ClientObraForm[]
 }
 
 const Clientes = () => {
@@ -30,10 +40,38 @@ const Clientes = () => {
     city: '',
     notes: '',
     active: true,
+    obras: [],
+  })
+
+  const createEmptyObra = (): ClientObraForm => ({
+    id: createId(),
+    name: '',
+    address: '',
+    city: '',
+    notes: '',
+    active: true,
   })
 
   const updateForm = (patch: Partial<ClientForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
+  }
+
+  const updateObra = (index: number, patch: Partial<ClientObraForm>) => {
+    setForm((prev) => ({
+      ...prev,
+      obras: prev.obras.map((obra, idx) => (idx === index ? { ...obra, ...patch } : obra)),
+    }))
+  }
+
+  const addObra = () => {
+    setForm((prev) => ({ ...prev, obras: [...prev.obras, createEmptyObra()] }))
+  }
+
+  const removeObra = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      obras: prev.obras.filter((_, idx) => idx !== index),
+    }))
   }
 
   const resetForm = () => {
@@ -45,6 +83,7 @@ const Clientes = () => {
       city: '',
       notes: '',
       active: true,
+      obras: [],
     })
     setEditingId(null)
   }
@@ -71,6 +110,14 @@ const Clientes = () => {
       city: client.city ?? '',
       notes: client.notes ?? '',
       active: client.active ?? true,
+      obras: (client.obras ?? []).map((obra) => ({
+        id: obra.id,
+        name: obra.name,
+        address: obra.address,
+        city: obra.city ?? '',
+        notes: obra.notes ?? '',
+        active: obra.active ?? true,
+      })),
     })
     setStatus(null)
     setIsModalOpen(true)
@@ -84,6 +131,26 @@ const Clientes = () => {
     }
 
     const payload = dataService.getAll()
+    const obras: ClientObra[] = []
+    for (const obra of form.obras) {
+      const hasAny =
+        obra.name.trim() || obra.address.trim() || obra.city.trim() || obra.notes.trim()
+      if (!hasAny) {
+        continue
+      }
+      if (!obra.name.trim() || !obra.address.trim()) {
+        setStatus('Preencha nome e endereco de todas as obras.')
+        return
+      }
+      obras.push({
+        id: obra.id || createId(),
+        name: obra.name.trim(),
+        address: obra.address.trim(),
+        city: obra.city.trim() || undefined,
+        notes: obra.notes.trim() || undefined,
+        active: obra.active,
+      })
+    }
     const next: Client = {
       id: editingId ?? createId(),
       name: form.name.trim(),
@@ -93,6 +160,7 @@ const Clientes = () => {
       city: form.city.trim() || undefined,
       notes: form.notes.trim() || undefined,
       active: form.active,
+      obras,
     }
 
     if (editingId) {
@@ -224,6 +292,97 @@ const Clientes = () => {
               </div>
             </div>
 
+            <div className="form__section">
+              <div className="form__actions">
+                <strong>Obras do cliente</strong>
+                <button className="button button--ghost" type="button" onClick={addObra}>
+                  Adicionar obra
+                </button>
+              </div>
+              {form.obras.length === 0 && (
+                <p className="form__help">Nenhuma obra cadastrada para este cliente.</p>
+              )}
+            </div>
+
+            {form.obras.map((obra, index) => (
+              <div key={obra.id} className="form__section">
+                <div className="form__row">
+                  <div className="form__group">
+                    <label className="form__label" htmlFor={`client-work-name-${index}`}>
+                      Nome da obra
+                    </label>
+                    <input
+                      id={`client-work-name-${index}`}
+                      className="form__input"
+                      type="text"
+                      value={obra.name}
+                      onChange={(event) => updateObra(index, { name: event.target.value })}
+                      placeholder="Residencial, lote 12, etc."
+                    />
+                  </div>
+                  <div className="form__group">
+                    <label className="form__label" htmlFor={`client-work-city-${index}`}>
+                      Cidade
+                    </label>
+                    <input
+                      id={`client-work-city-${index}`}
+                      className="form__input"
+                      type="text"
+                      value={obra.city}
+                      onChange={(event) => updateObra(index, { city: event.target.value })}
+                      placeholder="Cidade"
+                    />
+                  </div>
+                </div>
+
+                <div className="form__group">
+                  <label className="form__label" htmlFor={`client-work-address-${index}`}>
+                    Endereco da obra
+                  </label>
+                  <input
+                    id={`client-work-address-${index}`}
+                    className="form__input"
+                    type="text"
+                    value={obra.address}
+                    onChange={(event) => updateObra(index, { address: event.target.value })}
+                    placeholder="Rua, numero, bairro"
+                  />
+                </div>
+
+                <div className="form__group">
+                  <label className="form__label" htmlFor={`client-work-notes-${index}`}>
+                    Observacoes da obra
+                  </label>
+                  <textarea
+                    id={`client-work-notes-${index}`}
+                    className="form__input form__textarea"
+                    value={obra.notes}
+                    onChange={(event) => updateObra(index, { notes: event.target.value })}
+                    placeholder="Detalhes de acesso, ponto de referencia, etc."
+                  />
+                </div>
+
+                <label className="form__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={obra.active}
+                    onChange={(event) => updateObra(index, { active: event.target.checked })}
+                  />
+                  Obra ativa
+                </label>
+
+                <div className="form__actions">
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={() => removeObra(index)}
+                  >
+                    Remover obra
+                  </button>
+                </div>
+              </div>
+            ))}
+
             <div className="form__group">
               <label className="form__label" htmlFor="client-notes">
                 Observacoes
@@ -278,6 +437,7 @@ const Clientes = () => {
                   <th>Email</th>
                   <th>Telefone</th>
                   <th>Cidade</th>
+                  <th>Obras</th>
                   <th>Status</th>
                   <th>Acoes</th>
                 </tr>
@@ -285,7 +445,7 @@ const Clientes = () => {
               <tbody>
                 {clients.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="table__empty">
+                    <td colSpan={8} className="table__empty">
                       Nenhum cliente cadastrado ainda.
                     </td>
                   </tr>
@@ -297,6 +457,7 @@ const Clientes = () => {
                     <td>{client.email ?? '-'}</td>
                     <td>{client.phone ?? '-'}</td>
                     <td>{client.city ?? '-'}</td>
+                    <td>{client.obras?.length ?? 0}</td>
                     <td>
                       <span className={`badge ${client.active ? 'badge--aprovado' : 'badge--rascunho'}`}>
                         {client.active ? 'Ativo' : 'Inativo'}

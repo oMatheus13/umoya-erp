@@ -13,8 +13,13 @@
 @import url("components/produtos.css");
 @import url("components/producao.css");
 @import url("components/financeiro.css");
+@import url("components/estoque.css");
+@import url("components/compras.css");
+@import url("components/entregas.css");
 @import url("components/clientes.css");
 @import url("components/fornecedores.css");
+@import url("components/materiais.css");
+@import url("components/empresa.css");
 @import url("components/funcionarios.css");
 @import url("components/indicadores.css");
 @import url("components/bi.css");

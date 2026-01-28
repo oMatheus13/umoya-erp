@@ -91,6 +91,16 @@
   color: var(--color-ink);
 }
 
+.badge--pendente {
+  background: rgba(15, 17, 22, 0.12);
+  color: var(--color-ink);
+}
+
+.badge--em_rota {
+  background: rgba(15, 17, 22, 0.28);
+  color: var(--color-cloud);
+}
+
 .badge--entrada {
   background: rgba(170, 255, 0, 0.35);
   color: var(--color-ink);
