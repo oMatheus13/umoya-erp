@@ -6,6 +6,7 @@ import type { User } from '@supabase/supabase-js'
 
 type LoginProps = {
   onLogin: (user: User) => void
+  onDevLogin?: () => void
 }
 
 type LoginForm = {
@@ -21,7 +22,7 @@ const createEmptyLogin = (): LoginForm => ({
 const normalizeEmail = (value: string) => value.trim().toLowerCase()
 const normalizeCpf = (value: string) => value.replace(/\D/g, '')
 
-const Login = ({ onLogin }: LoginProps) => {
+const Login = ({ onLogin, onDevLogin }: LoginProps) => {
   const [status, setStatus] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState<LoginForm>(createEmptyLogin())
 
@@ -29,7 +30,7 @@ const Login = ({ onLogin }: LoginProps) => {
     setLoginForm((prev) => ({ ...prev, ...patch }))
   }
 
-  const handleLoginSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!loginForm.identifier.trim() || !loginForm.password.trim()) {
       setStatus('Informe email ou CPF e senha.')
@@ -68,20 +69,25 @@ const Login = ({ onLogin }: LoginProps) => {
       }
       normalizedEmail = normalizeEmail(matchedUser.email)
     }
-    supabase.auth
-      .signInWithPassword({ email: normalizedEmail, password: loginForm.password })
-      .then(({ data, error }) => {
-        if (error) {
-          setStatus(error.message)
-          return
-        }
-        if (!data.user) {
-          setStatus('Nao foi possivel autenticar.')
-          return
-        }
-        setStatus(null)
-        onLogin(data.user)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: loginForm.password,
       })
+      if (error) {
+        setStatus(error.message)
+        return
+      }
+      if (!data.user) {
+        setStatus('Nao foi possivel autenticar.')
+        return
+      }
+      setStatus(null)
+      onLogin(data.user)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha de rede.'
+      setStatus(`Falha ao conectar no Supabase. ${message}`)
+    }
   }
 
   return (
@@ -94,6 +100,17 @@ const Login = ({ onLogin }: LoginProps) => {
         </p>
 
         {status && <p className="login__status">{status}</p>}
+
+        {onDevLogin && (
+          <div className="login__dev login__dev--highlight">
+            <button className="button button--ghost" type="button" onClick={onDevLogin}>
+              Entrar em modo teste
+            </button>
+            <p className="login__hint">
+              Usa dados locais de exemplo e nao sincroniza com sua conta real.
+            </p>
+          </div>
+        )}
 
         {!isSupabaseEnabled() ? (
           <p className="login__status">

@@ -1,25 +1,31 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import ActionMenu from '../components/ActionMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
-import type { Product, ProductVariant } from '../types/erp'
+import type { Product, ProductUnit, ProductVariant } from '../types/erp'
 import { formatCurrency } from '../utils/format'
 import { createId } from '../utils/ids'
+import { getBaseCost, getLaborUnitCost, getMaxDiscountPercentForItem, getMinUnitPrice } from '../utils/pricing'
+import { PRODUCT_UNITS, getProductUnitLabel } from '../utils/units'
 
 type ProductForm = {
   name: string
   sku: string
   price: number
+  priceMin: string
   costPrice: number
   laborCost: number
   laborBasis: 'unidade' | 'metro'
   stock: number
-  unit: string
+  unit: ProductUnit | ''
   length: number
   width: number
   height: number
   active: boolean
+  producedInternally: boolean
+  hasVariants: boolean
 }
 
 type VariantForm = {
@@ -31,6 +37,7 @@ type VariantForm = {
   stock: number
   priceOverride: string
   costOverride: string
+  active: boolean
 }
 
 const createEmptyVariantForm = (): VariantForm => ({
@@ -42,6 +49,7 @@ const createEmptyVariantForm = (): VariantForm => ({
   stock: 0,
   priceOverride: '',
   costOverride: '',
+  active: true,
 })
 
 const Produtos = () => {
@@ -59,6 +67,7 @@ const Produtos = () => {
     name: '',
     sku: '',
     price: 0,
+    priceMin: '',
     costPrice: 0,
     laborCost: 0,
     laborBasis: 'unidade',
@@ -68,6 +77,8 @@ const Produtos = () => {
     width: 0,
     height: 0,
     active: true,
+    producedInternally: true,
+    hasVariants: false,
   })
   const [variantForm, setVariantForm] = useState<VariantForm>(createEmptyVariantForm())
 
@@ -89,9 +100,14 @@ const Produtos = () => {
           acc.active += 1
         }
         const variants = product.variants ?? []
-        acc.variants += variants.length
-        const variantStock = variants.reduce((sum, variant) => sum + (variant.stock ?? 0), 0)
-        const stock = product.stock !== undefined ? product.stock : variantStock
+        const usesVariants = product.hasVariants ?? false
+        const hasLinearVariants =
+          product.unit === 'metro_linear' && variants.length > 0
+        acc.variants += usesVariants ? variants.length : 0
+        const variantStock = usesVariants || hasLinearVariants
+          ? variants.reduce((sum, variant) => sum + (variant.stock ?? 0), 0)
+          : 0
+        const stock = usesVariants || hasLinearVariants ? variantStock : product.stock ?? 0
         acc.stock += stock
         return acc
       },
@@ -112,6 +128,7 @@ const Produtos = () => {
       name: '',
       sku: '',
       price: 0,
+      priceMin: '',
       costPrice: 0,
       laborCost: 0,
       laborBasis: 'unidade',
@@ -121,6 +138,8 @@ const Produtos = () => {
       width: 0,
       height: 0,
       active: true,
+      producedInternally: true,
+      hasVariants: false,
     })
     setEditingId(null)
   }
@@ -153,6 +172,10 @@ const Produtos = () => {
       setVariantStatus('Selecione um produto para adicionar variacoes.')
       return
     }
+    if (!selectedProduct.hasVariants) {
+      setVariantStatus('Ative o uso de variacoes para este produto.')
+      return
+    }
     setVariantStatus(null)
     resetVariantForm()
     setIsVariantModalOpen(true)
@@ -164,6 +187,7 @@ const Produtos = () => {
       name: product.name,
       sku: product.sku ?? '',
       price: product.price,
+      priceMin: product.priceMin !== undefined ? String(product.priceMin) : '',
       costPrice: product.costPrice ?? 0,
       laborCost: product.laborCost ?? 0,
       laborBasis: product.laborBasis ?? 'unidade',
@@ -173,6 +197,8 @@ const Produtos = () => {
       width: product.width ?? 0,
       height: product.height ?? 0,
       active: product.active ?? true,
+      producedInternally: product.producedInternally ?? true,
+      hasVariants: product.hasVariants ?? false,
     })
     setStatus(null)
     setIsProductModalOpen(true)
@@ -189,6 +215,7 @@ const Produtos = () => {
       stock: variant.stock ?? 0,
       priceOverride: variant.priceOverride !== undefined ? String(variant.priceOverride) : '',
       costOverride: variant.costOverride !== undefined ? String(variant.costOverride) : '',
+      active: variant.active ?? true,
     })
     setVariantStatus(null)
     setIsVariantModalOpen(true)
@@ -200,7 +227,11 @@ const Produtos = () => {
       setStatus('Informe o nome do produto.')
       return
     }
-    if (form.price <= 0) {
+    if (!form.unit) {
+      setStatus('Selecione a unidade de medida.')
+      return
+    }
+    if (!form.hasVariants && form.price <= 0) {
       setStatus('O preco base do produto deve ser maior que zero.')
       return
     }
@@ -210,6 +241,21 @@ const Produtos = () => {
     }
     if (form.laborCost < 0) {
       setStatus('O custo de mao de obra nao pode ser negativo.')
+      return
+    }
+    const priceMinValue = form.priceMin.trim()
+      ? Number(form.priceMin.replace(',', '.'))
+      : undefined
+    if (!form.hasVariants && priceMinValue !== undefined && Number.isNaN(priceMinValue)) {
+      setStatus('Informe um preco minimo valido.')
+      return
+    }
+    if (!form.hasVariants && priceMinValue !== undefined && priceMinValue < 0) {
+      setStatus('O preco minimo nao pode ser negativo.')
+      return
+    }
+    if (!form.hasVariants && priceMinValue !== undefined && priceMinValue > form.price) {
+      setStatus('O preco minimo nao pode ser maior que o preco base.')
       return
     }
 
@@ -222,16 +268,22 @@ const Produtos = () => {
       name: form.name.trim(),
       sku: form.sku.trim() || undefined,
       price: form.price,
+      priceMin: form.hasVariants ? undefined : priceMinValue,
+      maxDiscountPercent: existingProduct?.maxDiscountPercent,
       costPrice: form.costPrice,
       laborCost: form.laborCost,
       laborBasis: form.laborBasis,
       stock: form.stock,
-      unit: form.unit.trim() || undefined,
+      unit: form.unit,
       length: form.length || undefined,
       width: form.width || undefined,
       height: form.height || undefined,
       active: form.active,
+      producedInternally: form.producedInternally,
+      hasVariants: form.hasVariants,
       variants: existingProduct?.variants ?? [],
+      materialUsages: existingProduct?.materialUsages ?? [],
+      batchRecipe: existingProduct?.batchRecipe,
     }
 
     if (editingId) {
@@ -278,8 +330,80 @@ const Produtos = () => {
     return `${values[0] || 0} x ${values[1] || 0} x ${values[2] || 0}`
   }
 
+  const resolveCostForDisplay = (product: Product, variant?: ProductVariant) => {
+    const isLinear = product.unit === 'metro_linear'
+    const isArea = product.unit === 'm2'
+    if (variant) {
+      const hasVariantCostData =
+        (variant.costOverride ?? 0) > 0 ||
+        (variant.materialUsages?.length ?? 0) > 0 ||
+        (!!variant.batchRecipe &&
+          variant.batchRecipe.items.length > 0 &&
+          variant.batchRecipe.yieldQuantity > 0)
+      if (!hasVariantCostData) {
+        return '-'
+      }
+    }
+    const customLength = isLinear || isArea ? 1 : variant?.length ?? product.length
+    const customWidth = isArea ? 1 : variant?.width ?? product.width
+    const baseCost = getBaseCost(product, variant, {
+      materials: data.materiais,
+      customLength,
+      customWidth,
+    })
+    const laborCost = getLaborUnitCost(product, variant, customLength)
+    const total = baseCost + laborCost
+    return total > 0 ? formatCurrency(total) : '-'
+  }
+
   const formatLaborBasis = (basis?: Product['laborBasis']) =>
-    basis === 'metro' ? 'metro' : 'unidade'
+    basis === 'metro' ? 'metro linear' : 'unidade'
+
+  const formatPercent = (value: number) =>
+    Number.isFinite(value) ? (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)) : '0'
+
+  const getProductPricingSummary = (product: Product) => {
+    const isLinear = product.unit === 'metro_linear'
+    const isArea = product.unit === 'm2'
+    const context = {
+      materials: data.materiais,
+      customLength: isLinear || isArea ? 1 : product.length,
+      customWidth: isArea ? 1 : product.width,
+    }
+    const unitCost =
+      getBaseCost(product, undefined, context) +
+      getLaborUnitCost(product, undefined, context.customLength)
+    const minUnit = getMinUnitPrice(product, undefined, context)
+    const maxPercent = getMaxDiscountPercentForItem(
+      {
+        product,
+        unitPrice: product.price,
+        quantity: 1,
+        customLength: context.customLength,
+        customWidth: context.customWidth,
+      },
+      data.materiais,
+    )
+    const maxValue = product.price * (maxPercent / 100)
+    return { unitCost, minUnit, maxPercent, maxValue }
+  }
+
+  const formatPriceRule = (product: Product) => {
+    const summary = getProductPricingSummary(product)
+    const parts: string[] = []
+    if (summary.minUnit > 0) {
+      parts.push(`Min ${formatCurrency(summary.minUnit)}`)
+    }
+    if (summary.maxPercent > 0) {
+      parts.push(
+        `Desc max ${formatPercent(summary.maxPercent)}% (${formatCurrency(summary.maxValue)})`,
+      )
+    }
+    if (parts.length === 0) {
+      return '-'
+    }
+    return parts.join(' | ')
+  }
 
   const formatVariantDimensions = (variant: ProductVariant, product?: Product) => {
     const length = resolveDimensionValue(variant.length, product?.length)
@@ -287,6 +411,23 @@ const Produtos = () => {
     const height = resolveDimensionValue(variant.height, product?.height)
     return formatDimensions(length, width, height)
   }
+
+  const previewPriceMin = form.priceMin.trim()
+    ? Number(form.priceMin.replace(',', '.'))
+    : undefined
+  const previewProduct: Product = {
+    id: 'preview',
+    name: 'preview',
+    price: form.price,
+    priceMin: Number.isNaN(previewPriceMin ?? 0) ? undefined : previewPriceMin,
+    costPrice: form.costPrice,
+    laborCost: form.laborCost,
+    laborBasis: form.laborBasis,
+    unit: form.unit || undefined,
+    length: form.length,
+    width: form.width,
+  }
+  const previewSummary = getProductPricingSummary(previewProduct)
 
   const handleVariantSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -309,6 +450,11 @@ const Produtos = () => {
     const priceOverride = variantForm.priceOverride.trim()
     const costOverride = variantForm.costOverride.trim()
 
+    if (selectedProduct.hasVariants && !priceOverride) {
+      setVariantStatus('Informe o preco da variacao.')
+      return
+    }
+
     const nextVariant: ProductVariant = {
       id: editingVariantId ?? createId(),
       productId: selectedProduct.id,
@@ -320,6 +466,7 @@ const Produtos = () => {
       sku: variantForm.sku.trim() || undefined,
       priceOverride: priceOverride ? Number(priceOverride) : undefined,
       costOverride: costOverride ? Number(costOverride) : undefined,
+      active: variantForm.active,
       isCustom: false,
     }
 
@@ -352,15 +499,17 @@ const Produtos = () => {
     [data.produtos],
   )
 
-  const variants = selectedProduct?.variants ?? []
+  const selectedUsesVariants = !!selectedProduct?.hasVariants
+  const variants = selectedUsesVariants ? selectedProduct?.variants ?? [] : []
 
   const productToDelete = deleteProductId
     ? data.produtos.find((product) => product.id === deleteProductId)
     : null
 
-  const variantToDelete = deleteVariantId
-    ? selectedProduct?.variants?.find((variant) => variant.id === deleteVariantId)
-    : null
+  const variantToDelete =
+    deleteVariantId && selectedUsesVariants
+      ? selectedProduct?.variants?.find((variant) => variant.id === deleteVariantId)
+      : null
 
   const handleDeleteProduct = () => {
     if (!deleteProductId) {
@@ -379,7 +528,7 @@ const Produtos = () => {
   }
 
   const handleDeleteVariant = () => {
-    if (!deleteVariantId || !selectedProduct) {
+    if (!deleteVariantId || !selectedProduct || !selectedProduct.hasVariants) {
       return
     }
     const payload = dataService.getAll()
@@ -470,19 +619,46 @@ const Produtos = () => {
                 />
               </div>
               <div className="form__group">
-                <label className="form__label" htmlFor="product-unit">
-                  Unidade
-                </label>
-                <input
-                  id="product-unit"
-                  className="form__input"
-                  type="text"
-                  value={form.unit}
-                  onChange={(event) => updateForm({ unit: event.target.value })}
-                  placeholder="un, kg, m, etc"
-                />
-              </div>
+              <label className="form__label" htmlFor="product-unit">
+                Unidade
+              </label>
+              <select
+                id="product-unit"
+                className="form__input"
+                value={form.unit}
+                onChange={(event) =>
+                  updateForm({ unit: event.target.value as ProductForm['unit'] })
+                }
+              >
+                <option value="">Selecione</option>
+                {PRODUCT_UNITS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
+            </div>
+
+            <label className="form__checkbox">
+              <input
+                type="checkbox"
+                checked={form.hasVariants}
+                onChange={(event) => updateForm({ hasVariants: event.target.checked })}
+              />
+              Produto com variacoes (precos, medidas e estoque nas variacoes)
+            </label>
+
+            <label className="form__checkbox">
+              <input
+                type="checkbox"
+                checked={form.producedInternally}
+                onChange={(event) =>
+                  updateForm({ producedInternally: event.target.checked })
+                }
+              />
+              Produto com linha de producao (aparece no consumo por produto)
+            </label>
 
             <div className="form__row">
               <div className="form__group">
@@ -497,6 +673,7 @@ const Produtos = () => {
                   step="0.01"
                   value={form.length}
                   onChange={(event) => updateForm({ length: Number(event.target.value) })}
+                  disabled={form.hasVariants}
                 />
               </div>
               <div className="form__group">
@@ -511,6 +688,7 @@ const Produtos = () => {
                   step="0.01"
                   value={form.width}
                   onChange={(event) => updateForm({ width: Number(event.target.value) })}
+                  disabled={form.hasVariants}
                 />
               </div>
               <div className="form__group">
@@ -525,6 +703,7 @@ const Produtos = () => {
                   step="0.01"
                   value={form.height}
                   onChange={(event) => updateForm({ height: Number(event.target.value) })}
+                  disabled={form.hasVariants}
                 />
               </div>
             </div>
@@ -542,7 +721,11 @@ const Produtos = () => {
                   step="0.01"
                   value={form.price}
                   onChange={(event) => updateForm({ price: Number(event.target.value) })}
+                  disabled={form.hasVariants}
                 />
+                {form.hasVariants && (
+                  <p className="form__help">Defina o preco dentro das variacoes.</p>
+                )}
               </div>
               <div className="form__group">
                 <label className="form__label" htmlFor="product-cost">
@@ -556,7 +739,42 @@ const Produtos = () => {
                   step="0.01"
                   value={form.costPrice}
                   onChange={(event) => updateForm({ costPrice: Number(event.target.value) })}
+                  disabled={form.hasVariants}
                 />
+                {form.hasVariants && (
+                  <p className="form__help">Custo pode ser definido por variacao.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="form__row">
+              <div className="form__group">
+                <label className="form__label" htmlFor="product-price-min">
+                  Preco minimo (nao negociavel)
+                </label>
+                <input
+                  id="product-price-min"
+                  className="form__input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.priceMin}
+                  onChange={(event) => updateForm({ priceMin: event.target.value })}
+                  placeholder={`Base: ${formatCurrency(form.price)}`}
+                  disabled={form.hasVariants}
+                />
+                {!form.hasVariants && form.price > 0 ? (
+                  <p className="form__help">
+                    Sugestao: minimo sem prejuizo {formatCurrency(previewSummary.minUnit)} | desconto maximo{' '}
+                    {formatPercent(previewSummary.maxPercent)}% ({formatCurrency(previewSummary.maxValue)}).
+                  </p>
+                ) : (
+                  <p className="form__help">
+                    {form.hasVariants
+                      ? 'Desconto minimo e definido nas variacoes.'
+                      : 'Defina o preco base para calcular o desconto sugerido.'}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -603,6 +821,7 @@ const Produtos = () => {
                   step="1"
                   value={form.stock}
                   onChange={(event) => updateForm({ stock: Number(event.target.value) })}
+                  disabled={form.hasVariants}
                 />
               </div>
             </div>
@@ -649,8 +868,9 @@ const Produtos = () => {
                   <th>Variacoes</th>
                   <th>Estoque total</th>
                   <th>Preco base</th>
-                  <th>Custo base</th>
+                  <th>Custo unitario</th>
                   <th>Mao de obra</th>
+                  <th>Regra</th>
                   <th>Status</th>
                   <th>Acoes</th>
                 </tr>
@@ -658,40 +878,48 @@ const Produtos = () => {
               <tbody>
                 {products.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="table__empty">
+                    <td colSpan={11} className="table__empty">
                       Nenhum produto cadastrado ainda.
                     </td>
                   </tr>
                 )}
                 {products.map((product) => {
+                  const usesVariants = product.hasVariants ?? false
+                  const hasLinearVariants =
+                    product.unit === 'metro_linear' && (product.variants ?? []).length > 0
                   const totalStock = (product.variants ?? []).reduce(
                     (acc, variant) => acc + (variant.stock ?? 0),
                     0,
                   )
-                  const displayedStock = product.stock !== undefined ? product.stock : totalStock
+                  const displayedStock =
+                    usesVariants || hasLinearVariants ? totalStock : product.stock ?? 0
+                  const displayDimensions = usesVariants
+                    ? '-'
+                    : formatDimensions(product.length, product.width, product.height)
+                  const displayPrice = usesVariants ? '-' : formatCurrency(product.price)
+                  const displayCost = usesVariants ? '-' : resolveCostForDisplay(product)
+                  const displayLabor = usesVariants
+                    ? '-'
+                    : product.laborCost !== undefined
+                      ? `${formatCurrency(product.laborCost)} / ${formatLaborBasis(
+                          product.laborBasis,
+                        )}`
+                      : '-'
+                  const displayRule = usesVariants ? '-' : formatPriceRule(product)
                   return (
                     <tr key={product.id}>
                       <td>{product.name}</td>
                       <td>{product.sku ?? '-'}</td>
-                      <td>{formatDimensions(product.length, product.width, product.height)}</td>
-                      <td>{product.variants?.length ?? 0}</td>
+                      <td>{displayDimensions}</td>
+                      <td>{usesVariants ? product.variants?.length ?? 0 : '-'}</td>
                       <td>
                         {displayedStock}
-                        {product.unit ? ` ${product.unit}` : ''}
+                        {product.unit ? ` ${getProductUnitLabel(product.unit)}` : ''}
                       </td>
-                      <td>{formatCurrency(product.price)}</td>
-                      <td>
-                        {product.costPrice !== undefined
-                          ? formatCurrency(product.costPrice)
-                          : '-'}
-                      </td>
-                      <td>
-                        {product.laborCost !== undefined
-                          ? `${formatCurrency(product.laborCost)} / ${formatLaborBasis(
-                              product.laborBasis,
-                            )}`
-                          : '-'}
-                      </td>
+                      <td>{displayPrice}</td>
+                      <td>{displayCost}</td>
+                      <td>{displayLabor}</td>
+                      <td>{displayRule}</td>
                       <td>
                         <span
                           className={`badge ${product.active ? 'badge--aprovado' : 'badge--rascunho'}`}
@@ -700,27 +928,24 @@ const Produtos = () => {
                         </span>
                       </td>
                       <td className="table__actions">
-                        <button
-                          className="button button--ghost"
-                          type="button"
-                          onClick={() => handleEdit(product)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="button button--ghost"
-                          type="button"
-                          onClick={() => setSelectedProductId(product.id)}
-                        >
-                          Variacoes
-                        </button>
-                        <button
-                          className="button button--danger"
-                          type="button"
-                          onClick={() => setDeleteProductId(product.id)}
-                        >
-                          Excluir
-                        </button>
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEdit(product) },
+                            ...(usesVariants
+                              ? [
+                                  {
+                                    label: 'Variacoes',
+                                    onClick: () => setSelectedProductId(product.id),
+                                  },
+                                ]
+                              : []),
+                            {
+                              label: 'Excluir',
+                              onClick: () => setDeleteProductId(product.id),
+                              variant: 'danger',
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   )
@@ -869,6 +1094,15 @@ const Produtos = () => {
               </div>
             </div>
 
+            <label className="form__checkbox">
+              <input
+                type="checkbox"
+                checked={variantForm.active}
+                onChange={(event) => updateVariantForm({ active: event.target.checked })}
+              />
+              Variacao ativa
+            </label>
+
             <div className="form__actions">
               <button className="button button--primary" type="submit">
                 {editingVariantId ? 'Atualizar variacao' : 'Salvar variacao'}
@@ -906,36 +1140,53 @@ const Produtos = () => {
               </select>
             </div>
             <div className="produtos__panel-actions">
-              <span className="produtos__panel-meta">{variants.length} registros</span>
+              <span className="produtos__panel-meta">
+                {selectedUsesVariants ? `${variants.length} registros` : 'Sem variacoes'}
+              </span>
               <button
                 className="button button--primary"
                 type="button"
                 onClick={openVariantModal}
-                disabled={!selectedProduct}
+                disabled={!selectedProduct || !selectedProduct.hasVariants}
               >
                 Nova variacao
               </button>
             </div>
           </div>
           {variantStatus && <p className="form__status">{variantStatus}</p>}
-          <div className="table-card produtos__table">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Variacao</th>
-                  <th>Medidas (C x L x A)</th>
-                  <th>Estoque</th>
+          {!selectedProduct && (
+            <div className="table-card produtos__table">
+              <p className="table__empty">Selecione um produto para visualizar as variacoes.</p>
+            </div>
+          )}
+          {selectedProduct && !selectedUsesVariants && (
+            <div className="table-card produtos__table">
+              <p className="table__empty">
+                Este produto esta sem variacoes. Ative a opcao no cadastro para gerenciar
+                medidas e estoque por variacao.
+              </p>
+            </div>
+          )}
+          {selectedProduct && selectedUsesVariants && (
+            <div className="table-card produtos__table">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Variacao</th>
+                    <th>Medidas (C x L x A)</th>
+                    <th>Estoque</th>
                   <th>Preco</th>
                   <th>Custo</th>
                   <th>SKU</th>
                   <th>Tipo</th>
+                  <th>Status</th>
                   <th>Acoes</th>
                 </tr>
               </thead>
               <tbody>
                 {variants.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="table__empty">
+                    <td colSpan={9} className="table__empty">
                       Nenhuma variacao cadastrada ainda.
                     </td>
                   </tr>
@@ -951,33 +1202,44 @@ const Produtos = () => {
                         : '-'}
                     </td>
                     <td>
-                      {variant.costOverride !== undefined
-                        ? formatCurrency(variant.costOverride)
+                      {selectedProduct
+                        ? resolveCostForDisplay(selectedProduct, variant)
                         : '-'}
                     </td>
                     <td>{variant.sku ?? '-'}</td>
                     <td>{variant.isCustom ? 'Custom' : 'Padrao'}</td>
+                    <td>
+                      <span
+                        className={`badge ${
+                          variant.active === false ? 'badge--rascunho' : 'badge--aprovado'
+                        }`}
+                      >
+                        {variant.active === false ? 'Inativa' : 'Ativa'}
+                      </span>
+                    </td>
                     <td className="table__actions">
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => handleVariantEdit(variant)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="button button--danger"
-                        type="button"
-                        onClick={() => setDeleteVariantId(variant.id)}
-                      >
-                        Excluir
-                      </button>
+                      <ActionMenu
+                        items={[
+                          {
+                            label: 'Editar',
+                            onClick: () => handleVariantEdit(variant),
+                            disabled: variant.locked,
+                          },
+                          {
+                            label: 'Excluir',
+                            onClick: () => setDeleteVariantId(variant.id),
+                            variant: 'danger',
+                            disabled: variant.locked,
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       </div>
       <ConfirmDialog

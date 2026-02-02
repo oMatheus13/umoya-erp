@@ -6,6 +6,7 @@ type SidebarProps = {
   activePage: string
   onNavigate: (page: string) => void
   onHoverChange: (hovered: boolean) => void
+  canView?: (pageId: string) => boolean
 }
 
 type SidebarItem = {
@@ -29,7 +30,7 @@ type SidebarGroup =
       items: SidebarItem[]
     }
 
-const Sidebar = ({ activePage, onNavigate, onHoverChange }: SidebarProps) => {
+const Sidebar = ({ activePage, onNavigate, onHoverChange, canView }: SidebarProps) => {
   const sidebarGroups: SidebarGroup[] = [
     {
       type: 'section',
@@ -69,13 +70,19 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange }: SidebarProps) => {
         { id: 'producao', label: 'Ordens de producao', icon: 'factory' },
         { id: 'producao-lotes', label: 'Lotes', icon: 'view_module' },
         { id: 'producao-refugo', label: 'Refugo e retrabalho', icon: 'report_problem' },
+        { id: 'producao-consumo', label: 'Consumo por produto', icon: 'science' },
       ],
     },
     {
-      type: 'section',
-      id: 'estoque',
+      type: 'group',
+      id: 'estoque-group',
       label: 'Estoque',
       icon: 'warehouse',
+      items: [
+        { id: 'estoque', label: 'Estoque consolidado', icon: 'warehouse' },
+        { id: 'estoque-formas', label: 'Formas e moldes', icon: 'view_module' },
+        { id: 'estoque-materiais', label: 'Materia-prima', icon: 'inventory_2' },
+      ],
     },
     {
       type: 'section',
@@ -139,6 +146,7 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange }: SidebarProps) => {
       label: 'Configuracoes',
       icon: 'settings',
       items: [
+        { id: 'perfil', label: 'Meu perfil', icon: 'account_circle' },
         { id: 'config-usuarios', label: 'Usuarios e permissoes', icon: 'admin_panel_settings' },
         { id: 'config-empresa', label: 'Empresa', icon: 'apartment' },
         { id: 'configuracoes', label: 'Parametros', icon: 'tune' },
@@ -184,8 +192,11 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange }: SidebarProps) => {
       </div>
 
       <nav className="sidebar__nav" aria-label="Navegacao principal">
-        {sidebarGroups.map((group) => {
+        {sidebarGroups.flatMap((group) => {
           if (group.type === 'section') {
+            if (canView && !canView(group.id)) {
+              return []
+            }
             const isActive = activePage === group.id
             return (
               <div key={group.id} className="sidebar__group">
@@ -209,6 +220,12 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange }: SidebarProps) => {
             )
           }
 
+          const visibleItems = canView
+            ? group.items.filter((item) => canView(item.id))
+            : group.items
+          if (visibleItems.length === 0) {
+            return []
+          }
           const isOpen = openGroups[group.id]
           return (
             <div key={group.id} className="sidebar__group">
@@ -235,7 +252,7 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange }: SidebarProps) => {
               </button>
               {isOpen && (
                 <nav className="sidebar__subnav" aria-label={group.label}>
-                  {group.items.map((item) => {
+                  {visibleItems.map((item) => {
                     const isActive = activePage === item.id
                     return (
                       <button

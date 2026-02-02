@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import Modal from '../components/Modal'
+import { PAYMENT_METHODS, getPaymentMethodId } from '../data/paymentMethods'
 import { useERPData } from '../store/appStore'
 import { dataService } from '../services/dataService'
 import { createId } from '../utils/ids'
@@ -36,14 +37,17 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     if (!product) {
       return 0
     }
-    const variant = product.variants?.find((item) => item.id === variantId)
-    return variant?.priceOverride ?? product.price ?? 0
+    if (product.hasVariants) {
+      const variant = product.variants?.find((item) => item.id === variantId)
+      return variant?.priceOverride ?? 0
+    }
+    return product.price ?? 0
   }
 
   const buildQuickQuote = () => {
     const firstClient = availableClients[0]
     const firstProduct = availableProducts[0]
-    const firstVariant = firstProduct?.variants?.[0]
+    const firstVariant = firstProduct?.hasVariants ? firstProduct?.variants?.[0] : undefined
     return {
       clientId: firstClient?.id ?? '',
       productId: firstProduct?.id ?? '',
@@ -56,25 +60,32 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const buildQuickOrder = () => {
     const firstClient = availableClients[0]
     const firstProduct = availableProducts[0]
-    const firstVariant = firstProduct?.variants?.[0]
+    const firstVariant = firstProduct?.hasVariants ? firstProduct?.variants?.[0] : undefined
     return {
       clientId: firstClient?.id ?? '',
       productId: firstProduct?.id ?? '',
       variantId: firstVariant?.id ?? '',
       quantity: 1,
       unitPrice: firstProduct ? resolveUnitPrice(firstProduct.id, firstVariant?.id) : 0,
-      paymentMethod: 'A definir',
+      paymentMethod: 'a_definir',
     }
   }
 
   const buildQuickProduction = () => {
     const firstOrder = data.pedidos[0]
     const firstItem = firstOrder?.items[0]
-    const itemKey = firstItem ? `${firstItem.productId}:${firstItem.variantId ?? ''}` : ''
+    const lengthKey =
+      firstItem?.customLength && firstItem.customLength > 0
+        ? firstItem.customLength.toFixed(4)
+        : ''
+    const itemKey = firstItem
+      ? `${firstItem.productId}:${firstItem.variantId ?? ''}:${lengthKey}`
+      : ''
     return {
       orderId: firstOrder?.id ?? '',
       itemKey,
       quantity: firstItem?.quantity ?? 1,
+      customLength: firstItem?.customLength ?? 0,
       plannedAt: todayInput,
     }
   }
@@ -132,15 +143,30 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   )
 
   const lowStock = useMemo(() => {
-    const entries = data.produtos.flatMap((product) =>
-      (product.variants ?? []).map((variant) => ({
-        productId: product.id,
-        productName: product.name,
-        variantId: variant.id,
-        variantName: variant.name,
-        stock: variant.stock ?? 0,
-      })),
-    )
+    const entries = data.produtos.flatMap((product) => {
+      const hasLinearVariants =
+        product.unit === 'metro_linear' && (product.variants ?? []).length > 0
+      if (product.hasVariants || hasLinearVariants) {
+        return (product.variants ?? []).map((variant) => ({
+          productId: product.id,
+          productName: product.name,
+          variantId: variant.id,
+          variantName: variant.name,
+          variantLocked: variant.locked ?? false,
+          stock: variant.stock ?? 0,
+        }))
+      }
+      return [
+        {
+          productId: product.id,
+          productName: product.name,
+          variantId: '',
+          variantName: '',
+          variantLocked: false,
+          stock: product.stock ?? 0,
+        },
+      ]
+    })
     return entries
       .filter((entry) => entry.stock <= 5)
       .sort((a, b) => a.stock - b.stock)
@@ -150,10 +176,15 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const getClientName = (id: string) =>
     data.clientes.find((client) => client.id === id)?.name ?? 'Cliente'
 
-  const getProductLabel = (productId: string, variantId?: string) => {
+  const getProductLabel = (productId: string, variantId?: string, length?: number) => {
     const product = data.produtos.find((item) => item.id === productId)
     if (!product) {
       return 'Produto'
+    }
+    if (product.unit === 'metro_linear' && length && length > 0) {
+      const cm = length * 100
+      const lengthLabel = cm % 1 === 0 ? `${cm.toFixed(0)} cm` : `${cm.toFixed(1)} cm`
+      return `${product.name} • ${lengthLabel}`
     }
     const variant = product.variants?.find((item) => item.id === variantId)
     return variant ? `${product.name} • ${variant.name}` : product.name
@@ -460,8 +491,11 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                 {lowStock.map((entry) => (
                   <div key={`${entry.productId}-${entry.variantId}`} className="dashboard__mini-item">
                     <span>
-                      {entry.productName}
-                      {entry.variantName ? ` • ${entry.variantName}` : ''}
+                      {entry.variantName
+                        ? entry.variantLocked
+                          ? `${entry.productName} ${entry.variantName}`
+                          : `${entry.productName} • ${entry.variantName}`
+                        : entry.productName}
                     </span>
                     <strong>{entry.stock}</strong>
                   </div>
@@ -597,7 +631,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   onChange={(event) => {
                     const productId = event.target.value
                     const product = data.produtos.find((item) => item.id === productId)
-                    const variantId = product?.variants?.[0]?.id ?? ''
+                    const variantId = product?.hasVariants ? product?.variants?.[0]?.id ?? '' : ''
                     setQuickQuote((prev) => ({
                       ...prev,
                       productId,
@@ -616,33 +650,45 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               </div>
             </div>
             <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-quote-variant">
-                  Variacao
-                </label>
-                <select
-                  id="quick-quote-variant"
-                  className="form__input"
-                  value={quickQuote.variantId}
-                  onChange={(event) => {
-                    const variantId = event.target.value
-                    setQuickQuote((prev) => ({
-                      ...prev,
-                      variantId,
-                      unitPrice: resolveUnitPrice(prev.productId, variantId),
-                    }))
-                  }}
-                  disabled={!quickQuote.productId}
-                >
-                  <option value="">Padrao</option>
-                  {(data.produtos.find((item) => item.id === quickQuote.productId)?.variants ??
-                    []).map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {data.produtos.find((item) => item.id === quickQuote.productId)?.hasVariants ? (
+                <div className="form__group">
+                  <label className="form__label" htmlFor="quick-quote-variant">
+                    Variacao
+                  </label>
+                  <select
+                    id="quick-quote-variant"
+                    className="form__input"
+                    value={quickQuote.variantId}
+                    onChange={(event) => {
+                      const variantId = event.target.value
+                      setQuickQuote((prev) => ({
+                        ...prev,
+                        variantId,
+                        unitPrice: resolveUnitPrice(prev.productId, variantId),
+                      }))
+                    }}
+                    disabled={!quickQuote.productId}
+                  >
+                    <option value="">Selecione</option>
+                    {(data.produtos.find((item) => item.id === quickQuote.productId)?.variants ??
+                      []).map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="form__group">
+                  <label className="form__label">Variacao</label>
+                  <input
+                    className="form__input"
+                    type="text"
+                    value="Produto sem variacoes"
+                    disabled
+                  />
+                </div>
+              )}
               <div className="form__group">
                 <label className="form__label" htmlFor="quick-quote-qty">
                   Quantidade
@@ -711,6 +757,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               }
               const nowIso = new Date().toISOString()
               const total = quickOrder.quantity * quickOrder.unitPrice
+              const normalizedPayment =
+                getPaymentMethodId(quickOrder.paymentMethod) || quickOrder.paymentMethod
               const order: Order = {
                 id: createId(),
                 clientId: quickOrder.clientId,
@@ -723,7 +771,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   },
                 ],
                 total,
-                paymentMethod: quickOrder.paymentMethod || 'A definir',
+                paymentMethod: normalizedPayment || 'a_definir',
                 status: 'aguardando_pagamento',
                 createdAt: nowIso,
               }
@@ -764,7 +812,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   onChange={(event) => {
                     const productId = event.target.value
                     const product = data.produtos.find((item) => item.id === productId)
-                    const variantId = product?.variants?.[0]?.id ?? ''
+                    const variantId = product?.hasVariants ? product?.variants?.[0]?.id ?? '' : ''
                     setQuickOrder((prev) => ({
                       ...prev,
                       productId,
@@ -783,33 +831,45 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               </div>
             </div>
             <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-order-variant">
-                  Variacao
-                </label>
-                <select
-                  id="quick-order-variant"
-                  className="form__input"
-                  value={quickOrder.variantId}
-                  onChange={(event) => {
-                    const variantId = event.target.value
-                    setQuickOrder((prev) => ({
-                      ...prev,
-                      variantId,
-                      unitPrice: resolveUnitPrice(prev.productId, variantId),
-                    }))
-                  }}
-                  disabled={!quickOrder.productId}
-                >
-                  <option value="">Padrao</option>
-                  {(data.produtos.find((item) => item.id === quickOrder.productId)?.variants ??
-                    []).map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {data.produtos.find((item) => item.id === quickOrder.productId)?.hasVariants ? (
+                <div className="form__group">
+                  <label className="form__label" htmlFor="quick-order-variant">
+                    Variacao
+                  </label>
+                  <select
+                    id="quick-order-variant"
+                    className="form__input"
+                    value={quickOrder.variantId}
+                    onChange={(event) => {
+                      const variantId = event.target.value
+                      setQuickOrder((prev) => ({
+                        ...prev,
+                        variantId,
+                        unitPrice: resolveUnitPrice(prev.productId, variantId),
+                      }))
+                    }}
+                    disabled={!quickOrder.productId}
+                  >
+                    <option value="">Selecione</option>
+                    {(data.produtos.find((item) => item.id === quickOrder.productId)?.variants ??
+                      []).map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="form__group">
+                  <label className="form__label">Variacao</label>
+                  <input
+                    className="form__input"
+                    type="text"
+                    value="Produto sem variacoes"
+                    disabled
+                  />
+                </div>
+              )}
               <div className="form__group">
                 <label className="form__label" htmlFor="quick-order-qty">
                   Quantidade
@@ -853,7 +913,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                 <label className="form__label" htmlFor="quick-order-payment">
                   Forma de pagamento
                 </label>
-                <input
+                <select
                   id="quick-order-payment"
                   className="form__input"
                   value={quickOrder.paymentMethod}
@@ -863,7 +923,19 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                       paymentMethod: event.target.value,
                     }))
                   }
-                />
+                >
+                  {quickOrder.paymentMethod &&
+                    !PAYMENT_METHODS.some((method) => method.id === quickOrder.paymentMethod) && (
+                      <option value={quickOrder.paymentMethod}>
+                        Outro ({quickOrder.paymentMethod})
+                      </option>
+                    )}
+                  {PAYMENT_METHODS.map((method) => (
+                    <option key={method.id} value={method.id}>
+                      {method.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="form__summary">
@@ -892,13 +964,15 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                 setQuickStatus('Selecione um pedido e item.')
                 return
               }
-              const [productId, variantValue] = quickProduction.itemKey.split(':')
+              const [productId, variantValue, lengthValue] = quickProduction.itemKey.split(':')
+              const length = lengthValue ? Number(lengthValue) : quickProduction.customLength
               const productionOrder: ProductionOrder = {
                 id: createId(),
                 orderId: quickProduction.orderId,
                 productId,
                 variantId: variantValue || undefined,
                 quantity: quickProduction.quantity,
+                customLength: Number.isFinite(length) ? length : undefined,
                 status: 'aberta',
                 plannedAt: quickProduction.plannedAt,
               }
@@ -921,14 +995,19 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   const orderId = event.target.value
                   const order = data.pedidos.find((item) => item.id === orderId)
                   const firstItem = order?.items[0]
+                  const lengthKey =
+                    firstItem?.customLength && firstItem.customLength > 0
+                      ? firstItem.customLength.toFixed(4)
+                      : ''
                   const itemKey = firstItem
-                    ? `${firstItem.productId}:${firstItem.variantId ?? ''}`
+                    ? `${firstItem.productId}:${firstItem.variantId ?? ''}:${lengthKey}`
                     : ''
                   setQuickProduction((prev) => ({
                     ...prev,
                     orderId,
                     itemKey,
                     quantity: firstItem?.quantity ?? 1,
+                    customLength: firstItem?.customLength ?? 0,
                   }))
                 }}
               >
@@ -951,18 +1030,22 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   value={quickProduction.itemKey}
                   onChange={(event) => {
                     const itemKey = event.target.value
-                    const [productId, variantValue] = itemKey.split(':')
+                    const [productId, variantValue, lengthValue] = itemKey.split(':')
+                    const length = lengthValue ? Number(lengthValue) : 0
                     const order = data.pedidos.find(
                       (item) => item.id === quickProduction.orderId,
                     )
                     const targetItem = order?.items.find(
                       (item) =>
-                        item.productId === productId && (item.variantId ?? '') === variantValue,
+                        item.productId === productId &&
+                        (item.variantId ?? '') === variantValue &&
+                        (item.customLength ?? 0) === length,
                     )
                     setQuickProduction((prev) => ({
                       ...prev,
                       itemKey,
                       quantity: targetItem?.quantity ?? prev.quantity,
+                      customLength: targetItem?.customLength ?? 0,
                     }))
                   }}
                   disabled={!quickProduction.orderId}
@@ -970,10 +1053,14 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   <option value="">Selecione</option>
                   {(data.pedidos.find((order) => order.id === quickProduction.orderId)?.items ??
                     []).map((item) => {
-                    const itemKey = `${item.productId}:${item.variantId ?? ''}`
+                    const lengthKey =
+                      item.customLength && item.customLength > 0
+                        ? item.customLength.toFixed(4)
+                        : ''
+                    const itemKey = `${item.productId}:${item.variantId ?? ''}:${lengthKey}`
                     return (
                       <option key={itemKey} value={itemKey}>
-                        {getProductLabel(item.productId, item.variantId)}
+                        {getProductLabel(item.productId, item.variantId, item.customLength)}
                       </option>
                     )
                   })}

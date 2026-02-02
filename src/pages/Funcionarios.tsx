@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import ActionMenu from '../components/ActionMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
@@ -99,6 +100,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
   const [deleteRoleId, setDeleteRoleId] = useState<string | null>(null)
   const [deleteLevelId, setDeleteLevelId] = useState<string | null>(null)
   const [deleteLogId, setDeleteLogId] = useState<string | null>(null)
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null)
+  const [toggleUserId, setToggleUserId] = useState<string | null>(null)
   const [employeeForm, setEmployeeForm] = useState<EmployeeForm>(createEmptyEmployeeForm())
   const [roleForm, setRoleForm] = useState<RoleForm>(createEmptyRoleForm())
   const [levelForm, setLevelForm] = useState<LevelForm>(createEmptyLevelForm())
@@ -106,6 +109,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
   const [accountForm, setAccountForm] = useState<AccountForm>(createEmptyAccountForm())
   const [accountStatus, setAccountStatus] = useState<string | null>(null)
   const [createAccess, setCreateAccess] = useState(false)
+  const [accessStatus, setAccessStatus] = useState<string | null>(null)
 
   const roles = useMemo(
     () => [...data.cargos].sort((a, b) => a.name.localeCompare(b.name)),
@@ -242,6 +246,59 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
 
   const normalizeEmail = (value: string) => value.trim().toLowerCase()
   const normalizeCpf = (value: string) => value.replace(/\D/g, '')
+
+  const deleteRemoteUser = async (userId: string) => {
+    if (!supabaseNoPersist) {
+      return { error: 'Supabase nao configurado.' }
+    }
+    try {
+      const { error } = await supabaseNoPersist.auth.admin.deleteUser(userId)
+      if (!error) {
+        return { error: null }
+      }
+      return { error: error.message }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha ao remover no Supabase.'
+      try {
+        const { error } = await supabaseNoPersist.functions.invoke('delete-user', {
+          body: { userId },
+        })
+        return { error: error ? error.message : null }
+      } catch (fallbackError) {
+        const fallbackMessage =
+          fallbackError instanceof Error ? fallbackError.message : message
+        return { error: fallbackMessage }
+      }
+    }
+  }
+
+  const updateRemoteUserActive = async (userId: string, active: boolean) => {
+    if (!supabaseNoPersist) {
+      return { error: 'Supabase nao configurado.' }
+    }
+    try {
+      const banDuration = active ? '0h' : '876000h'
+      const { error } = await supabaseNoPersist.auth.admin.updateUserById(userId, {
+        ban_duration: banDuration,
+      })
+      if (!error) {
+        return { error: null }
+      }
+      return { error: error.message }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha ao atualizar acesso.'
+      try {
+        const { error } = await supabaseNoPersist.functions.invoke('set-user-active', {
+          body: { userId, active },
+        })
+        return { error: error ? error.message : null }
+      } catch (fallbackError) {
+        const fallbackMessage =
+          fallbackError instanceof Error ? fallbackError.message : message
+        return { error: fallbackMessage }
+      }
+    }
+  }
   const buildCpfEmail = (cpf: string) => `${cpf}@umoya.cpf`
 
   const getRole = (id?: string) => roles.find((role) => role.id === id)
@@ -249,6 +306,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
   const getEmployee = (id: string) => employees.find((employee) => employee.id === id)
   const getProduct = (id: string) => data.produtos.find((product) => product.id === id)
   const getEmployeeName = (id?: string) => (id ? getEmployee(id)?.name ?? '-' : '-')
+  const getUser = (id: string) => users.find((user) => user.id === id)
   const handleEmployeeSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!employeeForm.name.trim()) {
@@ -272,6 +330,9 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       setEmployeeStatus('CPF ja cadastrado para outro funcionario.')
       return
     }
+    const previous = editingEmployeeId
+      ? payload.funcionarios.find((item) => item.id === editingEmployeeId)
+      : undefined
     const next: Employee = {
       id: editingEmployeeId ?? createId(),
       name: employeeForm.name.trim(),
@@ -295,6 +356,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             ...user,
             name: next.name,
             cpf: normalizedCpf || undefined,
+            active: next.active,
           }
         : user,
     )
@@ -303,6 +365,19 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     refresh()
 
     let accessMessage = ''
+    if (
+      previous &&
+      previous.active !== next.active &&
+      payload.usuarios.some((user) => user.employeeId === next.id)
+    ) {
+      const linkedUser = payload.usuarios.find((user) => user.employeeId === next.id)
+      if (linkedUser) {
+        const remoteResult = await updateRemoteUserActive(linkedUser.id, next.active)
+        if (remoteResult.error) {
+          accessMessage = ` Acesso atualizado localmente. ${remoteResult.error}`
+        }
+      }
+    }
     if (
       createAccess &&
       isAdmin &&
@@ -379,7 +454,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       ]
       dataService.replaceAll(updated)
       refresh()
-      accessMessage = ' Conta criada.'
+      accessMessage = `${accessMessage} Conta criada.`
     }
 
     setEmployeeStatus(
@@ -601,15 +676,32 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     setIsLogModalOpen(true)
   }
 
-  const handleDeleteEmployee = () => {
+  const handleDeleteEmployee = async () => {
     if (!deleteEmployeeId) {
       return
     }
     const payload = dataService.getAll()
+    const linkedUsers = payload.usuarios.filter((user) => user.employeeId === deleteEmployeeId)
     payload.funcionarios = payload.funcionarios.filter((item) => item.id !== deleteEmployeeId)
+    payload.usuarios = payload.usuarios.filter((user) => user.employeeId !== deleteEmployeeId)
     dataService.replaceAll(payload)
     refresh()
-    setEmployeeStatus('Funcionario excluido.')
+    if (linkedUsers.length > 0) {
+      const errors: string[] = []
+      for (const user of linkedUsers) {
+        const remote = await deleteRemoteUser(user.id)
+        if (remote.error) {
+          errors.push(remote.error)
+        }
+      }
+      if (errors.length > 0) {
+        setEmployeeStatus(`Funcionario excluido. ${errors.join(' ')}`)
+      } else {
+        setEmployeeStatus('Funcionario e acessos removidos.')
+      }
+    } else {
+      setEmployeeStatus('Funcionario excluido.')
+    }
     setDeleteEmployeeId(null)
   }
 
@@ -651,6 +743,55 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     refresh()
     setLogStatus('Apontamento excluido.')
     setDeleteLogId(null)
+  }
+
+  const handleToggleUserAccess = async () => {
+    if (!toggleUserId) {
+      return
+    }
+    const payload = dataService.getAll()
+    const target = payload.usuarios.find((user) => user.id === toggleUserId)
+    if (!target) {
+      setAccessStatus('Conta nao encontrada.')
+      setToggleUserId(null)
+      return
+    }
+    const nextActive = target.active === false
+    payload.usuarios = payload.usuarios.map((user) =>
+      user.id === toggleUserId ? { ...user, active: nextActive } : user,
+    )
+    dataService.replaceAll(payload)
+    refresh()
+    const remoteResult = await updateRemoteUserActive(target.id, nextActive)
+    if (remoteResult.error) {
+      setAccessStatus(`Acesso atualizado localmente. ${remoteResult.error}`)
+    } else {
+      setAccessStatus(nextActive ? 'Acesso reativado.' : 'Acesso desativado.')
+    }
+    setToggleUserId(null)
+  }
+
+  const handleDeleteUserAccess = async () => {
+    if (!deleteUserId) {
+      return
+    }
+    const payload = dataService.getAll()
+    const target = payload.usuarios.find((user) => user.id === deleteUserId)
+    if (!target) {
+      setAccessStatus('Conta nao encontrada.')
+      setDeleteUserId(null)
+      return
+    }
+    payload.usuarios = payload.usuarios.filter((user) => user.id !== deleteUserId)
+    dataService.replaceAll(payload)
+    refresh()
+    const remoteResult = await deleteRemoteUser(target.id)
+    if (remoteResult.error) {
+      setAccessStatus(`Acesso removido localmente. ${remoteResult.error}`)
+    } else {
+      setAccessStatus('Acesso removido do sistema.')
+    }
+    setDeleteUserId(null)
   }
 
   const topEmployees = useMemo(() => {
@@ -802,20 +943,16 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                       </span>
                     </td>
                     <td className="table__actions">
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => handleEditEmployee(employee)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="button button--danger"
-                        type="button"
-                        onClick={() => setDeleteEmployeeId(employee.id)}
-                      >
-                        Excluir
-                      </button>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEditEmployee(employee) },
+                          {
+                            label: 'Excluir',
+                            onClick: () => setDeleteEmployeeId(employee.id),
+                            variant: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -863,20 +1000,16 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                     </td>
                     <td>{formatCurrency(log.totalPay)}</td>
                     <td className="table__actions">
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => handleEditLog(log)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="button button--danger"
-                        type="button"
-                        onClick={() => setDeleteLogId(log.id)}
-                      >
-                        Excluir
-                      </button>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEditLog(log) },
+                          {
+                            label: 'Excluir',
+                            onClick: () => setDeleteLogId(log.id),
+                            variant: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -917,20 +1050,16 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                     <td>{role.name}</td>
                     <td>{role.multiplier.toFixed(2)}x</td>
                     <td className="table__actions">
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => handleEditRole(role)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="button button--danger"
-                        type="button"
-                        onClick={() => setDeleteRoleId(role.id)}
-                      >
-                        Excluir
-                      </button>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEditRole(role) },
+                          {
+                            label: 'Excluir',
+                            onClick: () => setDeleteRoleId(role.id),
+                            variant: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -969,20 +1098,16 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                     <td>{level.name}</td>
                     <td>{level.multiplier.toFixed(2)}x</td>
                     <td className="table__actions">
-                      <button
-                        className="button button--ghost"
-                        type="button"
-                        onClick={() => handleEditLevel(level)}
-                      >
-                        Editar
-                      </button>
-                      <button
-                        className="button button--danger"
-                        type="button"
-                        onClick={() => setDeleteLevelId(level.id)}
-                      >
-                        Excluir
-                      </button>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEditLevel(level) },
+                          {
+                            label: 'Excluir',
+                            onClick: () => setDeleteLevelId(level.id),
+                            variant: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1001,6 +1126,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
             <span className="funcionarios__panel-meta">{users.length} registros</span>
           </div>
+          {accessStatus && <p className="form__status">{accessStatus}</p>}
           <div className="table-card funcionarios__table">
             <table className="table">
               <thead>
@@ -1011,12 +1137,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                   <th>Perfil</th>
                   <th>Funcionario</th>
                   <th>Status</th>
+                  <th>Acoes</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="table__empty">
+                    <td colSpan={7} className="table__empty">
                       Nenhuma conta cadastrada ainda.
                     </td>
                   </tr>
@@ -1044,6 +1171,23 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                       >
                         {user.active === false ? 'Inativo' : 'Ativo'}
                       </span>
+                    </td>
+                    <td className="table__actions">
+                      <ActionMenu
+                        items={[
+                          {
+                            label: user.active === false ? 'Ativar' : 'Desativar',
+                            onClick: () => setToggleUserId(user.id),
+                            disabled: !isAdmin,
+                          },
+                          {
+                            label: 'Excluir acesso',
+                            onClick: () => setDeleteUserId(user.id),
+                            variant: 'danger',
+                            disabled: !isAdmin,
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -1534,6 +1678,28 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         description="Este apontamento sera removido e o estoque sera ajustado."
         onClose={() => setDeleteLogId(null)}
         onConfirm={handleDeleteLog}
+      />
+      <ConfirmDialog
+        open={!!toggleUserId}
+        title="Atualizar acesso?"
+        description={
+          toggleUserId
+            ? `Deseja ${getUser(toggleUserId)?.active === false ? 'reativar' : 'desativar'} o acesso de ${getUser(toggleUserId)?.name ?? ''}?`
+            : 'Confirme a alteracao de acesso.'
+        }
+        onClose={() => setToggleUserId(null)}
+        onConfirm={handleToggleUserAccess}
+      />
+      <ConfirmDialog
+        open={!!deleteUserId}
+        title="Excluir acesso?"
+        description={
+          deleteUserId
+            ? `O acesso de ${getUser(deleteUserId)?.name ?? ''} sera removido do sistema.`
+            : 'Esta acao nao pode ser desfeita.'
+        }
+        onClose={() => setDeleteUserId(null)}
+        onConfirm={handleDeleteUserAccess}
       />
     </section>
   )

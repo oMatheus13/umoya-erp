@@ -6,15 +6,32 @@ const Estoque = () => {
 
   const variants = useMemo(
     () =>
-      data.produtos.flatMap((product) =>
-        (product.variants ?? []).map((variant) => ({
+      data.produtos.flatMap((product) => {
+        const entries = (product.variants ?? []).map((variant) => ({
           productId: product.id,
           productName: product.name,
           variantId: variant.id,
           variantName: variant.name,
+          variantLocked: variant.locked ?? false,
           stock: variant.stock ?? 0,
-        })),
-      ),
+        }))
+        const hasLinearVariants =
+          product.unit === 'metro_linear' && (product.variants ?? []).length > 0
+        const shouldUseProductStock = !product.hasVariants && !hasLinearVariants
+        if (product.hasVariants || hasLinearVariants) {
+          return entries
+        }
+        return [
+          {
+            productId: product.id,
+            productName: product.name,
+            variantId: `${product.id}-base`,
+            variantName: '',
+            variantLocked: false,
+            stock: product.stock ?? 0,
+          },
+        ]
+      }),
     [data.produtos],
   )
 
@@ -36,13 +53,12 @@ const Estoque = () => {
     [variants],
   )
 
-  const materials = useMemo(
-    () => [...data.materiais].sort((a, b) => a.name.localeCompare(b.name)).slice(0, 6),
-    [data.materiais],
-  )
-
   const getLabel = (item: typeof variants[number]) =>
-    item.variantName ? `${item.productName} • ${item.variantName}` : item.productName
+    item.variantName
+      ? item.variantLocked
+        ? `${item.productName} ${item.variantName}`
+        : `${item.productName} • ${item.variantName}`
+      : item.productName
 
   return (
     <section className="estoque">
@@ -118,25 +134,6 @@ const Estoque = () => {
         </section>
       </div>
 
-      <section className="estoque__panel estoque__panel--full">
-        <div className="estoque__panel-header">
-          <div>
-            <h2 className="estoque__panel-title">Materia-prima cadastrada</h2>
-            <p className="estoque__panel-subtitle">Insumos disponiveis para compra</p>
-          </div>
-        </div>
-        <div className="estoque__list estoque__list--compact">
-          {materials.length === 0 && (
-            <div className="estoque__empty">Nenhum material cadastrado.</div>
-          )}
-          {materials.map((material) => (
-            <div key={material.id} className="estoque__list-item">
-              <span>{material.name}</span>
-              <strong>{material.unit ?? '-'}</strong>
-            </div>
-          ))}
-        </div>
-      </section>
     </section>
   )
 }

@@ -1,5 +1,96 @@
 export type UUID = string
 
+export type MaterialUnit = 'saco_50kg' | 'm3' | 'unidade'
+export type ProductUnit = 'm2' | 'metro_linear' | 'unidade'
+
+export type PermissionLevel = 'none' | 'view' | 'edit'
+export type PermissionKey =
+  | 'dashboard'
+  | 'clientes'
+  | 'produtos'
+  | 'cadastros-materiais'
+  | 'fornecedores'
+  | 'cadastros-tabelas'
+  | 'orcamentos'
+  | 'pedidos'
+  | 'producao'
+  | 'producao-lotes'
+  | 'producao-refugo'
+  | 'producao-consumo'
+  | 'estoque'
+  | 'estoque-formas'
+  | 'estoque-materiais'
+  | 'compras'
+  | 'entregas'
+  | 'financeiro'
+  | 'fiscal'
+  | 'funcionarios'
+  | 'rh-presenca'
+  | 'rh-pagamentos'
+  | 'rh-historico'
+  | 'rh-ocorrencias'
+  | 'qualidade'
+  | 'indicadores'
+  | 'bi'
+  | 'relatorios-producao'
+  | 'relatorios-vendas'
+  | 'relatorios-consumo'
+  | 'config-usuarios'
+  | 'perfil'
+  | 'config-empresa'
+  | 'configuracoes'
+  | 'config-integracoes'
+  | 'dados'
+  | 'auditoria-log'
+  | 'auditoria-historico'
+  | 'auditoria-backup'
+  | 'auditoria-acesso'
+
+export type RolePermissions = Partial<Record<PermissionKey, PermissionLevel>>
+export type MaterialKind =
+  | 'areia'
+  | 'brita'
+  | 'cimento'
+  | 'trelica'
+  | 'aco'
+  | 'aditivo'
+  | 'agua'
+  | 'outro'
+
+export type MaterialUsageUnit =
+  | 'm3'
+  | 'balde'
+  | 'carrinho_rente'
+  | 'carrinho_cheio'
+  | 'saco'
+  | 'metro'
+  | 'unidade'
+
+export type ProductMaterialUsage = {
+  id: UUID
+  materialId: UUID
+  quantity: number
+  usageUnit?: MaterialUsageUnit
+  unitMode?: 'material' | 'metro'
+  source?: 'manual' | 'batch'
+}
+
+export type BatchRecipeItem = {
+  id: UUID
+  materialId: UUID
+  quantity: number
+  usageUnit: MaterialUsageUnit
+}
+
+export type BatchRecipe = {
+  id: UUID
+  productId: UUID
+  variantId?: UUID
+  yieldQuantity: number
+  items: BatchRecipeItem[]
+  updatedAt?: string
+}
+
 export type ProductVariant = {
   id: UUID
   productId: UUID
@@ -11,25 +102,35 @@ export type ProductVariant = {
   sku?: string
   priceOverride?: number
   costOverride?: number
+  active?: boolean
+  locked?: boolean
   isCustom?: boolean
+  materialUsages?: ProductMaterialUsage[]
+  batchRecipe?: BatchRecipe
 }
 
 export type Product = {
   id: UUID
   name: string
   price: number
+  priceMin?: number
+  maxDiscountPercent?: number
   costPrice?: number
   laborCost?: number
   laborBasis?: 'unidade' | 'metro'
   sku?: string
   stock?: number
-  unit?: string
+  unit?: ProductUnit
   length?: number
   width?: number
   height?: number
   dimensions?: string
   active?: boolean
+  producedInternally?: boolean
+  hasVariants?: boolean
   variants?: ProductVariant[]
+  materialUsages?: ProductMaterialUsage[]
+  batchRecipe?: BatchRecipe
 }
 
 export type Client = {
@@ -68,11 +169,15 @@ export type Supplier = {
 export type Material = {
   id: UUID
   name: string
-  unit?: string
+  unit?: MaterialUnit
+  kind?: MaterialKind
+  metersPerUnit?: number
   cost?: number
   marketUnitPrice?: number
   marketLotPrice?: number
   lotSize?: number
+  stock?: number
+  minStock?: number
   notes?: string
   active?: boolean
 }
@@ -81,6 +186,11 @@ export type Mold = {
   id: UUID
   name: string
   code?: string
+  length?: number
+  width?: number
+  height?: number
+  stock?: number
+  notes?: string
 }
 
 export type QuoteItem = {
@@ -88,6 +198,9 @@ export type QuoteItem = {
   variantId?: UUID
   quantity: number
   unitPrice: number
+  customLength?: number
+  customWidth?: number
+  customHeight?: number
 }
 
 export type Quote = {
@@ -96,6 +209,10 @@ export type Quote = {
   obraId?: UUID
   items: QuoteItem[]
   total: number
+  discountType?: 'percent' | 'value'
+  discountValue?: number
+  discountPercent?: number
+  paymentMethod?: string
   validUntil: string
   status: 'rascunho' | 'enviado' | 'aprovado' | 'recusado'
   createdAt: string
@@ -107,6 +224,9 @@ export type OrderItem = {
   variantId?: UUID
   quantity: number
   unitPrice: number
+  customLength?: number
+  customWidth?: number
+  customHeight?: number
 }
 
 export type Order = {
@@ -116,6 +236,9 @@ export type Order = {
   items: OrderItem[]
   total: number
   paymentMethod: string
+  discountType?: 'percent' | 'value'
+  discountValue?: number
+  discountPercent?: number
   status: 'aguardando_pagamento' | 'pago' | 'em_producao' | 'entregue'
   createdAt: string
   sourceQuoteId?: UUID
@@ -174,6 +297,7 @@ export type ProductionOrder = {
   productId: UUID
   variantId?: UUID
   quantity: number
+  customLength?: number
   moldId?: UUID
   status: 'aberta' | 'em_producao' | 'finalizada'
   plannedAt?: string
@@ -191,10 +315,29 @@ export type MaterialConsumption = {
 
 export type FinanceEntry = {
   id: UUID
-  type: 'entrada' | 'saida'
+  type: 'entrada' | 'saida' | 'transferencia'
   description: string
   amount: number
   category?: string
+  createdAt: string
+  cashboxId: UUID
+  transferToId?: UUID
+}
+
+export type Cashbox = {
+  id: UUID
+  name: string
+}
+
+export type CashDailyCheck = {
+  id: UUID
+  date: string
+  opening: number
+  cashIn: number
+  cashOut: number
+  closing: number
+  actual: number
+  notes?: string
   createdAt: string
 }
 
@@ -219,6 +362,7 @@ export type EmployeeRole = {
   id: UUID
   name: string
   multiplier: number
+  permissions?: RolePermissions
 }
 
 export type EmployeeLevel = {
@@ -235,6 +379,45 @@ export type Employee = {
   cpf?: string
   active?: boolean
   hiredAt?: string
+}
+
+export type PresenceStatus = 'presente' | 'meio_periodo' | 'falta' | 'ferias'
+
+export type PresenceEntry = {
+  id: UUID
+  employeeId: UUID
+  date: string
+  status: PresenceStatus
+  notes?: string
+  createdAt: string
+}
+
+export type EmployeePaymentStatus = 'aberto' | 'pago' | 'cancelado'
+
+export type EmployeePayment = {
+  id: UUID
+  employeeId: UUID
+  periodStart: string
+  periodEnd: string
+  baseValue: number
+  extras: number
+  discounts: number
+  total: number
+  status: EmployeePaymentStatus
+  method?: string
+  createdAt: string
+  paidAt?: string
+  notes?: string
+}
+
+export type EmployeeOccurrence = {
+  id: UUID
+  employeeId: UUID
+  date: string
+  type: string
+  description: string
+  createdAt: string
+  resolved?: boolean
 }
 
 export type WorkLog = {
@@ -255,8 +438,12 @@ export type UserAccount = {
   id: UUID
   employeeId?: UUID
   name: string
+  displayName?: string
   email: string
   cpf?: string
+  phone?: string
+  avatarColor?: string
+  avatarUrl?: string
   passwordHash?: string
   role?: 'admin' | 'funcionario'
   createdAt: string
@@ -278,10 +465,15 @@ export type ERPData = {
   comprasHistorico: PurchaseRecord[]
   entregas: Delivery[]
   financeiro: FinanceEntry[]
+  caixas: Cashbox[]
+  conferenciasCaixaFisico: CashDailyCheck[]
   empresa: CompanyProfile
   funcionarios: Employee[]
   cargos: EmployeeRole[]
   niveis: EmployeeLevel[]
   apontamentos: WorkLog[]
+  presencas: PresenceEntry[]
+  pagamentosRH: EmployeePayment[]
+  ocorrenciasRH: EmployeeOccurrence[]
   usuarios: UserAccount[]
 }

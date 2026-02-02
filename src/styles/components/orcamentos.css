@@ -222,10 +222,20 @@
 
 .quote-print__total {
   margin-top: 20px;
+  display: grid;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.quote-print__total-row {
   display: flex;
   justify-content: flex-end;
   gap: 16px;
-  font-size: 16px;
+}
+
+.quote-print__total-main {
+  font-size: 18px;
 }
 
 .quote-print__signatures {

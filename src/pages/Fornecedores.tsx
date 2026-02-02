@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import ActionMenu from '../components/ActionMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
@@ -329,23 +330,17 @@ const Fornecedores = () => {
                         {supplier.active ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td>
-                      <div className="table__actions">
-                        <button
-                          className="button button--ghost"
-                          type="button"
-                          onClick={() => handleEdit(supplier)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="button button--danger"
-                          type="button"
-                          onClick={() => setDeleteId(supplier.id)}
-                        >
-                          Excluir
-                        </button>
-                      </div>
+                    <td className="table__actions">
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEdit(supplier) },
+                          {
+                            label: 'Excluir',
+                            onClick: () => setDeleteId(supplier.id),
+                            variant: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

@@ -14,6 +14,8 @@
 @import url("components/producao.css");
 @import url("components/financeiro.css");
 @import url("components/estoque.css");
+@import url("components/moldes.css");
+@import url("components/estoque-materiais.css");
 @import url("components/compras.css");
 @import url("components/entregas.css");
 @import url("components/clientes.css");
@@ -21,9 +23,13 @@
 @import url("components/materiais.css");
 @import url("components/empresa.css");
 @import url("components/funcionarios.css");
+@import url("components/rh.css");
 @import url("components/indicadores.css");
 @import url("components/bi.css");
+@import url("components/consumo-produtos.css");
 @import url("components/configuracoes.css");
+@import url("components/usuarios-permissoes.css");
+@import url("components/perfil.css");
 @import url("components/dashboard.css");
 
 html,

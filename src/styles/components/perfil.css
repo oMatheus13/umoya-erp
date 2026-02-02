@@ -1,0 +1,110 @@
+.perfil {
+  min-height: 100%;
+  padding: clamp(24px, 3vw, 40px);
+  display: grid;
+  gap: var(--spacing-lg);
+  background:
+    radial-gradient(520px 340px at 12% 0%, rgba(170, 255, 0, 0.08), transparent 70%),
+    radial-gradient(420px 300px at 90% 10%, rgba(15, 17, 22, 0.05), transparent 70%),
+    var(--color-cloud);
+}
+
+.perfil__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.perfil__headline {
+  display: grid;
+  gap: 6px;
+}
+
+.perfil__eyebrow {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(15, 17, 22, 0.45);
+}
+
+.perfil__title {
+  font-family: var(--font-family-primary);
+  font-size: clamp(2rem, 3.2vw, 2.8rem);
+}
+
+.perfil__subtitle {
+  color: rgba(15, 17, 22, 0.6);
+  max-width: 46ch;
+}
+
+.perfil__layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
+  gap: var(--spacing-lg);
+}
+
+.perfil__card,
+.perfil__panel {
+  background: rgba(255, 255, 255, 0.9);
+  padding: var(--spacing-lg);
+  border-radius: 18px;
+  border: 1px solid rgba(15, 17, 22, 0.08);
+  box-shadow: 0 12px 28px rgba(15, 17, 22, 0.08);
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.perfil__card {
+  align-content: start;
+  justify-items: start;
+}
+
+.perfil__avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-family-primary);
+  font-size: 2rem;
+  color: var(--color-true-white);
+  box-shadow: 0 10px 24px rgba(15, 17, 22, 0.2);
+}
+
+.perfil__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 22px;
+}
+
+.perfil__panel-header h2 {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-lg);
+}
+
+.perfil__panel-header p {
+  color: rgba(15, 17, 22, 0.55);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 900px) {
+  .perfil__layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .perfil__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .perfil__card,
+  .perfil__panel {
+    padding: var(--spacing-md);
+  }
+}

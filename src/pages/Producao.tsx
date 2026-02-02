@@ -3,15 +3,23 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
-import type { ProductionOrder } from '../types/erp'
+import type { MaterialConsumption, ProductionOrder, ProductMaterialUsage } from '../types/erp'
 import { formatDateShort } from '../utils/format'
 import { createId } from '../utils/ids'
+import { getUnitFactor } from '../utils/pricing'
+import { convertUsageToPurchaseQuantity, getDefaultUsageUnit } from '../utils/materialUsage'
 
 const statusLabels: Record<ProductionOrder['status'], string> = {
   aberta: 'Aberta',
   em_producao: 'Em producao',
   finalizada: 'Finalizada',
 }
+
+const toMeters = (value: number) =>
+  Number.isFinite(value) ? Math.max(0, value / 100) : 0
+
+const toCentimeters = (value: number) =>
+  Number.isFinite(value) ? Math.max(0, value * 100) : 0
 
 const Producao = () => {
   const { data, refresh } = useERPData()
@@ -22,6 +30,7 @@ const Producao = () => {
     productId: '',
     variantId: '',
     quantity: 1,
+    customLength: 0,
   })
 
   const productionOrders = useMemo(
@@ -61,14 +70,26 @@ const Producao = () => {
       ?.variants?.find((variant) => variant.id === variantId)
 
   const availableProducts = data.produtos.filter((product) => product.active !== false)
+  const manualProduct = data.produtos.find((product) => product.id === manualForm.productId)
+  const manualIsLinear = manualProduct?.unit === 'metro_linear'
+  const manualHasVariants = manualProduct?.hasVariants ?? false
 
   const resetManualForm = () => {
     const firstProduct = availableProducts[0]
     const firstVariant = firstProduct?.variants?.[0]
     setManualForm({
       productId: firstProduct?.id ?? '',
-      variantId: firstVariant?.id ?? '',
+      variantId:
+        firstProduct?.unit === 'metro_linear' || !firstProduct?.hasVariants
+          ? ''
+          : firstVariant?.id ?? '',
       quantity: 1,
+      customLength:
+        firstProduct?.unit === 'metro_linear'
+          ? firstProduct.length && firstProduct.length > 0
+            ? firstProduct.length
+            : 1
+          : 0,
     })
   }
 
@@ -78,11 +99,28 @@ const Producao = () => {
     setManualForm((prev) => ({
       ...prev,
       productId,
-      variantId: firstVariant?.id ?? '',
+      variantId:
+        product?.unit === 'metro_linear' || !product?.hasVariants
+          ? ''
+          : firstVariant?.id ?? '',
+      customLength:
+        product?.unit === 'metro_linear'
+          ? product.length && product.length > 0
+            ? product.length
+            : 1
+          : 0,
     }))
   }
 
   const handleManualVariantChange = (variantId: string) => {
+    const product = data.produtos.find((item) => item.id === manualForm.productId)
+    if (product?.unit === 'metro_linear' || !product?.hasVariants) {
+      setManualForm((prev) => ({
+        ...prev,
+        variantId: '',
+      }))
+      return
+    }
     setManualForm((prev) => ({
       ...prev,
       variantId,
@@ -96,6 +134,137 @@ const Producao = () => {
     )
     dataService.replaceAll(payload)
     refresh()
+  }
+
+  const toLengthCmLabel = (lengthMeters: number) => {
+    const cm = Math.round(lengthMeters * 100)
+    return cm > 0 ? cm : 0
+  }
+
+  const upsertLinearStockVariant = (
+    product: (typeof data.produtos)[number],
+    lengthMeters: number,
+    quantityDelta: number,
+  ) => {
+    const length = Number.isFinite(lengthMeters) && lengthMeters > 0 ? lengthMeters : 1
+    const lengthCm = toLengthCmLabel(length)
+    const variantId = `auto-${product.id}-${lengthCm}`
+    const baseSku = product.sku?.trim()
+    const variantSku = baseSku ? `${baseSku}-${lengthCm}` : undefined
+    const variants = product.variants ?? []
+    const targetIndex = variants.findIndex(
+      (variant) =>
+        variant.id === variantId ||
+        (variant.locked &&
+          Number.isFinite(variant.length) &&
+          Math.abs((variant.length ?? 0) - length) < 0.0001),
+    )
+    if (targetIndex >= 0) {
+      const target = variants[targetIndex]
+      const nextStock = (target.stock ?? 0) + quantityDelta
+      const updated = {
+        ...target,
+        stock: nextStock,
+        name: target.name || `${lengthCm}`,
+        length,
+        sku: variantSku ?? target.sku,
+        active: target.active ?? true,
+        locked: true,
+      }
+      return {
+        ...product,
+        variants: variants.map((variant, index) =>
+          index === targetIndex ? updated : variant,
+        ),
+      }
+    }
+    const nextVariant = {
+      id: variantId,
+      productId: product.id,
+      name: `${lengthCm}`,
+      length,
+      stock: quantityDelta,
+      sku: variantSku,
+      active: true,
+      locked: true,
+      isCustom: true,
+    }
+    return {
+      ...product,
+      variants: [...variants, nextVariant],
+    }
+  }
+
+  const applyMaterialConsumption = (
+    payload: ReturnType<typeof dataService.getAll>,
+    order: ProductionOrder,
+  ) => {
+    const product = payload.produtos.find((item) => item.id === order.productId)
+    const variant =
+      product && product.hasVariants && product.unit !== 'metro_linear'
+        ? product.variants?.find((item) => item.id === order.variantId)
+        : undefined
+    const usages =
+      variant?.materialUsages && variant.materialUsages.length > 0
+        ? variant.materialUsages
+        : product?.materialUsages ?? []
+    if (!product || usages.length === 0 || order.quantity <= 0) {
+      return { applied: false, warnings: [] as string[] }
+    }
+
+    const warnings: string[] = []
+    const consumptionRecords: MaterialConsumption[] = []
+    const usageByMaterial = new Map<string, ProductMaterialUsage>()
+    usages.forEach((usage) => {
+      usageByMaterial.set(usage.materialId, usage)
+    })
+    const missingMaterials = usages.filter(
+      (usage) => !payload.materiais.some((material) => material.id === usage.materialId),
+    )
+    if (missingMaterials.length > 0) {
+      warnings.push('Ha materiais removidos na ficha de consumo.')
+    }
+    const unitFactor = getUnitFactor(product, variant, order.customLength)
+    const safeFactor = Number.isFinite(unitFactor) && unitFactor > 0 ? unitFactor : 1
+
+    payload.materiais = payload.materiais.map((material) => {
+      const usage = usageByMaterial.get(material.id)
+      if (!usage) {
+        return material
+      }
+      const usageUnit =
+        usage.usageUnit ??
+        (usage.unitMode === 'metro' ? 'metro' : getDefaultUsageUnit(material.kind ?? 'outro'))
+      const usageQuantity = Number.isFinite(usage.quantity) ? usage.quantity : 0
+      const rawQuantity = usageQuantity * order.quantity * safeFactor
+      const consumed = convertUsageToPurchaseQuantity(material, usageUnit, rawQuantity)
+      if (usageUnit === 'metro' && material.kind === 'trelica' && !material.metersPerUnit) {
+        warnings.push(`Trelica ${material.name} sem metros por unidade.`)
+      }
+      if (!Number.isFinite(consumed) || consumed <= 0) {
+        return material
+      }
+      const currentStock = material.stock ?? 0
+      const nextStock = currentStock - consumed
+      if (nextStock < 0) {
+        warnings.push(`Estoque negativo em ${material.name}.`)
+      }
+      consumptionRecords.push({
+        id: createId(),
+        productionOrderId: order.id,
+        materialId: material.id,
+        expected: consumed,
+        actual: consumed,
+      })
+      return { ...material, stock: nextStock }
+    })
+
+    if (consumptionRecords.length > 0) {
+      payload.consumosMateriais = [...payload.consumosMateriais, ...consumptionRecords]
+      return { applied: true, warnings }
+    }
+
+    return { applied: false, warnings }
   }
 
   const handleStart = (order: ProductionOrder) => {
@@ -127,19 +296,30 @@ const Producao = () => {
       const index = payload.produtos.findIndex((product) => product.id === order.productId)
       if (index >= 0) {
         const current = payload.produtos[index]
-        const variants = current.variants ?? []
-        const targetVariantId = order.variantId ?? variants[0]?.id
-        const updatedVariants = variants.map((variant) =>
-          variant.id === targetVariantId
-            ? { ...variant, stock: (variant.stock ?? 0) + order.quantity }
-            : variant,
-        )
-        payload.produtos[index] = {
-          ...current,
-          variants: updatedVariants,
+        if (current.unit === 'metro_linear') {
+          const length = order.customLength ?? current.length ?? 1
+          payload.produtos[index] = upsertLinearStockVariant(current, length, order.quantity)
+        } else if (current.hasVariants) {
+          const variants = current.variants ?? []
+          const targetVariantId = order.variantId ?? variants[0]?.id
+          const updatedVariants = variants.map((variant) =>
+            variant.id === targetVariantId
+              ? { ...variant, stock: (variant.stock ?? 0) + order.quantity }
+              : variant,
+          )
+          payload.produtos[index] = {
+            ...current,
+            variants: updatedVariants,
+          }
+        } else {
+          payload.produtos[index] = {
+            ...current,
+            stock: (current.stock ?? 0) + order.quantity,
+          }
         }
       }
     }
+    const consumptionResult = applyMaterialConsumption(payload, nextOrder)
     const linkedOrder = payload.pedidos.find((item) => item.id === order.orderId)
     const linkedClient = linkedOrder
       ? payload.clientes.find((client) => client.id === linkedOrder.clientId)
@@ -168,7 +348,12 @@ const Producao = () => {
     }
     dataService.replaceAll(payload)
     refresh()
-    setStatus(`Ordem ${order.id.slice(0, 6)} finalizada.`)
+    const warnings = consumptionResult.warnings.join(' ')
+    const consumptionMessage = consumptionResult.applied
+      ? 'Estoque de materia-prima atualizado.'
+      : 'Sem consumo definido para este produto.'
+    const warningSuffix = warnings ? ` ${warnings}` : ''
+    setStatus(`Ordem ${order.id.slice(0, 6)} finalizada. ${consumptionMessage}${warningSuffix}`)
   }
 
   const handleManualOrder = () => {
@@ -186,6 +371,11 @@ const Producao = () => {
       setStatus('Selecione um produto.')
       return
     }
+    const product = data.produtos.find((item) => item.id === manualForm.productId)
+    if (product?.unit === 'metro_linear' && manualForm.customLength <= 0) {
+      setStatus('Informe o comprimento em cm para o produto por metro linear.')
+      return
+    }
     if (manualForm.quantity <= 0) {
       setStatus('Informe uma quantidade valida.')
       return
@@ -197,6 +387,7 @@ const Producao = () => {
       productId: manualForm.productId,
       variantId: manualForm.variantId || undefined,
       quantity: manualForm.quantity,
+      customLength: manualForm.customLength > 0 ? manualForm.customLength : undefined,
       status: 'aberta',
       plannedAt: new Date().toISOString(),
       source: 'estoque',
@@ -224,16 +415,47 @@ const Producao = () => {
       )
       if (productIndex >= 0) {
         const current = payload.produtos[productIndex]
-        const variants = current.variants ?? []
-        const targetVariantId = target.variantId ?? variants[0]?.id
-        payload.produtos[productIndex] = {
-          ...current,
-          variants: variants.map((variant) =>
-            variant.id === targetVariantId
-              ? { ...variant, stock: (variant.stock ?? 0) - target.quantity }
-              : variant,
-          ),
+        if (current.unit === 'metro_linear') {
+          const length = target.customLength ?? current.length ?? 1
+          payload.produtos[productIndex] = upsertLinearStockVariant(
+            current,
+            length,
+            -target.quantity,
+          )
+        } else if (current.hasVariants) {
+          const variants = current.variants ?? []
+          const targetVariantId = target.variantId ?? variants[0]?.id
+          payload.produtos[productIndex] = {
+            ...current,
+            variants: variants.map((variant) =>
+              variant.id === targetVariantId
+                ? { ...variant, stock: (variant.stock ?? 0) - target.quantity }
+                : variant,
+            ),
+          }
+        } else {
+          payload.produtos[productIndex] = {
+            ...current,
+            stock: (current.stock ?? 0) - target.quantity,
+          }
         }
+      }
+      const consumptions = payload.consumosMateriais.filter(
+        (item) => item.productionOrderId === target.id,
+      )
+      if (consumptions.length > 0) {
+        payload.materiais = payload.materiais.map((material) => {
+          const total = consumptions
+            .filter((item) => item.materialId === material.id)
+            .reduce((acc, item) => acc + (item.actual ?? item.expected), 0)
+          if (total <= 0) {
+            return material
+          }
+          return { ...material, stock: (material.stock ?? 0) + total }
+        })
+        payload.consumosMateriais = payload.consumosMateriais.filter(
+          (item) => item.productionOrderId !== target.id,
+        )
       }
     }
     payload.ordensProducao = payload.ordensProducao.filter((order) => order.id !== deleteId)
@@ -303,9 +525,21 @@ const Producao = () => {
               const pedido = getOrder(order.orderId)
               const item = pedido?.items[0]
               const productId = item?.productId ?? order.productId
-              const variant = productId
-                ? getVariant(productId, item?.variantId ?? order.variantId)
+              const product = productId
+                ? data.produtos.find((entry) => entry.id === productId)
                 : undefined
+              const variant =
+                product && product.unit !== 'metro_linear' && product.hasVariants
+                  ? getVariant(productId, item?.variantId ?? order.variantId)
+                  : undefined
+              const length =
+                order.customLength ??
+                item?.customLength ??
+                (product?.unit === 'metro_linear' ? product.length : undefined)
+              const lengthLabel =
+                product?.unit === 'metro_linear' && length
+                  ? `${toCentimeters(length).toFixed(0)} cm`
+                  : ''
               const sourceLabel =
                 order.source === 'estoque'
                   ? 'Estoque interno'
@@ -320,6 +554,7 @@ const Producao = () => {
                     <span>
                       {productId ? getProductName(productId) : 'Produto'}
                       {variant ? ` • ${variant.name}` : ''}
+                      {lengthLabel ? ` • ${lengthLabel}` : ''}
                       {' • '}
                       {order.quantity}
                     </span>
@@ -388,27 +623,60 @@ const Producao = () => {
             </select>
           </div>
           <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="manual-variant">
-                Variacao
-              </label>
-              <select
-                id="manual-variant"
-                className="form__input"
-                value={manualForm.variantId}
-                onChange={(event) => handleManualVariantChange(event.target.value)}
-                disabled={!manualForm.productId}
-              >
-                <option value="">Selecionar variacao</option>
-                {data.produtos
-                  .find((product) => product.id === manualForm.productId)
-                  ?.variants?.map((variant) => (
-                    <option key={variant.id} value={variant.id}>
-                      {variant.name}
-                    </option>
-                  )) ?? null}
-              </select>
-            </div>
+            {manualIsLinear ? (
+              <div className="form__group">
+                <label className="form__label" htmlFor="manual-length">
+                  Comprimento (cm)
+                </label>
+                <input
+                  id="manual-length"
+                  className="form__input"
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={toCentimeters(manualForm.customLength)}
+                  onChange={(event) =>
+                    setManualForm((prev) => ({
+                      ...prev,
+                      customLength: toMeters(Number(event.target.value)),
+                    }))
+                  }
+                  disabled={!manualForm.productId}
+                />
+              </div>
+            ) : manualHasVariants ? (
+              <div className="form__group">
+                <label className="form__label" htmlFor="manual-variant">
+                  Variacao
+                </label>
+                <select
+                  id="manual-variant"
+                  className="form__input"
+                  value={manualForm.variantId}
+                  onChange={(event) => handleManualVariantChange(event.target.value)}
+                  disabled={!manualForm.productId}
+                >
+                  <option value="">Selecionar variacao</option>
+                  {data.produtos
+                    .find((product) => product.id === manualForm.productId)
+                    ?.variants?.map((variant) => (
+                      <option key={variant.id} value={variant.id}>
+                        {variant.name}
+                      </option>
+                    )) ?? null}
+                </select>
+              </div>
+            ) : (
+              <div className="form__group">
+                <label className="form__label">Variacao</label>
+                <input
+                  className="form__input"
+                  type="text"
+                  value="Produto sem variacoes"
+                  disabled
+                />
+              </div>
+            )}
             <div className="form__group">
               <label className="form__label" htmlFor="manual-quantity">
                 Quantidade

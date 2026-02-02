@@ -5,6 +5,7 @@ import { useERPData } from '../store/appStore'
 import type { Material, PurchaseRecord } from '../types/erp'
 import { formatCurrency, formatDateShort } from '../utils/format'
 import { createId } from '../utils/ids'
+import { getMaterialUnitLabel } from '../utils/units'
 
 type PurchaseItemForm = {
   id: string
@@ -280,14 +281,27 @@ const Compras = () => {
       if (latest.type !== 'material') {
         return material
       }
+      const lotSize = material.lotSize && material.lotSize > 0 ? material.lotSize : 1
+      const addedStock = updates.reduce((acc, item) => {
+        if (item.type !== 'material') {
+          return acc
+        }
+        if (item.pricingMode === 'lot') {
+          return acc + (item.quantity ?? 0) * lotSize
+        }
+        return acc + (item.quantity ?? 0)
+      }, 0)
+      const nextStock = (material.stock ?? 0) + addedStock
       if (latest.pricingMode === 'lot') {
         return {
           ...material,
+          stock: nextStock,
           marketLotPrice: latest.unitPrice,
         }
       }
       return {
         ...material,
+        stock: nextStock,
         marketUnitPrice: latest.unitPrice,
       }
     })
@@ -326,6 +340,7 @@ const Compras = () => {
         amount: totalAmount,
         category: 'Compras',
         createdAt,
+        cashboxId: 'caixa_operacional',
       },
     ]
 
@@ -433,7 +448,7 @@ const Compras = () => {
             <div key={material.id} className="compras__list-item">
               <span>{material.name}</span>
               <strong>
-                {material.unit ?? '-'}
+                {getMaterialUnitLabel(material.unit)}
                 {material.marketUnitPrice ? ` • ${formatCurrency(material.marketUnitPrice)}` : ''}
               </strong>
             </div>

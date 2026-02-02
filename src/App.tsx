@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AppShell from './layouts/AppShell'
 import Dashboard from './pages/Dashboard'
 import DataTools from './pages/DataTools'
@@ -8,8 +8,11 @@ import Orcamentos from './pages/Orcamentos'
 import Pedidos from './pages/Pedidos'
 import Placeholder from './pages/Placeholder'
 import Producao from './pages/Producao'
+import ConsumoProdutos from './pages/ConsumoProdutos'
 import Financeiro from './pages/Financeiro'
 import Estoque from './pages/Estoque'
+import EstoqueFormas from './pages/EstoqueFormas'
+import EstoqueMateriais from './pages/EstoqueMateriais'
 import Compras from './pages/Compras'
 import Entregas from './pages/Entregas'
 import Clientes from './pages/Clientes'
@@ -20,17 +23,29 @@ import Funcionarios from './pages/Funcionarios'
 import Indicadores from './pages/Indicadores'
 import Bi from './pages/Bi'
 import Configuracoes from './pages/Configuracoes'
+import UsuariosPermissoes from './pages/UsuariosPermissoes'
+import Perfil from './pages/Perfil'
+import RhPresenca from './pages/RhPresenca'
+import RhPagamentos from './pages/RhPagamentos'
+import RhHistorico from './pages/RhHistorico'
+import RhOcorrencias from './pages/RhOcorrencias'
 import type { User } from '@supabase/supabase-js'
 import type { UserAccount } from './types/erp'
 import { erpRemote } from './services/erpRemote'
 import { dataService, ensureStorageSeed, setRemoteSync } from './services/dataService'
 import { supabase } from './services/supabaseClient'
+import { createDevSeed, DEV_BACKUP_KEY, DEV_MODE_KEY, DEV_SEEDED_KEY } from './services/devSeed'
 import type { SidebarMode } from './types/ui'
+import { createPermissionCheck } from './utils/permissions'
+import { isPermissionKey } from './data/permissions'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null)
   const [activePage, setActivePage] = useState('dashboard')
+  const [permissionsVersion, setPermissionsVersion] = useState(0)
+  const allowDevMode =
+    (import.meta.env && import.meta.env.DEV) || import.meta.env.VITE_DEV_ACCESS === 'true'
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
     if (typeof window === 'undefined') {
       return 'expanded'
@@ -54,7 +69,10 @@ function App() {
     producao: 'Ordens de producao',
     'producao-lotes': 'Lotes',
     'producao-refugo': 'Refugo e retrabalho',
-    estoque: 'Estoque',
+    'producao-consumo': 'Consumo por produto',
+    estoque: 'Estoque consolidado',
+    'estoque-formas': 'Formas e moldes',
+    'estoque-materiais': 'Materia-prima',
     compras: 'Compras',
     entregas: 'Logistica e entregas',
     financeiro: 'Financeiro',
@@ -71,6 +89,7 @@ function App() {
     'relatorios-vendas': 'Vendas por cliente e obra',
     'relatorios-consumo': 'Consumo de material',
     'config-usuarios': 'Usuarios e permissoes',
+    perfil: 'Meu perfil',
     'config-empresa': 'Empresa',
     configuracoes: 'Parametros',
     'config-integracoes': 'Integracoes',
@@ -93,7 +112,10 @@ function App() {
     producao: ['Producao', 'Ordens de producao'],
     'producao-lotes': ['Producao', 'Lotes'],
     'producao-refugo': ['Producao', 'Refugo e retrabalho'],
-    estoque: ['Estoque'],
+    'producao-consumo': ['Producao', 'Consumo por produto'],
+    estoque: ['Estoque', 'Consolidado'],
+    'estoque-formas': ['Estoque', 'Formas e moldes'],
+    'estoque-materiais': ['Estoque', 'Materia-prima'],
     compras: ['Compras'],
     entregas: ['Logistica e entregas'],
     financeiro: ['Financeiro'],
@@ -110,6 +132,7 @@ function App() {
     'relatorios-vendas': ['Relatorios', 'Vendas por cliente e obra'],
     'relatorios-consumo': ['Relatorios', 'Consumo de material'],
     'config-usuarios': ['Configuracoes', 'Usuarios e permissoes'],
+    perfil: ['Configuracoes', 'Meu perfil'],
     'config-empresa': ['Configuracoes', 'Empresa'],
     configuracoes: ['Configuracoes', 'Parametros'],
     'config-integracoes': ['Configuracoes', 'Integracoes'],
@@ -121,17 +144,46 @@ function App() {
   }
 
   const breadcrumbs = breadcrumbMap[activePage] ?? ['Inicio', pageTitles[activePage] ?? 'Modulo']
+  const dataSnapshot = useMemo(() => dataService.getAll(), [permissionsVersion])
+  const permissionCheck = createPermissionCheck(dataSnapshot, currentUser)
+  const canView = (pageId: string) =>
+    !isPermissionKey(pageId) ? true : permissionCheck.canView(pageId)
+  const canEdit = (pageId: string) =>
+    !isPermissionKey(pageId) ? true : permissionCheck.canEdit(pageId)
+  const userRoleLabel = (() => {
+    if (!currentUser) {
+      return undefined
+    }
+    if (currentUser.employeeId) {
+      const employee = dataSnapshot.funcionarios.find(
+        (item) => item.id === currentUser.employeeId,
+      )
+      if (employee?.roleId) {
+        return dataSnapshot.cargos.find((role) => role.id === employee.roleId)?.name
+      }
+    }
+    return currentUser.role === 'admin' ? 'Administrador' : 'Funcionario'
+  })()
+
+  const fetchRemoteState = async (userId: string) => {
+    const timeout = new Promise<{ data: null; error: string }>((resolve) => {
+      setTimeout(() => resolve({ data: null, error: 'timeout' }), 4500)
+    })
+    return Promise.race([erpRemote.fetchState(userId), timeout])
+  }
 
   const startSession = async (user: User) => {
     setRemoteSync(null)
-    const remote = await erpRemote.fetchState(user.id)
+    const remote = await fetchRemoteState(user.id)
     if (remote.data) {
       dataService.replaceAll(remote.data)
     }
     const payload = dataService.getAll()
     const existing = payload.usuarios.find((item) => item.id === user.id)
-    const displayName =
-      existing?.name ?? (user.user_metadata?.name as string | undefined) ?? user.email ?? 'Usuario'
+    const metadataName = user.user_metadata?.name as string | undefined
+    const metadataDisplayName = (user.user_metadata?.displayName ||
+      user.user_metadata?.display_name) as string | undefined
+    const fallbackName = existing?.name ?? metadataName ?? user.email ?? 'Usuario'
     const metadataCpf = user.user_metadata?.cpf as string | undefined
     const metadataRole = user.user_metadata?.role as UserAccount['role'] | undefined
     const hasAdmin = payload.usuarios.some((item) => item.role === 'admin')
@@ -140,9 +192,13 @@ function App() {
     const resolvedCpf = existing?.cpf ?? metadataCpf
     const nextUser: UserAccount = {
       id: user.id,
-      name: displayName,
+      name: fallbackName,
+      displayName: existing?.displayName ?? metadataDisplayName,
       email: user.email ?? existing?.email ?? '',
       cpf: resolvedCpf,
+      phone: existing?.phone,
+      avatarColor: existing?.avatarColor,
+      avatarUrl: existing?.avatarUrl,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       active: existing?.active ?? true,
       role: resolvedRole,
@@ -154,7 +210,11 @@ function App() {
       existing.name !== nextUser.name ||
       existing.email !== nextUser.email ||
       existing.cpf !== nextUser.cpf ||
-      existing.role !== nextUser.role
+      existing.role !== nextUser.role ||
+      existing.displayName !== nextUser.displayName ||
+      existing.phone !== nextUser.phone ||
+      existing.avatarColor !== nextUser.avatarColor ||
+      existing.avatarUrl !== nextUser.avatarUrl
     if (shouldUpdate) {
       payload.usuarios = existing
         ? payload.usuarios.map((item) => (item.id === user.id ? nextUser : item))
@@ -173,8 +233,50 @@ function App() {
     setIsAuthenticated(true)
   }
 
+  const startDevSession = (seed: boolean) => {
+    const devUserId = 'dev-user'
+    const devUser: UserAccount = {
+      id: devUserId,
+      name: 'Dev Umoya',
+      displayName: 'Dev',
+      email: 'dev@umoya.local',
+      createdAt: new Date().toISOString(),
+      role: 'admin',
+      active: true,
+    }
+    if (typeof window !== 'undefined') {
+      const backup = window.localStorage.getItem(DEV_BACKUP_KEY)
+      if (!backup) {
+        window.localStorage.setItem(DEV_BACKUP_KEY, JSON.stringify(dataService.getAll()))
+      }
+      window.localStorage.setItem(DEV_MODE_KEY, 'true')
+    }
+    setRemoteSync(null)
+    if (seed) {
+      dataService.replaceAll(createDevSeed(devUserId))
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(DEV_SEEDED_KEY, 'true')
+      }
+    } else if (typeof window !== 'undefined') {
+      const seeded = window.localStorage.getItem(DEV_SEEDED_KEY) === 'true'
+      if (!seeded) {
+        dataService.replaceAll(createDevSeed(devUserId))
+        window.localStorage.setItem(DEV_SEEDED_KEY, 'true')
+      }
+    }
+    setCurrentUser(devUser)
+    setIsAuthenticated(true)
+  }
+
   useEffect(() => {
     ensureStorageSeed()
+    if (allowDevMode && typeof window !== 'undefined') {
+      const devMode = window.localStorage.getItem(DEV_MODE_KEY) === 'true'
+      if (devMode) {
+        startDevSession(false)
+        return
+      }
+    }
     if (!supabase) {
       return
     }
@@ -192,11 +294,35 @@ function App() {
         onLogin={(user) => {
           void startSession(user)
         }}
+        onDevLogin={
+          allowDevMode
+            ? () => {
+                startDevSession(true)
+              }
+            : undefined
+        }
       />
     )
   }
 
   const handleLogout = () => {
+    if (allowDevMode && typeof window !== 'undefined') {
+      const devMode = window.localStorage.getItem(DEV_MODE_KEY) === 'true'
+      if (devMode) {
+        const backup = window.localStorage.getItem(DEV_BACKUP_KEY)
+        if (backup) {
+          dataService.replaceAll(JSON.parse(backup))
+        }
+        window.localStorage.removeItem(DEV_BACKUP_KEY)
+        window.localStorage.removeItem(DEV_MODE_KEY)
+        window.localStorage.removeItem(DEV_SEEDED_KEY)
+        setRemoteSync(null)
+        setCurrentUser(null)
+        setIsAuthenticated(false)
+        setActivePage('dashboard')
+        return
+      }
+    }
     if (supabase) {
       void supabase.auth.signOut()
     }
@@ -204,7 +330,7 @@ function App() {
     setCurrentUser(null)
     setIsAuthenticated(false)
     setActivePage('dashboard')
-    }
+  }
 
   const renderPage = () => {
     if (activePage === 'dashboard') {
@@ -222,8 +348,17 @@ function App() {
     if (activePage === 'producao') {
       return <Producao />
     }
+    if (activePage === 'producao-consumo') {
+      return <ConsumoProdutos />
+    }
     if (activePage === 'estoque') {
       return <Estoque />
+    }
+    if (activePage === 'estoque-formas') {
+      return <EstoqueFormas />
+    }
+    if (activePage === 'estoque-materiais') {
+      return <EstoqueMateriais />
     }
     if (activePage === 'compras') {
       return <Compras />
@@ -249,6 +384,18 @@ function App() {
     if (activePage === 'funcionarios') {
       return <Funcionarios currentUser={currentUser} />
     }
+    if (activePage === 'rh-presenca') {
+      return <RhPresenca />
+    }
+    if (activePage === 'rh-pagamentos') {
+      return <RhPagamentos />
+    }
+    if (activePage === 'rh-historico') {
+      return <RhHistorico />
+    }
+    if (activePage === 'rh-ocorrencias') {
+      return <RhOcorrencias />
+    }
     if (activePage === 'indicadores') {
       return <Indicadores />
     }
@@ -257,6 +404,17 @@ function App() {
     }
     if (activePage === 'dados') {
       return <DataTools />
+    }
+    if (activePage === 'config-usuarios') {
+      return (
+        <UsuariosPermissoes
+          currentUser={currentUser}
+          onPermissionsChange={() => setPermissionsVersion((prev) => prev + 1)}
+        />
+      )
+    }
+    if (activePage === 'perfil') {
+      return <Perfil currentUser={currentUser} onUpdate={setCurrentUser} />
     }
     if (activePage === 'configuracoes') {
       return (
@@ -274,16 +432,30 @@ function App() {
     return <Placeholder title={pageTitles[activePage] ?? 'Modulo'} />
   }
 
+  const content = canView(activePage) ? (
+    renderPage()
+  ) : (
+    <Placeholder
+      title="Sem permissao"
+      description="Seu perfil nao possui acesso a esta area."
+    />
+  )
+
   return (
     <AppShell
       activePage={activePage}
       onNavigate={setActivePage}
       breadcrumbs={breadcrumbs}
       sidebarMode={sidebarMode}
-      userName={currentUser?.name}
+      userName={currentUser?.displayName ?? currentUser?.name}
+      userRoleLabel={userRoleLabel}
+      userAvatarUrl={currentUser?.avatarUrl}
+      userAvatarColor={currentUser?.avatarColor}
       onLogout={handleLogout}
+      canView={canView}
+      canEdit={canEdit(activePage)}
     >
-      {renderPage()}
+      {content}
     </AppShell>
   )
 }

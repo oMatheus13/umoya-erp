@@ -1,19 +1,26 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import ActionMenu from '../components/ActionMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
-import type { Material } from '../types/erp'
+import type { Material, MaterialKind, MaterialUnit } from '../types/erp'
 import { formatCurrency } from '../utils/format'
 import { createId } from '../utils/ids'
+import { MATERIAL_UNITS, getMaterialUnitLabel } from '../utils/units'
+import { MATERIAL_KINDS, getMaterialKindLabel } from '../utils/materials'
 
 type MaterialForm = {
   name: string
-  unit: string
+  unit: MaterialUnit | ''
+  kind: MaterialKind | ''
+  metersPerUnit: number
   cost: number
   marketUnitPrice: number
   marketLotPrice: number
   lotSize: number
+  stock: number
+  minStock: number
   notes: string
   active: boolean
 }
@@ -27,10 +34,14 @@ const Materiais = () => {
   const [form, setForm] = useState<MaterialForm>({
     name: '',
     unit: '',
+    kind: '',
+    metersPerUnit: 0,
     cost: 0,
     marketUnitPrice: 0,
     marketLotPrice: 0,
     lotSize: 0,
+    stock: 0,
+    minStock: 0,
     notes: '',
     active: true,
   })
@@ -43,10 +54,14 @@ const Materiais = () => {
     setForm({
       name: '',
       unit: '',
+      kind: '',
+      metersPerUnit: 0,
       cost: 0,
       marketUnitPrice: 0,
       marketLotPrice: 0,
       lotSize: 0,
+      stock: 0,
+      minStock: 0,
       notes: '',
       active: true,
     })
@@ -70,10 +85,14 @@ const Materiais = () => {
     setForm({
       name: material.name,
       unit: material.unit ?? '',
+      kind: material.kind ?? '',
+      metersPerUnit: material.metersPerUnit ?? 0,
       cost: material.cost ?? 0,
       marketUnitPrice: material.marketUnitPrice ?? 0,
       marketLotPrice: material.marketLotPrice ?? 0,
       lotSize: material.lotSize ?? 0,
+      stock: material.stock ?? 0,
+      minStock: material.minStock ?? 0,
       notes: material.notes ?? '',
       active: material.active ?? true,
     })
@@ -89,6 +108,18 @@ const Materiais = () => {
       setStatus('Informe o nome do material.')
       return
     }
+    if (!form.unit) {
+      setStatus('Selecione a unidade de medida.')
+      return
+    }
+    if (!form.kind) {
+      setStatus('Selecione o tipo de material.')
+      return
+    }
+    if (form.kind === 'trelica' && form.metersPerUnit <= 0) {
+      setStatus('Informe quantos metros existem por unidade de trelica.')
+      return
+    }
     if (form.cost < 0 || form.marketUnitPrice < 0 || form.marketLotPrice < 0) {
       setStatus('Os valores nao podem ser negativos.')
       return
@@ -97,16 +128,24 @@ const Materiais = () => {
       setStatus('O tamanho do lote nao pode ser negativo.')
       return
     }
+    if (form.stock < 0 || form.minStock < 0) {
+      setStatus('Os estoques nao podem ser negativos.')
+      return
+    }
 
     const payload = dataService.getAll()
     const next: Material = {
       id: editingId ?? createId(),
       name: form.name.trim(),
-      unit: form.unit.trim() || undefined,
+      unit: form.unit,
+      kind: form.kind,
+      metersPerUnit: form.kind === 'trelica' ? form.metersPerUnit : undefined,
       cost: toOptionalNumber(form.cost),
       marketUnitPrice: toOptionalNumber(form.marketUnitPrice),
       marketLotPrice: toOptionalNumber(form.marketLotPrice),
       lotSize: toOptionalNumber(form.lotSize),
+      stock: form.stock,
+      minStock: toOptionalNumber(form.minStock),
       notes: form.notes.trim() || undefined,
       active: form.active,
     }
@@ -167,6 +206,7 @@ const Materiais = () => {
   }
 
   const formatValue = (value?: number) => (value ? formatCurrency(value) : '-')
+  const selectedUnitLabel = form.unit ? getMaterialUnitLabel(form.unit) : 'unidade'
 
   return (
     <section className="materiais">
@@ -231,14 +271,41 @@ const Materiais = () => {
               <label className="form__label" htmlFor="material-unit">
                 Unidade de medida
               </label>
-              <input
+              <select
                 id="material-unit"
                 className="form__input"
-                type="text"
                 value={form.unit}
-                onChange={(event) => updateForm({ unit: event.target.value })}
-                placeholder="kg, m3, saco..."
-              />
+                onChange={(event) =>
+                  updateForm({ unit: event.target.value as MaterialForm['unit'] })
+                }
+              >
+                <option value="">Selecione</option>
+                {MATERIAL_UNITS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-kind">
+                Tipo do material
+              </label>
+              <select
+                id="material-kind"
+                className="form__input"
+                value={form.kind}
+                onChange={(event) =>
+                  updateForm({ kind: event.target.value as MaterialForm['kind'] })
+                }
+              >
+                <option value="">Selecione</option>
+                {MATERIAL_KINDS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="form__group">
               <label className="form__label" htmlFor="material-cost">
@@ -257,10 +324,33 @@ const Materiais = () => {
             </div>
           </div>
 
+          {form.kind === 'trelica' && (
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-meters-unit">
+                Metros por unidade
+              </label>
+              <input
+                id="material-meters-unit"
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.metersPerUnit}
+                onChange={(event) =>
+                  updateForm({ metersPerUnit: Number(event.target.value) })
+                }
+                placeholder="Ex: 12"
+              />
+              <p className="form__help">
+                Usado para converter metros em unidades de trelica.
+              </p>
+            </div>
+          )}
+
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="material-market-unit">
-                Valor de mercado (unidade)
+                Valor de mercado ({selectedUnitLabel})
               </label>
               <input
                 id="material-market-unit"
@@ -296,7 +386,7 @@ const Materiais = () => {
 
           <div className="form__group">
             <label className="form__label" htmlFor="material-lot-size">
-              Tamanho do lote
+              Tamanho do lote ({selectedUnitLabel})
             </label>
             <input
               id="material-lot-size"
@@ -311,6 +401,39 @@ const Materiais = () => {
             <p className="form__help">
               Use quando o material e comprado em lotes (ex: 40 sacos).
             </p>
+          </div>
+
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-stock">
+                Estoque inicial
+              </label>
+              <input
+                id="material-stock"
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.stock}
+                onChange={(event) => updateForm({ stock: Number(event.target.value) })}
+                placeholder="0"
+              />
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="material-min-stock">
+                Estoque minimo
+              </label>
+              <input
+                id="material-min-stock"
+                className="form__input"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.minStock}
+                onChange={(event) => updateForm({ minStock: Number(event.target.value) })}
+                placeholder="Opcional"
+              />
+            </div>
           </div>
 
           <div className="form__group">
@@ -363,10 +486,14 @@ const Materiais = () => {
               <thead>
                 <tr>
                   <th>Material</th>
+                  <th>Tipo</th>
                   <th>Unidade</th>
+                  <th>Estoque</th>
+                  <th>Minimo</th>
                   <th>Mercado/unidade</th>
                   <th>Mercado/lote</th>
                   <th>Lote</th>
+                  <th>Metros/unid</th>
                   <th>Status</th>
                   <th>Acoes</th>
                 </tr>
@@ -374,7 +501,7 @@ const Materiais = () => {
               <tbody>
                 {materials.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="table__empty">
+                    <td colSpan={11} className="table__empty">
                       Nenhum material cadastrado ainda.
                     </td>
                   </tr>
@@ -382,10 +509,21 @@ const Materiais = () => {
                 {materials.map((material) => (
                   <tr key={material.id}>
                     <td>{material.name}</td>
-                    <td>{material.unit ?? '-'}</td>
+                    <td>{getMaterialKindLabel(material.kind)}</td>
+                    <td>{getMaterialUnitLabel(material.unit)}</td>
+                    <td>
+                      {material.stock ?? 0}
+                      {material.unit ? ` ${getMaterialUnitLabel(material.unit)}` : ''}
+                    </td>
+                    <td>{material.minStock ?? '-'}</td>
                     <td>{formatValue(material.marketUnitPrice ?? material.cost)}</td>
                     <td>{formatValue(material.marketLotPrice)}</td>
                     <td>{material.lotSize ?? '-'}</td>
+                    <td>
+                      {material.kind === 'trelica' && material.metersPerUnit
+                        ? material.metersPerUnit
+                        : '-'}
+                    </td>
                     <td>
                       <span
                         className={`badge ${material.active !== false ? 'badge--aprovado' : 'badge--rascunho'}`}
@@ -393,23 +531,17 @@ const Materiais = () => {
                         {material.active !== false ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td>
-                      <div className="table__actions">
-                        <button
-                          className="button button--ghost"
-                          type="button"
-                          onClick={() => handleEdit(material)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="button button--danger"
-                          type="button"
-                          onClick={() => setDeleteId(material.id)}
-                        >
-                          Excluir
-                        </button>
-                      </div>
+                    <td className="table__actions">
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEdit(material) },
+                          {
+                            label: 'Excluir',
+                            onClick: () => setDeleteId(material.id),
+                            variant: 'danger',
+                          },
+                        ]}
+                      />
                     </td>
                   </tr>
                 ))}

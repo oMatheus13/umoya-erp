@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import ActionMenu from '../components/ActionMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import logotipo from '../assets/brand/logotipo.svg'
+import { PAYMENT_METHODS, getPaymentMethodId, getPaymentMethodLabel } from '../data/paymentMethods'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
 import type { Client, ProductVariant, Quote } from '../types/erp'
 import { formatCurrency, formatDateShort } from '../utils/format'
 import { createId } from '../utils/ids'
+import { getBasePrice, getMaxDiscountSummary, getMinUnitPrice } from '../utils/pricing'
+import { getProductUnitLabel } from '../utils/units'
 
 type QuoteItemForm = {
   productId: string
@@ -22,9 +26,13 @@ type QuoteForm = {
   clientId: string
   clientName: string
   obraId: string
+  paymentMethod: string
   validUntil: string
   status: Quote['status']
   items: QuoteItemForm[]
+  discountType: '' | 'percent' | 'value'
+  discountValue: string
+  discountPercent: string
 }
 
 const statusLabels: Record<Quote['status'], string> = {
@@ -50,6 +58,12 @@ const createEmptyItem = (): QuoteItemForm => ({
   customHeight: 0,
 })
 
+const toMeters = (value: number) =>
+  Number.isFinite(value) ? Math.max(0, value / 100) : 0
+
+const toCentimeters = (value: number) =>
+  Number.isFinite(value) ? Math.max(0, value * 100) : 0
+
 const Orcamentos = () => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
@@ -61,16 +75,63 @@ const Orcamentos = () => {
     clientId: '',
     clientName: '',
     obraId: '',
+    paymentMethod: 'a_definir',
     validUntil: createDefaultDate(),
     status: 'rascunho',
     items: [createEmptyItem()],
+    discountType: '',
+    discountValue: '',
+    discountPercent: '',
   })
 
-  const total = useMemo(
-    () =>
-      form.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0),
+  const subtotal = useMemo(
+    () => form.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0),
     [form.items],
   )
+  const pricingItems = useMemo(
+    () =>
+      form.items
+        .map((item) => {
+          const product = data.produtos.find((entry) => entry.id === item.productId)
+          if (!product) {
+            return null
+          }
+          const variant = product.variants?.find((entry) => entry.id === item.variantId)
+          return {
+            product,
+            variant,
+            unitPrice: item.unitPrice,
+            quantity: item.quantity,
+            customLength: item.customLength,
+            customWidth: item.customWidth,
+          }
+        })
+        .filter((item): item is NonNullable<typeof item> => !!item),
+    [data.produtos, form.items],
+  )
+  const discountSummary = useMemo(
+    () => getMaxDiscountSummary(pricingItems, data.materiais),
+    [pricingItems, data.materiais],
+  )
+  const maxDiscountPercent = discountSummary.maxDiscountPercent
+  const maxDiscountValue = Math.min(discountSummary.maxDiscountValue, subtotal)
+  const parsedDiscountValue = form.discountValue.trim()
+    ? Number(form.discountValue.replace(',', '.'))
+    : 0
+  const parsedDiscountPercent = form.discountPercent.trim()
+    ? Number(form.discountPercent.replace(',', '.'))
+    : 0
+  const safeDiscountValue = Number.isNaN(parsedDiscountValue) ? 0 : parsedDiscountValue
+  const safeDiscountPercent = Number.isNaN(parsedDiscountPercent) ? 0 : parsedDiscountPercent
+  const rawDiscount =
+    form.discountType === 'percent'
+      ? subtotal * (safeDiscountPercent / 100)
+      : form.discountType === 'value'
+        ? safeDiscountValue
+        : 0
+  const appliedDiscount = Math.min(rawDiscount, maxDiscountValue)
+  const total = Math.max(subtotal - appliedDiscount, 0)
+  const appliedDiscountPercent = subtotal > 0 ? (appliedDiscount / subtotal) * 100 : 0
   const quoteSummary = useMemo(() => {
     return data.orcamentos.reduce(
       (acc, quote) => {
@@ -126,9 +187,13 @@ const Orcamentos = () => {
       clientId: '',
       clientName: '',
       obraId: '',
+      paymentMethod: 'a_definir',
       validUntil: createDefaultDate(),
       status: 'rascunho',
       items: [createEmptyItem()],
+      discountType: '',
+      discountValue: '',
+      discountPercent: '',
     })
   }
 
@@ -165,22 +230,108 @@ const Orcamentos = () => {
       return 0
     }
     const variant = product.variants?.find((item) => item.id === variantId)
-    return variant?.priceOverride ?? product.price
+    if (product.hasVariants) {
+      return variant?.priceOverride ?? 0
+    }
+    return getBasePrice(product, variant)
+  }
+
+  const resolveLinearLength = (
+    product: (typeof data.produtos)[number],
+    customLength?: number,
+  ) => {
+    const length = customLength && customLength > 0 ? customLength : product.length ?? 1
+    return length > 0 ? length : 1
+  }
+
+  const resolveUnitPrice = (
+    product: (typeof data.produtos)[number] | null,
+    variant?: ProductVariant,
+    item?: QuoteItemForm,
+  ) => {
+    if (!product) {
+      return 0
+    }
+    const basePrice = getBasePrice(product, variant)
+    if (product.unit === 'metro_linear') {
+      const length = resolveLinearLength(product, item?.customLength)
+      return basePrice * length
+    }
+    return basePrice
+  }
+
+  const validatePriceRules = (
+    item: QuoteItemForm,
+    product: (typeof data.produtos)[number],
+    variant?: ProductVariant,
+  ) => {
+    const minPrice = getMinUnitPrice(product, variant, {
+      materials: data.materiais,
+      customLength: item.customLength,
+      customWidth: item.customWidth,
+    })
+    if (item.unitPrice < minPrice) {
+      return `Valor unitario abaixo do minimo sem prejuizo (${formatCurrency(minPrice)}).`
+    }
+    return null
   }
 
   const handleProductChange = (index: number, productId: string) => {
     const product = data.produtos.find((item) => item.id === productId)
+    if (product?.unit === 'metro_linear') {
+      const baseLength = product.length && product.length > 0 ? product.length : 1
+      updateItem(index, {
+        productId,
+        variantId: '',
+        customLength: baseLength,
+        customWidth: 0,
+        customHeight: 0,
+        unitPrice: resolveUnitPrice(product, undefined, {
+          ...form.items[index],
+          customLength: baseLength,
+        }),
+      })
+      return
+    }
+    if (product && !product.hasVariants) {
+      updateItem(index, {
+        productId,
+        variantId: '',
+        customLength: 0,
+        customWidth: 0,
+        customHeight: 0,
+        unitPrice: resolveUnitPrice(product, undefined, form.items[index]),
+      })
+      return
+    }
     const firstVariant = product?.variants?.[0]
     const nextVariantId = firstVariant?.id ?? 'custom'
     updateItem(index, {
       productId,
       variantId: nextVariantId,
       unitPrice: product ? resolveVariantPrice(product, nextVariantId) : 0,
+      customLength: 0,
+      customWidth: 0,
+      customHeight: 0,
     })
   }
 
   const handleVariantChange = (index: number, variantId: string) => {
     const product = data.produtos.find((item) => item.id === form.items[index]?.productId)
+    if (product?.unit === 'metro_linear') {
+      updateItem(index, {
+        variantId: '',
+        unitPrice: resolveUnitPrice(product, undefined, form.items[index]),
+      })
+      return
+    }
+    if (product && !product.hasVariants) {
+      updateItem(index, {
+        variantId: '',
+        unitPrice: resolveUnitPrice(product, undefined, form.items[index]),
+      })
+      return
+    }
     if (variantId === 'custom') {
       updateItem(index, {
         variantId,
@@ -191,6 +342,18 @@ const Orcamentos = () => {
     updateItem(index, {
       variantId,
       unitPrice: resolveVariantPrice(product ?? null, variantId),
+    })
+  }
+
+  const handleLinearLengthChange = (index: number, lengthCm: number) => {
+    const product = data.produtos.find((item) => item.id === form.items[index]?.productId)
+    const lengthMeters = toMeters(lengthCm)
+    updateItem(index, {
+      customLength: lengthMeters,
+      unitPrice: resolveUnitPrice(product ?? null, undefined, {
+        ...form.items[index],
+        customLength: lengthMeters,
+      }),
     })
   }
 
@@ -244,14 +407,49 @@ const Orcamentos = () => {
     }
 
     for (const item of form.items) {
-      if (!item.productId || !item.variantId) {
+      const product = data.produtos.find((current) => current.id === item.productId)
+      if (!item.productId || !product) {
+        setStatus('Selecione um produto valido para todos os itens.')
+        return
+      }
+      if (product.hasVariants && !item.variantId) {
         setStatus('Selecione produto e variacao para todos os itens.')
+        return
+      }
+      if (product.unit === 'metro_linear' && item.customLength <= 0) {
+        setStatus('Informe o comprimento em cm para os itens por metro linear.')
         return
       }
       if (item.quantity <= 0 || item.unitPrice <= 0) {
         setStatus('Quantidade e valor unitario devem ser maiores que zero.')
         return
       }
+    }
+    if (form.discountType === 'percent') {
+      if (Number.isNaN(parsedDiscountPercent)) {
+        setStatus('Informe um desconto percentual valido.')
+        return
+      }
+      if (parsedDiscountPercent < 0 || parsedDiscountPercent > 100) {
+        setStatus('O desconto percentual deve ficar entre 0 e 100.')
+        return
+      }
+    }
+    if (form.discountType === 'value') {
+      if (Number.isNaN(parsedDiscountValue)) {
+        setStatus('Informe um desconto em dinheiro valido.')
+        return
+      }
+      if (parsedDiscountValue < 0) {
+        setStatus('O desconto nao pode ser negativo.')
+        return
+      }
+    }
+    if (rawDiscount > maxDiscountValue + 0.01) {
+      setStatus(
+        `Desconto acima do maximo sugerido (${formatCurrency(maxDiscountValue)}).`,
+      )
+      return
     }
 
     const payload = dataService.getAll()
@@ -270,14 +468,25 @@ const Orcamentos = () => {
       : undefined
 
     const items = [] as Quote['items']
-    for (const item of form.items) {
+    for (let index = 0; index < form.items.length; index += 1) {
+      const item = form.items[index]
       const productIndex = payload.produtos.findIndex((product) => product.id === item.productId)
       if (productIndex < 0) {
         setStatus('Produto nao encontrado.')
         return
       }
+      const product = payload.produtos[productIndex]
+      const variant =
+        product.unit === 'metro_linear'
+          ? undefined
+          : product.variants?.find((entry) => entry.id === item.variantId)
+      const priceRuleError = validatePriceRules(item, product, variant)
+      if (priceRuleError) {
+        setStatus(`Item ${index + 1}: ${priceRuleError}`)
+        return
+      }
       let variantId = item.variantId
-      if (item.variantId === 'custom') {
+      if (product.hasVariants && item.variantId === 'custom') {
         const result = ensureCustomVariant(payload.produtos[productIndex], item)
         if (result.error) {
           setStatus(result.error)
@@ -287,18 +496,27 @@ const Orcamentos = () => {
       }
       items.push({
         productId: item.productId,
-        variantId,
+        variantId: product.unit === 'metro_linear' ? undefined : variantId || undefined,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        customLength: item.customLength > 0 ? item.customLength : undefined,
+        customWidth: item.customWidth > 0 ? item.customWidth : undefined,
+        customHeight: item.customHeight > 0 ? item.customHeight : undefined,
       })
     }
 
+    const discountType = form.discountType || undefined
+    const normalizedPayment = getPaymentMethodId(form.paymentMethod) || form.paymentMethod
     const quote: Quote = {
       id: existingQuote?.id ?? createId(),
       clientId: resolvedClient.id,
       obraId: form.clientId ? form.obraId || undefined : undefined,
       items,
       total,
+      discountType,
+      discountValue: discountType ? appliedDiscount : undefined,
+      discountPercent: discountType ? appliedDiscountPercent : undefined,
+      paymentMethod: normalizedPayment || undefined,
       validUntil: form.validUntil,
       status: form.status,
       createdAt: existingQuote?.createdAt ?? new Date().toISOString(),
@@ -316,7 +534,10 @@ const Orcamentos = () => {
           obraId: quote.obraId,
           items: quote.items,
           total: quote.total,
-          paymentMethod: 'a definir',
+          paymentMethod: quote.paymentMethod ?? 'a_definir',
+          discountType: quote.discountType,
+          discountValue: quote.discountValue,
+          discountPercent: quote.discountPercent,
           status: 'aguardando_pagamento',
           createdAt: new Date().toISOString(),
           sourceQuoteId: quote.id,
@@ -360,10 +581,28 @@ const Orcamentos = () => {
       ?.variants?.find((variant) => variant.id === variantId)
 
   const getProductUnit = (productId: string) =>
-    data.produtos.find((product) => product.id === productId)?.unit ?? ''
+    getProductUnitLabel(data.produtos.find((product) => product.id === productId)?.unit)
+
+  const formatLengthLabel = (meters?: number) => {
+    if (!meters || meters <= 0) {
+      return ''
+    }
+    const cm = toCentimeters(meters)
+    return cm % 1 === 0 ? `${cm.toFixed(0)} cm` : `${cm.toFixed(1)} cm`
+  }
 
   const getProductNameLabel = (item: Quote['items'][number]) => {
+    const product = data.produtos.find((entry) => entry.id === item.productId)
     const productName = getProductName(item.productId)
+    if (product?.unit === 'metro_linear') {
+      const lengthLabel = formatLengthLabel(
+        item.customLength ?? product.length ?? 0,
+      )
+      return lengthLabel ? `${productName} - ${lengthLabel}` : productName
+    }
+    if (product && !product.hasVariants) {
+      return productName
+    }
     const variant = getVariant(item.productId, item.variantId)
     if (!variant) {
       return productName
@@ -372,6 +611,7 @@ const Orcamentos = () => {
   }
 
   const printQuote = printId ? data.orcamentos.find((quote) => quote.id === printId) : null
+  const printDiscountInfo = printQuote ? getQuoteDiscountInfo(printQuote) : null
   const company = data.empresa
   const companyName = company.tradeName?.trim() || company.name || 'Umoya'
   const companyLegal =
@@ -414,26 +654,72 @@ const Orcamentos = () => {
     return `${firstName} +${items.length - 1}`
   }
 
+  const formatPercent = (value: number) =>
+    Number.isFinite(value) ? (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)) : '0'
+
+  const getQuoteDiscountInfo = (quote: Quote) => {
+    const subtotalValue = quote.items.reduce(
+      (acc, item) => acc + item.quantity * item.unitPrice,
+      0,
+    )
+    const valueFromPercent = quote.discountPercent
+      ? subtotalValue * (quote.discountPercent / 100)
+      : 0
+    const discountValue = quote.discountValue ?? valueFromPercent
+    const discountPercent =
+      quote.discountPercent ??
+      (subtotalValue > 0 ? (discountValue / subtotalValue) * 100 : 0)
+    return { subtotalValue, discountValue, discountPercent }
+  }
+
   const handleEdit = (quote: Quote) => {
     setEditingId(quote.id)
+    const inferredDiscountType =
+      quote.discountType ??
+      (quote.discountPercent ? 'percent' : quote.discountValue ? 'value' : '')
     setForm({
       clientId: quote.clientId,
       clientName: getClientName(quote.clientId),
       obraId: quote.obraId ?? '',
+      paymentMethod:
+        getPaymentMethodId(quote.paymentMethod) || quote.paymentMethod || 'a_definir',
       validUntil: quote.validUntil,
       status: quote.status,
       items: quote.items.map((item) => {
+        const product = data.produtos.find((entry) => entry.id === item.productId)
         const variant = item.variantId ? getVariant(item.productId, item.variantId) : undefined
+        const isLinear = product?.unit === 'metro_linear'
+        const customLength =
+          item.customLength ?? variant?.length ?? product?.length ?? 0
+        const customWidth =
+          item.customWidth ?? variant?.width ?? product?.width ?? 0
+        const customHeight =
+          item.customHeight ?? variant?.height ?? product?.height ?? 0
+        const unitPrice = isLinear
+          ? resolveUnitPrice(product ?? null, undefined, {
+              productId: item.productId,
+              variantId: '',
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              customLength,
+              customWidth,
+              customHeight,
+            })
+          : item.unitPrice
         return {
           productId: item.productId,
-          variantId: item.variantId ?? '',
+          variantId: isLinear ? '' : item.variantId ?? '',
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          customLength: variant?.length ?? 0,
-          customWidth: variant?.width ?? 0,
-          customHeight: variant?.height ?? 0,
+          unitPrice,
+          customLength,
+          customWidth,
+          customHeight,
         }
       }),
+      discountType: inferredDiscountType as QuoteForm['discountType'],
+      discountValue: quote.discountValue !== undefined ? String(quote.discountValue) : '',
+      discountPercent:
+        quote.discountPercent !== undefined ? String(quote.discountPercent) : '',
     })
     setStatus(null)
     setIsModalOpen(true)
@@ -472,7 +758,10 @@ const Orcamentos = () => {
           obraId: target.obraId,
           items: target.items,
           total: target.total,
-          paymentMethod: 'a definir',
+          paymentMethod: target.paymentMethod ?? 'a_definir',
+          discountType: target.discountType,
+          discountValue: target.discountValue,
+          discountPercent: target.discountPercent,
           status: 'aguardando_pagamento',
           createdAt: new Date().toISOString(),
           sourceQuoteId: target.id,
@@ -617,6 +906,19 @@ const Orcamentos = () => {
           {form.items.map((item, index) => {
             const itemProduct = data.produtos.find((product) => product.id === item.productId)
             const itemVariants = itemProduct?.variants ?? []
+            const isLinear = itemProduct?.unit === 'metro_linear'
+            const usesVariants = !!itemProduct?.hasVariants && !isLinear
+            const itemVariant = usesVariants
+              ? itemVariants.find((variant) => variant.id === item.variantId)
+              : undefined
+            const basePrice = itemProduct ? resolveUnitPrice(itemProduct, itemVariant, item) : 0
+            const minPrice = itemProduct
+              ? getMinUnitPrice(itemProduct, itemVariant, {
+                  materials: data.materiais,
+                  customLength: item.customLength,
+                  customWidth: item.customWidth,
+                })
+              : 0
             return (
               <div key={`item-${index}`} className="form__section">
                 <div className="form__row">
@@ -639,30 +941,60 @@ const Orcamentos = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`quote-variant-${index}`}>
-                      Variacao
-                    </label>
-                    <select
-                      id={`quote-variant-${index}`}
-                      className="form__input"
-                      value={item.variantId}
-                      onChange={(event) => handleVariantChange(index, event.target.value)}
-                      disabled={!item.productId}
-                    >
-                      <option value="">Selecione uma variacao</option>
-                      {itemVariants.map((variant) => (
-                        <option key={variant.id} value={variant.id}>
-                          {variant.name}
-                          {variant.isCustom ? ' (Custom)' : ''}
-                        </option>
-                      ))}
-                      <option value="custom">Personalizada</option>
-                    </select>
-                  </div>
+                  {isLinear ? (
+                    <div className="form__group">
+                      <label className="form__label" htmlFor={`quote-length-${index}`}>
+                        Comprimento (cm)
+                      </label>
+                      <input
+                        id={`quote-length-${index}`}
+                        className="form__input"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={toCentimeters(item.customLength)}
+                        onChange={(event) =>
+                          handleLinearLengthChange(index, Number(event.target.value))
+                        }
+                        disabled={!item.productId}
+                      />
+                    </div>
+                  ) : usesVariants ? (
+                    <div className="form__group">
+                      <label className="form__label" htmlFor={`quote-variant-${index}`}>
+                        Variacao
+                      </label>
+                      <select
+                        id={`quote-variant-${index}`}
+                        className="form__input"
+                        value={item.variantId}
+                        onChange={(event) => handleVariantChange(index, event.target.value)}
+                        disabled={!item.productId}
+                      >
+                        <option value="">Selecione uma variacao</option>
+                        {itemVariants.map((variant) => (
+                          <option key={variant.id} value={variant.id}>
+                            {variant.name}
+                            {variant.isCustom ? ' (Custom)' : ''}
+                          </option>
+                        ))}
+                        <option value="custom">Personalizada</option>
+                      </select>
+                    </div>
+                  ) : (
+                    <div className="form__group">
+                      <label className="form__label">Variacao</label>
+                      <input
+                        className="form__input"
+                        type="text"
+                        value="Produto sem variacoes"
+                        disabled
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {item.variantId === 'custom' && (
+                {usesVariants && item.variantId === 'custom' && (
                   <div className="form__row">
                     <div className="form__group">
                       <label className="form__label" htmlFor={`quote-length-${index}`}>
@@ -745,7 +1077,14 @@ const Orcamentos = () => {
                       onChange={(event) =>
                         updateItem(index, { unitPrice: Number(event.target.value) })
                       }
+                      disabled={isLinear}
                     />
+                    {itemProduct && (
+                      <p className="form__help">
+                        Base {formatCurrency(basePrice)} | Min sem prejuizo{' '}
+                        {formatCurrency(minPrice)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -767,6 +1106,97 @@ const Orcamentos = () => {
           <button className="button button--ghost" type="button" onClick={addItem}>
             Adicionar item
           </button>
+
+          <div className="form__section">
+            <div className="form__row">
+              <div className="form__group">
+                <label className="form__label" htmlFor="quote-discount-type">
+                  Desconto
+                </label>
+                <select
+                  id="quote-discount-type"
+                  className="form__input"
+                  value={form.discountType}
+                  onChange={(event) =>
+                    updateForm({ discountType: event.target.value as QuoteForm['discountType'] })
+                  }
+                >
+                  <option value="">Sem desconto</option>
+                  <option value="percent">Percentual</option>
+                  <option value="value">Valor</option>
+                </select>
+              </div>
+              {form.discountType === 'percent' && (
+                <div className="form__group">
+                  <label className="form__label" htmlFor="quote-discount-percent">
+                    Percentual
+                  </label>
+                  <input
+                    id="quote-discount-percent"
+                    className="form__input"
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={form.discountPercent}
+                    onChange={(event) => updateForm({ discountPercent: event.target.value })}
+                    placeholder={`Max ${maxDiscountPercent.toFixed(1)}%`}
+                  />
+                </div>
+              )}
+              {form.discountType === 'value' && (
+                <div className="form__group">
+                  <label className="form__label" htmlFor="quote-discount-value">
+                    Valor
+                  </label>
+                  <input
+                    id="quote-discount-value"
+                    className="form__input"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.discountValue}
+                    onChange={(event) => updateForm({ discountValue: event.target.value })}
+                    placeholder={`Max ${formatCurrency(maxDiscountValue)}`}
+                  />
+                </div>
+              )}
+            </div>
+            {subtotal > 0 ? (
+              <p className="form__help">
+                Desconto maximo sugerido: {formatCurrency(maxDiscountValue)} (
+                {maxDiscountPercent.toFixed(1)}%).
+              </p>
+            ) : (
+              <p className="form__help">Preencha os itens para calcular o desconto sugerido.</p>
+            )}
+          </div>
+
+          <div className="form__group">
+            <label className="form__label" htmlFor="quote-payment">
+              Forma de pagamento
+            </label>
+            <select
+              id="quote-payment"
+              className="form__input"
+              value={form.paymentMethod}
+              onChange={(event) => updateForm({ paymentMethod: event.target.value })}
+            >
+              {form.paymentMethod &&
+                !PAYMENT_METHODS.some((method) => method.id === form.paymentMethod) && (
+                  <option value={form.paymentMethod}>
+                    Outro ({form.paymentMethod})
+                  </option>
+                )}
+              {PAYMENT_METHODS.map((method) => (
+                <option key={method.id} value={method.id}>
+                  {method.label}
+                </option>
+              ))}
+            </select>
+            <p className="form__help">
+              O pagamento escolhido direciona o caixa correto quando o pedido for pago.
+            </p>
+          </div>
 
           <div className="form__row">
             <div className="form__group">
@@ -800,8 +1230,19 @@ const Orcamentos = () => {
             </div>
           </div>
 
+          <div className="form__row">
+            <div className="form__summary">
+              <span>Subtotal</span>
+              <strong>{formatCurrency(subtotal)}</strong>
+            </div>
+            <div className="form__summary">
+              <span>Desconto aplicado</span>
+              <strong>{formatCurrency(appliedDiscount)}</strong>
+            </div>
+          </div>
+
           <div className="form__summary">
-            <span>Total</span>
+            <span>Total do orcamento</span>
             <strong>{formatCurrency(total)}</strong>
           </div>
 
@@ -837,6 +1278,8 @@ const Orcamentos = () => {
                 <tr>
                   <th>Cliente</th>
                   <th>Itens</th>
+                  <th>Pagamento</th>
+                  <th>Desconto</th>
                   <th>Total</th>
                   <th>Validade</th>
                   <th>Status</th>
@@ -847,60 +1290,61 @@ const Orcamentos = () => {
               <tbody>
                 {quotes.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="table__empty">
+                    <td colSpan={9} className="table__empty">
                       Nenhum orcamento cadastrado ainda.
                     </td>
                   </tr>
                 )}
-                {quotes.map((quote) => (
-                  <tr key={quote.id}>
-                    <td>{getClientName(quote.clientId)}</td>
-                    <td>{formatItemsSummary(quote.items)}</td>
-                    <td>{formatCurrency(quote.total)}</td>
-                    <td>{formatDateShort(quote.validUntil)}</td>
-                    <td>
-                      <select
-                        className="table__select"
-                        value={quote.status}
-                        onChange={(event) =>
-                          handleInlineStatusChange(quote, event.target.value as Quote['status'])
-                        }
-                      >
-                        {Object.entries(statusLabels).map(([key, label]) => (
-                          <option key={key} value={key}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td>{quote.convertedOrderId ? `#${quote.convertedOrderId.slice(0, 6)}` : '-'}</td>
-                    <td>
-                      <div className="table__actions">
-                        <button
-                          className="button button--ghost"
-                          type="button"
-                          onClick={() => handleEdit(quote)}
+                {quotes.map((quote) => {
+                  const discountInfo = getQuoteDiscountInfo(quote)
+                  return (
+                    <tr key={quote.id}>
+                      <td>{getClientName(quote.clientId)}</td>
+                      <td>{formatItemsSummary(quote.items)}</td>
+                      <td>{getPaymentMethodLabel(quote.paymentMethod)}</td>
+                      <td>
+                        {discountInfo.discountValue > 0
+                          ? `${formatCurrency(discountInfo.discountValue)} (${formatPercent(
+                              discountInfo.discountPercent,
+                            )}%)`
+                          : '-'}
+                      </td>
+                      <td>{formatCurrency(quote.total)}</td>
+                      <td>{formatDateShort(quote.validUntil)}</td>
+                      <td>
+                        <select
+                          className="table__select"
+                          value={quote.status}
+                          onChange={(event) =>
+                            handleInlineStatusChange(quote, event.target.value as Quote['status'])
+                          }
                         >
-                          Editar
-                        </button>
-                        <button
-                          className="button button--ghost"
-                          type="button"
-                          onClick={() => handlePrint(quote)}
-                        >
-                          Imprimir
-                        </button>
-                        <button
-                          className="button button--danger"
-                          type="button"
-                          onClick={() => setDeleteId(quote.id)}
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {Object.entries(statusLabels).map(([key, label]) => (
+                            <option key={key} value={key}>
+                              {label}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        {quote.convertedOrderId ? `#${quote.convertedOrderId.slice(0, 6)}` : '-'}
+                      </td>
+                      <td className="table__actions">
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEdit(quote) },
+                            { label: 'Imprimir', onClick: () => handlePrint(quote) },
+                            {
+                              label: 'Excluir',
+                              onClick: () => setDeleteId(quote.id),
+                              variant: 'danger',
+                            },
+                          ]}
+                        />
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -938,6 +1382,9 @@ const Orcamentos = () => {
               <span>Emissao: {formatDateShort(printQuote.createdAt)}</span>
               <span>Validade: {formatDateShort(printQuote.validUntil)}</span>
               <span>Status: {statusLabels[printQuote.status]}</span>
+              {printQuote.paymentMethod && (
+                <span>Pagamento: {getPaymentMethodLabel(printQuote.paymentMethod)}</span>
+              )}
             </div>
           </header>
 
@@ -976,8 +1423,24 @@ const Orcamentos = () => {
           </table>
 
           <div className="quote-print__total">
-            <span>Total do orcamento</span>
-            <strong>{formatCurrency(printQuote.total)}</strong>
+            {printDiscountInfo && (
+              <div className="quote-print__total-row">
+                <span>Subtotal</span>
+                <strong>{formatCurrency(printDiscountInfo.subtotalValue)}</strong>
+              </div>
+            )}
+            {printDiscountInfo && printDiscountInfo.discountValue > 0 && (
+              <div className="quote-print__total-row">
+                <span>
+                  Desconto ({formatPercent(printDiscountInfo.discountPercent)}%)
+                </span>
+                <strong>-{formatCurrency(printDiscountInfo.discountValue)}</strong>
+              </div>
+            )}
+            <div className="quote-print__total-row quote-print__total-main">
+              <span>Total do orcamento</span>
+              <strong>{formatCurrency(printQuote.total)}</strong>
+            </div>
           </div>
 
           <section className="quote-print__signatures">

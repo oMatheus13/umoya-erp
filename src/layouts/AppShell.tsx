@@ -10,7 +10,12 @@ type AppShellProps = {
   breadcrumbs: string[]
   sidebarMode: SidebarMode
   userName?: string
+  userRoleLabel?: string
+  userAvatarUrl?: string
+  userAvatarColor?: string
   onLogout?: () => void
+  canView?: (pageId: string) => boolean
+  canEdit?: boolean
 }
 
 const AppShell = ({
@@ -20,12 +25,24 @@ const AppShell = ({
   breadcrumbs,
   sidebarMode,
   userName,
+  userRoleLabel,
+  userAvatarUrl,
+  userAvatarColor,
   onLogout,
+  canView,
+  canEdit,
 }: AppShellProps) => {
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isSensitiveHidden, setIsSensitiveHidden] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+    return window.localStorage.getItem('umoya_sensitive_hidden') === 'true'
+  })
   const isCollapsed = sidebarMode !== 'expanded'
   const isHoverMode = sidebarMode === 'hover'
+  const isReadOnly = canEdit === false
 
   const appClassName = useMemo(() => {
     const classes = ['app']
@@ -35,11 +52,14 @@ const AppShell = ({
     if (isHoverMode && isSidebarHovered) {
       classes.push('app--sidebar-hover')
     }
+    if (isReadOnly) {
+      classes.push('app--readonly')
+    }
     if (isMobileSidebarOpen) {
       classes.push('app--mobile-sidebar-open')
     }
     return classes.join(' ')
-  }, [isCollapsed, isHoverMode, isSidebarHovered, isMobileSidebarOpen])
+  }, [isCollapsed, isHoverMode, isReadOnly, isSidebarHovered, isMobileSidebarOpen])
 
   const handleHoverChange = (next: boolean) => {
     if (!isHoverMode) {
@@ -60,6 +80,53 @@ const AppShell = ({
     setIsSidebarHovered(sidebar ? sidebar.matches(':hover') : false)
   }, [sidebarMode])
 
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.dataset.sensitiveHidden = isSensitiveHidden ? 'true' : 'false'
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(
+        'umoya_sensitive_hidden',
+        isSensitiveHidden ? 'true' : 'false',
+      )
+    }
+  }, [isSensitiveHidden])
+
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return
+    }
+    const container = document.querySelector('.app__content')
+    if (!container) {
+      return
+    }
+    const clear = () => {
+      container.querySelectorAll('.sensitive-blur').forEach((node) => {
+        node.classList.remove('sensitive-blur')
+      })
+    }
+    if (!isSensitiveHidden) {
+      clear()
+      return
+    }
+    const mark = () => {
+      clear()
+      const nodes = container.querySelectorAll<HTMLElement>(
+        'td, th, span, strong, p, div, li, small, label',
+      )
+      nodes.forEach((node) => {
+        if (node.children.length > 0) {
+          return
+        }
+        if (node.textContent?.includes('R$')) {
+          node.classList.add('sensitive-blur')
+        }
+      })
+    }
+    const id = window.requestAnimationFrame(mark)
+    return () => window.cancelAnimationFrame(id)
+  }, [isSensitiveHidden, activePage])
+
   const handleNavigate = (page: string) => {
     onNavigate(page)
     setIsMobileSidebarOpen(false)
@@ -71,6 +138,7 @@ const AppShell = ({
         activePage={activePage}
         onNavigate={handleNavigate}
         onHoverChange={handleHoverChange}
+        canView={canView}
       />
       {isMobileSidebarOpen && (
         <button
@@ -84,11 +152,20 @@ const AppShell = ({
         <Topbar
           breadcrumbs={breadcrumbs}
           userName={userName}
+          userRoleLabel={userRoleLabel}
+          userAvatarUrl={userAvatarUrl}
+          userAvatarColor={userAvatarColor}
           onLogout={onLogout}
           onMenuToggle={() => setIsMobileSidebarOpen((prev) => !prev)}
           isMenuOpen={isMobileSidebarOpen}
+          readOnly={isReadOnly}
+          isSensitiveHidden={isSensitiveHidden}
+          onSensitiveToggle={() => setIsSensitiveHidden((prev) => !prev)}
+          onProfileOpen={() => onNavigate('perfil')}
         />
-        <div className="app__content">{children}</div>
+        <div className="app__content" data-readonly={isReadOnly ? 'true' : undefined}>
+          {children}
+        </div>
       </main>
     </div>
   )

@@ -2,8 +2,8 @@
   background: var(--color-true-white);
   border-radius: var(--border-radius-lg);
   box-shadow: var(--box-shadow-sm);
-  overflow: hidden;
   overflow-x: auto;
+  overflow-y: visible;
 }
 
 .table {
@@ -55,4 +55,21 @@
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 720px) {
+  .table-card {
+    border-radius: var(--border-radius-md);
+  }
+
+  .table th,
+  .table td {
+    padding: 10px 12px;
+  }
+
+  .table th {
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+  }
 }
