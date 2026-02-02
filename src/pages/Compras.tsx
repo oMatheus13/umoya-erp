@@ -624,7 +624,7 @@ const Compras = () => {
                       <div className="form__group">
                         <label className="form__label" htmlFor={`purchase-quantity-${item.id}`}>
                           Quantidade
-                        </label>
+                        </label> 
                         <input
                           id={`purchase-quantity-${item.id}`}
                           className="form__input"
