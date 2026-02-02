@@ -132,21 +132,27 @@ const ConsumoProdutos = () => {
       }
       return (product.materialUsages ?? []).length > 0
     })
-    const batched = productionProducts.flatMap((product) => {
+    const batched = productionProducts.reduce((acc, product) => {
       if (product.hasVariants) {
-        return (product.variants ?? []).filter(
-          (variant) =>
-            variant.batchRecipe &&
-            variant.batchRecipe.items.length > 0 &&
-            variant.batchRecipe.yieldQuantity > 0,
+        return (
+          acc +
+          (product.variants ?? []).filter(
+            (variant) =>
+              variant.batchRecipe &&
+              variant.batchRecipe.items.length > 0 &&
+              variant.batchRecipe.yieldQuantity > 0,
+          ).length
         )
       }
-      return product.batchRecipe &&
+      if (
+        product.batchRecipe &&
         product.batchRecipe.items.length > 0 &&
         product.batchRecipe.yieldQuantity > 0
-        ? [product.batchRecipe]
-        : []
-    })
+      ) {
+        return acc + 1
+      }
+      return acc
+    }, 0)
     const totalUsages = productionProducts.reduce((acc, product) => {
       if (product.hasVariants) {
         return (
@@ -164,7 +170,7 @@ const ConsumoProdutos = () => {
       configured: configured.length,
       pending: productionProducts.length - configured.length,
       totalUsages,
-      batched: batched.length,
+      batched,
     }
   }, [productionProducts])
 
@@ -481,10 +487,10 @@ const ConsumoProdutos = () => {
         <div className="consumo-produtos__headline">
           <span className="consumo-produtos__eyebrow">Producao</span>
           <h1 className="consumo-produtos__title">Consumo por produto</h1>
-            <p className="consumo-produtos__subtitle">
-              Defina a quantidade de materia-prima usada por unidade de venda.
-              O sistema converte baldes/carrinhos/sacos automaticamente.
-            </p>
+          <p className="consumo-produtos__subtitle">
+            Defina a quantidade de materia-prima usada por unidade de venda. O sistema
+            converte baldes/carrinhos/sacos automaticamente.
+          </p>
         </div>
       </header>
 

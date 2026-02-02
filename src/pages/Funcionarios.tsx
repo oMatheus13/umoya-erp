@@ -372,7 +372,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     ) {
       const linkedUser = payload.usuarios.find((user) => user.employeeId === next.id)
       if (linkedUser) {
-        const remoteResult = await updateRemoteUserActive(linkedUser.id, next.active)
+        const remoteResult = await updateRemoteUserActive(linkedUser.id, next.active ?? true)
         if (remoteResult.error) {
           accessMessage = ` Acesso atualizado localmente. ${remoteResult.error}`
         }

@@ -5,7 +5,6 @@ import type {
   Product,
   ProductMaterialUsage,
   ProductUnit,
-  ProductVariant,
   Quote,
   Receipt,
   MaterialKind,
@@ -86,7 +85,7 @@ const normalizeVariants = (
     if (rawUsages !== variant.materialUsages) {
       markChanged()
     }
-    let materialUsages = rawUsages.map((usage) => {
+    let materialUsages: ProductMaterialUsage[] = rawUsages.map((usage) => {
       const nextId = usage.id || createId()
       if (nextId !== usage.id) {
         markChanged()
@@ -291,7 +290,7 @@ const normalizeData = (data: ERPData) => {
     if (rawUsages !== product.materialUsages) {
       changed = true
     }
-    let materialUsages = rawUsages.map((usage) => {
+    let materialUsages: ProductMaterialUsage[] = rawUsages.map((usage) => {
       const nextId = usage.id || createId()
       if (nextId !== usage.id) {
         changed = true

@@ -17,7 +17,6 @@ const Estoque = () => {
         }))
         const hasLinearVariants =
           product.unit === 'metro_linear' && (product.variants ?? []).length > 0
-        const shouldUseProductStock = !product.hasVariants && !hasLinearVariants
         if (product.hasVariants || hasLinearVariants) {
           return entries
         }

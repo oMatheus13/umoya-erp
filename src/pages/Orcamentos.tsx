@@ -657,7 +657,7 @@ const Orcamentos = () => {
   const formatPercent = (value: number) =>
     Number.isFinite(value) ? (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)) : '0'
 
-  const getQuoteDiscountInfo = (quote: Quote) => {
+  function getQuoteDiscountInfo(quote: Quote) {
     const subtotalValue = quote.items.reduce(
       (acc, item) => acc + item.quantity * item.unitPrice,
       0,
