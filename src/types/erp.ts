@@ -66,6 +66,8 @@ export type MaterialUsageUnit =
   | 'metro'
   | 'unidade'
 
+export type FulfillmentMode = 'producao' | 'estoque'
+
 export type ProductMaterialUsage = {
   id: UUID
   materialId: UUID
@@ -209,6 +211,7 @@ export type Quote = {
   obraId?: UUID
   items: QuoteItem[]
   total: number
+  fulfillment?: FulfillmentMode
   discountType?: 'percent' | 'value'
   discountValue?: number
   discountPercent?: number
@@ -236,6 +239,7 @@ export type Order = {
   items: OrderItem[]
   total: number
   paymentMethod: string
+  fulfillment?: FulfillmentMode
   discountType?: 'percent' | 'value'
   discountValue?: number
   discountPercent?: number

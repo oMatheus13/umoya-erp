@@ -213,6 +213,21 @@
 .action-menu {
   position: relative;
   display: inline-flex;
+  align-items: center;
+}
+
+.action-menu__select {
+  min-width: 120px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 17, 22, 0.18);
+  background: var(--color-true-white);
+  color: var(--color-ink);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  padding: 4px 28px 4px 10px;
+  line-height: 1.2;
+  box-sizing: border-box;
 }
 
 .action-menu__trigger {
@@ -245,6 +260,11 @@
   gap: 4px;
   padding: 6px;
   z-index: var(--z-index-tooltip);
+}
+
+.action-menu__list--up {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 .action-menu__item {

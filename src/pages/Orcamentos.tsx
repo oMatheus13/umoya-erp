@@ -6,7 +6,7 @@ import logotipo from '../assets/brand/logotipo.svg'
 import { PAYMENT_METHODS, getPaymentMethodId, getPaymentMethodLabel } from '../data/paymentMethods'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
-import type { Client, ProductVariant, Quote } from '../types/erp'
+import type { Client, FulfillmentMode, ProductVariant, Quote } from '../types/erp'
 import { formatCurrency, formatDateShort } from '../utils/format'
 import { createId } from '../utils/ids'
 import { getBasePrice, getMaxDiscountSummary, getMinUnitPrice } from '../utils/pricing'
@@ -29,6 +29,7 @@ type QuoteForm = {
   paymentMethod: string
   validUntil: string
   status: Quote['status']
+  fulfillment: FulfillmentMode
   items: QuoteItemForm[]
   discountType: '' | 'percent' | 'value'
   discountValue: string
@@ -78,6 +79,7 @@ const Orcamentos = () => {
     paymentMethod: 'a_definir',
     validUntil: createDefaultDate(),
     status: 'rascunho',
+    fulfillment: 'producao',
     items: [createEmptyItem()],
     discountType: '',
     discountValue: '',
@@ -190,6 +192,7 @@ const Orcamentos = () => {
       paymentMethod: 'a_definir',
       validUntil: createDefaultDate(),
       status: 'rascunho',
+      fulfillment: 'producao',
       items: [createEmptyItem()],
       discountType: '',
       discountValue: '',
@@ -519,6 +522,7 @@ const Orcamentos = () => {
       paymentMethod: normalizedPayment || undefined,
       validUntil: form.validUntil,
       status: form.status,
+      fulfillment: form.fulfillment,
       createdAt: existingQuote?.createdAt ?? new Date().toISOString(),
       convertedOrderId: existingQuote?.convertedOrderId,
     }
@@ -535,6 +539,7 @@ const Orcamentos = () => {
           items: quote.items,
           total: quote.total,
           paymentMethod: quote.paymentMethod ?? 'a_definir',
+          fulfillment: quote.fulfillment ?? 'producao',
           discountType: quote.discountType,
           discountValue: quote.discountValue,
           discountPercent: quote.discountPercent,
@@ -720,6 +725,7 @@ const Orcamentos = () => {
       discountValue: quote.discountValue !== undefined ? String(quote.discountValue) : '',
       discountPercent:
         quote.discountPercent !== undefined ? String(quote.discountPercent) : '',
+      fulfillment: quote.fulfillment ?? 'producao',
     })
     setStatus(null)
     setIsModalOpen(true)
@@ -759,6 +765,7 @@ const Orcamentos = () => {
           items: target.items,
           total: target.total,
           paymentMethod: target.paymentMethod ?? 'a_definir',
+          fulfillment: target.fulfillment ?? 'producao',
           discountType: target.discountType,
           discountValue: target.discountValue,
           discountPercent: target.discountPercent,
@@ -1199,6 +1206,25 @@ const Orcamentos = () => {
           </div>
 
           <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="quote-fulfillment">
+                Atendimento
+              </label>
+              <select
+                id="quote-fulfillment"
+                className="form__input"
+                value={form.fulfillment}
+                onChange={(event) =>
+                  updateForm({ fulfillment: event.target.value as FulfillmentMode })
+                }
+              >
+                <option value="producao">Enviar para producao</option>
+                <option value="estoque">Retirar do estoque</option>
+              </select>
+              <p className="form__help">
+                Defina se o pedido vira producao ou sai direto do estoque.
+              </p>
+            </div>
             <div className="form__group">
               <label className="form__label" htmlFor="quote-valid">
                 Validade

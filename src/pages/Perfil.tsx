@@ -4,6 +4,7 @@ import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
 import type { UserAccount } from '../types/erp'
 import { supabase } from '../services/supabaseClient'
+import { erpRemote } from '../services/erpRemote'
 
 const avatarOptions = [
   { value: 'lime', label: 'Lima', color: 'var(--color-lime)' },
@@ -128,6 +129,10 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       if (error) {
         message = 'Perfil salvo localmente, mas nao foi possivel atualizar o login.'
       }
+    }
+    const remoteResult = await erpRemote.upsertState(resolvedUser.id, dataService.getAll())
+    if (remoteResult.error) {
+      message = `${message} Falha ao salvar no servidor.`
     }
     setStatus(message)
   }

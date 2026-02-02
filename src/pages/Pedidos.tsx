@@ -5,7 +5,7 @@ import Modal from '../components/Modal'
 import { PAYMENT_METHODS, getPaymentCashboxId, getPaymentMethodId, getPaymentMethodLabel } from '../data/paymentMethods'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
-import type { Client, Order, ProductVariant, ProductionOrder } from '../types/erp'
+import type { Client, FulfillmentMode, Order, ProductVariant, ProductionOrder } from '../types/erp'
 import { formatCurrency } from '../utils/format'
 import { createId } from '../utils/ids'
 import { getBasePrice, getMaxDiscountSummary, getMinUnitPrice } from '../utils/pricing'
@@ -30,6 +30,7 @@ type OrderForm = {
   discountValue: string
   discountPercent: string
   status: Order['status']
+  fulfillment: FulfillmentMode
 }
 
 const statusLabels: Record<Order['status'], string> = {
@@ -71,6 +72,7 @@ const Pedidos = () => {
     discountValue: '',
     discountPercent: '',
     status: 'aguardando_pagamento',
+    fulfillment: 'producao',
   })
 
   const subtotal = useMemo(
@@ -242,6 +244,7 @@ const Pedidos = () => {
       discountValue: '',
       discountPercent: '',
       status: 'aguardando_pagamento',
+      fulfillment: 'producao',
     })
     setEditingId(null)
   }
@@ -452,7 +455,13 @@ const Pedidos = () => {
   }
 
   const applyOrderUpdate = (payload: ReturnType<typeof dataService.getAll>, nextOrder: Order, previousOrder?: Order) => {
-    const movingToProduction = nextOrder.status === 'em_producao' || nextOrder.status === 'entregue'
+    const fulfillment = nextOrder.fulfillment ?? 'producao'
+    if (fulfillment === 'estoque' && nextOrder.status === 'em_producao') {
+      return { error: 'Pedidos de estoque nao entram em producao.' }
+    }
+    const movingToProduction =
+      fulfillment !== 'estoque' &&
+      (nextOrder.status === 'em_producao' || nextOrder.status === 'entregue')
     if (movingToProduction && (!previousOrder || previousOrder.status === 'aguardando_pagamento')) {
       return { error: 'O pedido precisa estar pago antes de iniciar a producao.' }
     }
@@ -465,7 +474,11 @@ const Pedidos = () => {
     )
 
 
-    if (nextOrder.status === 'entregue' && previousOrder?.status !== 'entregue') {
+    if (
+      fulfillment !== 'estoque' &&
+      nextOrder.status === 'entregue' &&
+      previousOrder?.status !== 'entregue'
+    ) {
       const allFinalized =
         existingProductions.length > 0 &&
         existingProductions.every((production) => production.status === 'finalizada')
@@ -540,7 +553,12 @@ const Pedidos = () => {
       ]
     }
 
-    if (nextOrder.status === 'pago' || nextOrder.status === 'em_producao' || nextOrder.status === 'entregue') {
+    if (
+      fulfillment !== 'estoque' &&
+      (nextOrder.status === 'pago' ||
+        nextOrder.status === 'em_producao' ||
+        nextOrder.status === 'entregue')
+    ) {
       const existingByKey = new Map(
         existingProductions.map((production) => [
           buildProductionKey(production),
@@ -773,6 +791,7 @@ const Pedidos = () => {
       items,
       total,
       paymentMethod: normalizedPayment || 'a_definir',
+      fulfillment: form.fulfillment,
       discountType,
       discountValue: discountType ? appliedDiscount : undefined,
       discountPercent: discountType ? appliedDiscountPercent : undefined,
@@ -893,6 +912,7 @@ const Pedidos = () => {
       discountPercent:
         order.discountPercent !== undefined ? String(order.discountPercent) : '',
       status: order.status,
+      fulfillment: order.fulfillment ?? 'producao',
     })
     setStatus(null)
     setIsModalOpen(true)
@@ -1354,25 +1374,59 @@ const Pedidos = () => {
             </p>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="order-status">
-              Status
-            </label>
-            <select
-              id="order-status"
-              className="form__input"
-              value={form.status}
-              onChange={(event) => updateForm({ status: event.target.value as Order['status'] })}
-            >
-              {Object.entries(statusLabels).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <p className="form__help">
-              Status pago gera recibo e entrada automatica no financeiro.
-            </p>
+          <div className="form__row">
+            <div className="form__group">
+              <label className="form__label" htmlFor="order-fulfillment">
+                Atendimento
+              </label>
+              <select
+                id="order-fulfillment"
+                className="form__input"
+                value={form.fulfillment}
+                onChange={(event) => {
+                  const next = event.target.value as FulfillmentMode
+                  updateForm({
+                    fulfillment: next,
+                    status:
+                      next === 'estoque' && form.status === 'em_producao'
+                        ? 'pago'
+                        : form.status,
+                  })
+                }}
+              >
+                <option value="producao">Enviar para producao</option>
+                <option value="estoque">Retirar do estoque</option>
+              </select>
+              <p className="form__help">
+                Retirar do estoque pula a etapa de producao.
+              </p>
+            </div>
+            <div className="form__group">
+              <label className="form__label" htmlFor="order-status">
+                Status
+              </label>
+              <select
+                id="order-status"
+                className="form__input"
+                value={form.status}
+                onChange={(event) =>
+                  updateForm({ status: event.target.value as Order['status'] })
+                }
+              >
+                {Object.entries(statusLabels)
+                  .filter(([key]) =>
+                    form.fulfillment === 'estoque' ? key !== 'em_producao' : true,
+                  )
+                  .map(([key, label]) => (
+                    <option key={key} value={key}>
+                      {label}
+                    </option>
+                  ))}
+              </select>
+              <p className="form__help">
+                Status pago gera recibo e entrada automatica no financeiro.
+              </p>
+            </div>
           </div>
 
           <div className="form__row">
@@ -1459,11 +1513,15 @@ const Pedidos = () => {
                             handleInlineStatusChange(order, event.target.value as Order['status'])
                           }
                         >
-                          {Object.entries(statusLabels).map(([key, label]) => (
-                            <option key={key} value={key}>
-                              {label}
-                            </option>
-                          ))}
+                          {Object.entries(statusLabels)
+                            .filter(([key]) =>
+                              order.fulfillment === 'estoque' ? key !== 'em_producao' : true,
+                            )
+                            .map(([key, label]) => (
+                              <option key={key} value={key}>
+                                {label}
+                              </option>
+                            ))}
                         </select>
                       </td>
                       <td className="table__actions">
