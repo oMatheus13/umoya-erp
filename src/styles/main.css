@@ -1,31 +1,6 @@
 @import url("variables.css");
 @import url("fonts.css");
 @import url("reset.css");
-@import url("components/utilities.css");
-@import url("components/app-shell.css");
-@import url("components/buttons.css");
-@import url("components/forms.css");
-@import url("components/badges.css");
-@import url("components/tables.css");
-@import url("components/lists.css");
-@import url("components/ui.css");
-@import url("components/modal.css");
-@import url("components/action-menu.css");
-@import url("components/charts.css");
-@import url("modules/cards.css");
-@import url("pages/base.css");
-@import url("components/login.css");
-@import url("pages/placeholder.css");
-@import url("pages/data-tools.css");
-@import url("pages/tabelas.css");
-@import url("pages/usuarios-permissoes.css");
-@import url("pages/entregas.css");
-@import url("pages/producao.css");
-@import url("pages/bi.css");
-@import url("pages/orcamentos.css");
-@import url("pages/perfil.css");
-@import url("pages/relatorios.css");
-@import url("pages/funcionarios.css");
 
 html,
 body,
