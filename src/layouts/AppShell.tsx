@@ -162,6 +162,8 @@ const AppShell = ({
           isSensitiveHidden={isSensitiveHidden}
           onSensitiveToggle={() => setIsSensitiveHidden((prev) => !prev)}
           onProfileOpen={() => onNavigate('perfil')}
+          onNavigate={handleNavigate}
+          canView={canView}
         />
         <div className="app__content" data-readonly={isReadOnly ? 'true' : undefined}>
           {children}

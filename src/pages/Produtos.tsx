@@ -8,7 +8,7 @@ import type { Product, ProductUnit, ProductVariant } from '../types/erp'
 import { formatCurrency } from '../utils/format'
 import { createId } from '../utils/ids'
 import { getBaseCost, getLaborUnitCost, getMaxDiscountPercentForItem, getMinUnitPrice } from '../utils/pricing'
-import { PRODUCT_UNITS, getProductUnitLabel } from '../utils/units'
+import { getProductUnitLabel, getProductUnitOptions } from '../utils/units'
 
 type ProductForm = {
   name: string
@@ -564,7 +564,7 @@ const Produtos = () => {
       </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="produtos__summary">
+      <div className="produtos__summary summary-card">
         <article className="produtos__stat">
           <span className="produtos__stat-label">Total</span>
           <strong className="produtos__stat-value">{productSummary.total}</strong>
@@ -631,11 +631,11 @@ const Produtos = () => {
                 }
               >
                 <option value="">Selecione</option>
-                {PRODUCT_UNITS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
+              {getProductUnitOptions(data.tabelas).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
               </select>
             </div>
             </div>
@@ -914,7 +914,9 @@ const Produtos = () => {
                       <td>{usesVariants ? product.variants?.length ?? 0 : '-'}</td>
                       <td>
                         {displayedStock}
-                        {product.unit ? ` ${getProductUnitLabel(product.unit)}` : ''}
+                        {product.unit
+                          ? ` ${getProductUnitLabel(product.unit, data.tabelas)}`
+                          : ''}
                       </td>
                       <td>{displayPrice}</td>
                       <td>{displayCost}</td>

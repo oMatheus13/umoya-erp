@@ -1,8 +1,12 @@
+import type { PaymentTableEntry } from '../types/erp'
+
 export type PaymentMethod = {
   id: string
   label: string
   cashboxId: string
 }
+
+type PaymentMethodLike = PaymentMethod & { active?: boolean }
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
   { id: 'dinheiro', label: 'Dinheiro', cashboxId: 'caixa_fisico' },
@@ -17,22 +21,48 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
 
 const normalize = (value?: string) => value?.trim().toLowerCase() ?? ''
 
-export const resolvePaymentMethod = (value?: string) => {
+const toPaymentMethods = (entries?: PaymentTableEntry[]) => {
+  if (entries && entries.length > 0) {
+    return entries.map<PaymentMethodLike>((entry) => ({
+      id: entry.id,
+      label: entry.label,
+      cashboxId: entry.cashboxId ?? 'caixa_operacional',
+      active: entry.active,
+    }))
+  }
+  return PAYMENT_METHODS.map((method) => ({ ...method, active: true }))
+}
+
+const resolveFromList = (value: string, list: PaymentMethodLike[]) => {
   const normalized = normalize(value)
   if (!normalized) {
     return null
   }
   return (
-    PAYMENT_METHODS.find((method) => method.id === normalized) ??
-    PAYMENT_METHODS.find((method) => normalize(method.label) === normalized)
+    list.find((method) => method.id === normalized) ??
+    list.find((method) => normalize(method.label) === normalized) ??
+    null
   )
 }
 
-export const getPaymentMethodLabel = (value?: string) =>
-  resolvePaymentMethod(value)?.label ?? value?.trim() ?? 'A definir'
+export const resolvePaymentMethod = (value?: string, entries?: PaymentTableEntry[]) => {
+  const normalized = normalize(value)
+  if (!normalized) {
+    return null
+  }
+  const list = toPaymentMethods(entries).filter((method) => method.active !== false)
+  const fallback = PAYMENT_METHODS.map((method) => ({ ...method, active: true }))
+  return resolveFromList(normalized, list) ?? resolveFromList(normalized, fallback)
+}
 
-export const getPaymentCashboxId = (value?: string) =>
-  resolvePaymentMethod(value)?.cashboxId ?? 'caixa_operacional'
+export const getPaymentMethodLabel = (value?: string, entries?: PaymentTableEntry[]) =>
+  resolvePaymentMethod(value, entries)?.label ?? value?.trim() ?? 'A definir'
 
-export const getPaymentMethodId = (value?: string) =>
-  resolvePaymentMethod(value)?.id ?? ''
+export const getPaymentCashboxId = (value?: string, entries?: PaymentTableEntry[]) =>
+  resolvePaymentMethod(value, entries)?.cashboxId ?? 'caixa_operacional'
+
+export const getPaymentMethodId = (value?: string, entries?: PaymentTableEntry[]) =>
+  resolvePaymentMethod(value, entries)?.id ?? value?.trim() ?? ''
+
+export const getPaymentMethodOptions = (entries?: PaymentTableEntry[]) =>
+  toPaymentMethods(entries).filter((method) => method.active !== false)

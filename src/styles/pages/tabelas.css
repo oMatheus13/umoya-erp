@@ -1,0 +1,28 @@
+.tabelas__item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.tabelas__item:last-child {
+  border-bottom: none;
+}
+
+.tabelas__item-content {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.tabelas__meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.tabelas__item-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}

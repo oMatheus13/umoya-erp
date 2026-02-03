@@ -496,7 +496,7 @@ const ConsumoProdutos = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="consumo-produtos__summary">
+      <div className="consumo-produtos__summary summary-card">
         <article className="consumo-produtos__stat">
           <span className="consumo-produtos__stat-label">Produtos</span>
           <strong className="consumo-produtos__stat-value">{summary.total}</strong>
@@ -560,7 +560,7 @@ const ConsumoProdutos = () => {
                       </h3>
                       <p>
                         Rendimento: {recipe.yieldQuantity}{' '}
-                        {getProductUnitLabel(product.unit)}
+                        {getProductUnitLabel(product.unit, data.tabelas)}
                       </p>
                       <p>{recipe.items.length} materiais</p>
                     </div>
@@ -584,7 +584,7 @@ const ConsumoProdutos = () => {
                 <div>
                   <h3>{product.name}</h3>
                   <p>
-                    Rendimento: {recipe.yieldQuantity} {getProductUnitLabel(product.unit)}
+                    Rendimento: {recipe.yieldQuantity} {getProductUnitLabel(product.unit, data.tabelas)}
                   </p>
                   <p>{recipe.items.length} materiais</p>
                 </div>
@@ -660,7 +660,7 @@ const ConsumoProdutos = () => {
                 return (
                   <tr key={product.id}>
                     <td>{product.name}</td>
-                    <td>{getProductUnitLabel(product.unit)}</td>
+                    <td>{getProductUnitLabel(product.unit, data.tabelas)}</td>
                     <td>{usages.length}</td>
                     <td>
                       {usages.length === 0
@@ -743,7 +743,9 @@ const ConsumoProdutos = () => {
           {usageForm.map((item, index) => {
             const material = getMaterial(item.materialId)
             const unitLabel = getUsageUnitLabel(item.usageUnit)
-            const purchaseLabel = material ? getMaterialUnitLabel(material.unit) : '-'
+            const purchaseLabel = material
+              ? getMaterialUnitLabel(material.unit, data.tabelas)
+              : '-'
             const purchaseQuantity = material
               ? convertUsageToPurchaseQuantity(material, item.usageUnit, item.quantity)
               : 0
@@ -911,7 +913,7 @@ const ConsumoProdutos = () => {
             )}
             <div className="form__group">
               <label className="form__label" htmlFor="batch-yield">
-                Rendimento da batelada ({getProductUnitLabel(batchProduct?.unit)})
+                Rendimento da batelada ({getProductUnitLabel(batchProduct?.unit, data.tabelas)})
               </label>
               <input
                 id="batch-yield"
@@ -929,7 +931,9 @@ const ConsumoProdutos = () => {
           {batchItems.map((item, index) => {
             const material = getMaterial(item.materialId)
             const unitLabel = getUsageUnitLabel(item.usageUnit)
-            const purchaseLabel = material ? getMaterialUnitLabel(material.unit) : '-'
+            const purchaseLabel = material
+              ? getMaterialUnitLabel(material.unit, data.tabelas)
+              : '-'
             const purchaseQuantity = material
               ? convertUsageToPurchaseQuantity(material, item.usageUnit, item.quantity)
               : 0

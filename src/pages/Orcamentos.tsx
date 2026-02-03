@@ -3,7 +3,11 @@ import ActionMenu from '../components/ActionMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
 import logotipo from '../assets/brand/logotipo.svg'
-import { PAYMENT_METHODS, getPaymentMethodId, getPaymentMethodLabel } from '../data/paymentMethods'
+import {
+  getPaymentMethodId,
+  getPaymentMethodLabel,
+  getPaymentMethodOptions,
+} from '../data/paymentMethods'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
 import type { Client, FulfillmentMode, ProductVariant, Quote } from '../types/erp'
@@ -85,6 +89,11 @@ const Orcamentos = () => {
     discountValue: '',
     discountPercent: '',
   })
+
+  const paymentOptions = useMemo(
+    () => getPaymentMethodOptions(data.tabelas?.paymentMethods),
+    [data.tabelas?.paymentMethods],
+  )
 
   const subtotal = useMemo(
     () => form.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0),
@@ -509,7 +518,9 @@ const Orcamentos = () => {
     }
 
     const discountType = form.discountType || undefined
-    const normalizedPayment = getPaymentMethodId(form.paymentMethod) || form.paymentMethod
+    const normalizedPayment =
+      getPaymentMethodId(form.paymentMethod, data.tabelas?.paymentMethods) ||
+      form.paymentMethod
     const quote: Quote = {
       id: existingQuote?.id ?? createId(),
       clientId: resolvedClient.id,
@@ -560,7 +571,13 @@ const Orcamentos = () => {
       payload.orcamentos = [...payload.orcamentos, quote]
     }
 
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: existingQuote ? 'Orcamento atualizado' : 'Orcamento criado',
+        description: `${resolvedClient.name} · ${items.length} item(ns)`,
+      },
+    })
     refresh()
     setStatus(
       `${existingQuote ? 'Orcamento atualizado' : 'Orcamento salvo'} com sucesso.${conversionMessage}`,
@@ -586,7 +603,10 @@ const Orcamentos = () => {
       ?.variants?.find((variant) => variant.id === variantId)
 
   const getProductUnit = (productId: string) =>
-    getProductUnitLabel(data.produtos.find((product) => product.id === productId)?.unit)
+    getProductUnitLabel(
+      data.produtos.find((product) => product.id === productId)?.unit,
+      data.tabelas,
+    )
 
   const formatLengthLabel = (meters?: number) => {
     if (!meters || meters <= 0) {
@@ -687,7 +707,9 @@ const Orcamentos = () => {
       clientName: getClientName(quote.clientId),
       obraId: quote.obraId ?? '',
       paymentMethod:
-        getPaymentMethodId(quote.paymentMethod) || quote.paymentMethod || 'a_definir',
+        getPaymentMethodId(quote.paymentMethod, data.tabelas?.paymentMethods) ||
+        quote.paymentMethod ||
+        'a_definir',
       validUntil: quote.validUntil,
       status: quote.status,
       items: quote.items.map((item) => {
@@ -741,7 +763,13 @@ const Orcamentos = () => {
     }
     const payload = dataService.getAll()
     payload.orcamentos = payload.orcamentos.filter((quote) => quote.id !== deleteId)
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Orcamento excluido',
+        description: quoteToDelete ? getClientName(quoteToDelete.clientId) : undefined,
+      },
+    })
     refresh()
     setStatus('Orcamento excluido.')
     setDeleteId(null)
@@ -779,7 +807,13 @@ const Orcamentos = () => {
     payload.orcamentos = payload.orcamentos.map((item) =>
       item.id === updated.id ? updated : item,
     )
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'alteracao',
+        title: 'Status do orcamento atualizado',
+        description: `${getClientName(updated.clientId)} → ${statusLabels[nextStatus]}`,
+      },
+    })
     refresh()
   }
 
@@ -810,7 +844,7 @@ const Orcamentos = () => {
       </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="orcamentos__summary">
+      <div className="orcamentos__summary summary-card">
         <article className="orcamentos__stat">
           <span className="orcamentos__stat-label">Total</span>
           <strong className="orcamentos__stat-value">{quoteSummary.total}</strong>
@@ -1189,12 +1223,12 @@ const Orcamentos = () => {
               onChange={(event) => updateForm({ paymentMethod: event.target.value })}
             >
               {form.paymentMethod &&
-                !PAYMENT_METHODS.some((method) => method.id === form.paymentMethod) && (
+                !paymentOptions.some((method) => method.id === form.paymentMethod) && (
                   <option value={form.paymentMethod}>
                     Outro ({form.paymentMethod})
                   </option>
                 )}
-              {PAYMENT_METHODS.map((method) => (
+              {paymentOptions.map((method) => (
                 <option key={method.id} value={method.id}>
                   {method.label}
                 </option>
@@ -1327,7 +1361,12 @@ const Orcamentos = () => {
                     <tr key={quote.id}>
                       <td>{getClientName(quote.clientId)}</td>
                       <td>{formatItemsSummary(quote.items)}</td>
-                      <td>{getPaymentMethodLabel(quote.paymentMethod)}</td>
+                      <td>
+                        {getPaymentMethodLabel(
+                          quote.paymentMethod,
+                          data.tabelas?.paymentMethods,
+                        )}
+                      </td>
                       <td>
                         {discountInfo.discountValue > 0
                           ? `${formatCurrency(discountInfo.discountValue)} (${formatPercent(
@@ -1409,7 +1448,13 @@ const Orcamentos = () => {
               <span>Validade: {formatDateShort(printQuote.validUntil)}</span>
               <span>Status: {statusLabels[printQuote.status]}</span>
               {printQuote.paymentMethod && (
-                <span>Pagamento: {getPaymentMethodLabel(printQuote.paymentMethod)}</span>
+                <span>
+                  Pagamento:{' '}
+                  {getPaymentMethodLabel(
+                    printQuote.paymentMethod,
+                    data.tabelas?.paymentMethods,
+                  )}
+                </span>
               )}
             </div>
           </header>

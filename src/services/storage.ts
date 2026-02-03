@@ -1,4 +1,5 @@
-import type { Cashbox, EmployeeLevel, EmployeeRole, ERPData } from '../types/erp'
+import type { Cashbox, EmployeeLevel, EmployeeRole, ERPData, SystemTables } from '../types/erp'
+import { PAYMENT_METHODS } from '../data/paymentMethods'
 
 const STORAGE_KEY = 'umoya_erp_data'
 
@@ -42,6 +43,36 @@ export const DEFAULT_COMPANY = {
   name: 'Umoya',
 }
 
+export const DEFAULT_TABLES: SystemTables = {
+  units: [
+    { id: 'unit-un', label: 'Unidade', symbol: 'un', active: true },
+    { id: 'unit-ml', label: 'Metro linear', symbol: 'm', active: true },
+    { id: 'unit-m2', label: 'Metro quadrado', symbol: 'm2', active: true },
+    { id: 'unit-m3', label: 'Metro cubico', symbol: 'm3', active: true },
+    { id: 'unit-saco', label: 'Saco 50kg', symbol: 'saco', active: true },
+  ],
+  categories: [
+    { id: 'cat-pre', label: 'Pre-moldados', active: true },
+    { id: 'cat-mat', label: 'Materia-prima', active: true },
+    { id: 'cat-serv', label: 'Servicos', active: true },
+    { id: 'cat-outro', label: 'Outros', active: true },
+  ],
+  paymentMethods: PAYMENT_METHODS.map((method) => ({
+    id: method.id,
+    label: method.label,
+    cashboxId: method.cashboxId,
+    active: true,
+  })),
+}
+
+export const DEFAULT_INTEGRATIONS = [
+  { id: 'integracao-nfe', name: 'Nota fiscal (NF-e)', status: 'inativo' as const },
+  { id: 'integracao-nfse', name: 'Nota fiscal (NFS-e)', status: 'inativo' as const },
+  { id: 'integracao-whatsapp', name: 'WhatsApp', status: 'inativo' as const },
+  { id: 'integracao-email', name: 'Email transacional', status: 'inativo' as const },
+  { id: 'integracao-drive', name: 'Google Drive', status: 'inativo' as const },
+]
+
 export const createEmptyState = (): ERPData => ({
   produtos: [],
   clientes: [],
@@ -49,16 +80,27 @@ export const createEmptyState = (): ERPData => ({
   materiais: [],
   moldes: [],
   ordensProducao: [],
+  lotesProducao: [],
+  refugosProducao: [],
   consumosMateriais: [],
   orcamentos: [],
   pedidos: [],
   recibos: [],
   comprasHistorico: [],
   entregas: [],
+  fiscalNotas: [],
+  qualidadeChecks: [],
+  manutencoes: [],
   financeiro: [],
   caixas: DEFAULT_CASHBOXES.map((cashbox) => ({ ...cashbox })),
   conferenciasCaixaFisico: [],
+  tabelas: {
+    units: DEFAULT_TABLES.units.map((item) => ({ ...item })),
+    categories: DEFAULT_TABLES.categories.map((item) => ({ ...item })),
+    paymentMethods: DEFAULT_TABLES.paymentMethods.map((item) => ({ ...item })),
+  },
   empresa: { ...DEFAULT_COMPANY },
+  integracoes: DEFAULT_INTEGRATIONS.map((item) => ({ ...item })),
   funcionarios: [],
   cargos: DEFAULT_ROLES.map((role) => ({ ...role })),
   niveis: DEFAULT_LEVELS.map((level) => ({ ...level })),
@@ -67,6 +109,10 @@ export const createEmptyState = (): ERPData => ({
   pagamentosRH: [],
   ocorrenciasRH: [],
   usuarios: [],
+  auditoria: [],
+  meta: {
+    updatedAt: new Date().toISOString(),
+  },
 })
 
 export const getStorage = (): ERPData | null => {

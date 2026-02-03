@@ -63,7 +63,7 @@ const Indicadores = () => {
         </div>
       </header>
 
-      <div className="card-grid">
+      <div className="card-grid summary-card">
         <article className="card">
           <span className="card__label">Pedidos</span>
           <span className="card__value">{totalOrders}</span>

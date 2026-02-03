@@ -1,0 +1,22 @@
+.entregas__card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.entregas__detail {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.entregas__detail-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-ink-muted);
+}
+
+.entregas__detail-value {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-light);
+}

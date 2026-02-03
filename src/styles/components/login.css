@@ -91,6 +91,7 @@
 .login__title {
   font-family: var(--font-family-primary);
   font-size: clamp(2rem, 3.6vw, 3.4rem);
+  font-weight: var(--font-weight-semibold);
   letter-spacing: -0.02em;
   line-height: 1.05;
 }
@@ -323,6 +324,7 @@
 
 .login__card h2 {
   font-size: 1.2rem;
+  font-weight: var(--font-weight-regular);
 }
 
 .login__card p {
@@ -364,6 +366,7 @@
 
 .login__stat strong {
   font-size: 1.05rem;
+  font-weight: var(--font-weight-light);
 }
 
 @media (max-width: 900px) {

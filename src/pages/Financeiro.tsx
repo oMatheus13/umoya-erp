@@ -175,7 +175,13 @@ const Financeiro = () => {
     }
     const payload = dataService.getAll()
     payload.financeiro = payload.financeiro.filter((entry) => entry.id !== deleteId)
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Lancamento removido',
+        description: entryToDelete?.description,
+      },
+    })
     refresh()
     setStatus('Lancamento excluido.')
     setDeleteId(null)
@@ -206,7 +212,14 @@ const Financeiro = () => {
       }
     }
 
-    dataService.addFinanceEntry({
+    const entryTitle =
+      form.type === 'entrada'
+        ? 'Entrada registrada'
+        : form.type === 'transferencia'
+          ? 'Transferencia registrada'
+          : 'Saida registrada'
+    dataService.addFinanceEntry(
+      {
       id: createId(),
       type: form.type,
       description: form.description.trim(),
@@ -215,7 +228,15 @@ const Financeiro = () => {
       createdAt: new Date().toISOString(),
       cashboxId: form.cashboxId,
       transferToId: form.type === 'transferencia' ? form.transferToId : undefined,
-    })
+      },
+      {
+        auditEvent: {
+          category: 'acao',
+          title: entryTitle,
+          description: `${form.description.trim()} · ${formatCurrency(form.amount)}`,
+        },
+      },
+    )
     refresh()
     setStatus('Lancamento registrado.')
     setIsModalOpen(false)
@@ -242,7 +263,13 @@ const Financeiro = () => {
       },
       ...payload.conferenciasCaixaFisico,
     ]
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Conferencia de caixa fisico',
+        description: cashCheckDate,
+      },
+    })
     refresh()
     setStatus('Conferencia do caixa fisico salva.')
   }
@@ -263,7 +290,7 @@ const Financeiro = () => {
       </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="financeiro__summary">
+      <div className="financeiro__summary summary-card">
         <article className="financeiro__stat">
           <span className="financeiro__stat-label">Saldo total</span>
           <strong className="financeiro__stat-value">{formatCurrency(totalBalance)}</strong>

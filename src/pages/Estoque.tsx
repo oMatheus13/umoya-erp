@@ -71,7 +71,7 @@ const Estoque = () => {
         </div>
       </header>
 
-      <div className="estoque__summary">
+      <div className="estoque__summary summary-card">
         <article className="estoque__stat">
           <span className="estoque__stat-label">Itens em estoque</span>
           <strong className="estoque__stat-value">{totalStock}</strong>

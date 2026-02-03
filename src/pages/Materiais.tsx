@@ -7,7 +7,7 @@ import { useERPData } from '../store/appStore'
 import type { Material, MaterialKind, MaterialUnit } from '../types/erp'
 import { formatCurrency } from '../utils/format'
 import { createId } from '../utils/ids'
-import { MATERIAL_UNITS, getMaterialUnitLabel } from '../utils/units'
+import { getMaterialUnitLabel, getMaterialUnitOptions } from '../utils/units'
 import { MATERIAL_KINDS, getMaterialKindLabel } from '../utils/materials'
 
 type MaterialForm = {
@@ -206,7 +206,9 @@ const Materiais = () => {
   }
 
   const formatValue = (value?: number) => (value ? formatCurrency(value) : '-')
-  const selectedUnitLabel = form.unit ? getMaterialUnitLabel(form.unit) : 'unidade'
+  const selectedUnitLabel = form.unit
+    ? getMaterialUnitLabel(form.unit, data.tabelas)
+    : 'unidade'
 
   return (
     <section className="materiais">
@@ -226,7 +228,7 @@ const Materiais = () => {
       </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="materiais__summary">
+      <div className="materiais__summary summary-card">
         <article className="materiais__stat">
           <span className="materiais__stat-label">Materiais cadastrados</span>
           <strong className="materiais__stat-value">{summary.total}</strong>
@@ -280,7 +282,7 @@ const Materiais = () => {
                 }
               >
                 <option value="">Selecione</option>
-                {MATERIAL_UNITS.map((option) => (
+                {getMaterialUnitOptions(data.tabelas).map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -510,10 +512,12 @@ const Materiais = () => {
                   <tr key={material.id}>
                     <td>{material.name}</td>
                     <td>{getMaterialKindLabel(material.kind)}</td>
-                    <td>{getMaterialUnitLabel(material.unit)}</td>
+                    <td>{getMaterialUnitLabel(material.unit, data.tabelas)}</td>
                     <td>
                       {material.stock ?? 0}
-                      {material.unit ? ` ${getMaterialUnitLabel(material.unit)}` : ''}
+                      {material.unit
+                        ? ` ${getMaterialUnitLabel(material.unit, data.tabelas)}`
+                        : ''}
                     </td>
                     <td>{material.minStock ?? '-'}</td>
                     <td>{formatValue(material.marketUnitPrice ?? material.cost)}</td>

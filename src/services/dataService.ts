@@ -10,39 +10,80 @@ import type {
   MaterialKind,
   MaterialUnit,
 } from '../types/erp'
+import { appendAuditEvent, type AuditInput } from './audit'
 import { deriveUsagesFromBatch } from '../utils/batch'
 import { getDefaultUsageUnit } from '../utils/materialUsage'
 import {
   createEmptyState,
   DEFAULT_CASHBOXES,
   DEFAULT_COMPANY,
+  DEFAULT_INTEGRATIONS,
   DEFAULT_LEVELS,
   DEFAULT_ROLES,
+  DEFAULT_TABLES,
   getStorage,
   saveStorage,
 } from './storage'
 import { createId } from '../utils/ids'
 
 type RemoteSync = (data: ERPData) => void | Promise<void>
+type SaveOptions = {
+  touchMeta?: boolean
+  skipSync?: boolean
+  emitEvent?: boolean
+  auditEvent?: AuditInput
+}
 
 let remoteSync: RemoteSync | null = null
 
-const saveAndSync = (data: ERPData) => {
-  saveStorage(data)
-  if (remoteSync) {
-    void remoteSync(data)
+const dispatchDataEvent = () => {
+  if (typeof window === 'undefined') {
+    return
   }
+  window.dispatchEvent(new Event('umoya:data'))
+}
+
+const saveAndSync = (data: ERPData, options?: SaveOptions) => {
+  const shouldTouchMeta = options?.touchMeta !== false
+  const shouldEmitEvent = options?.emitEvent !== false
+  const next: ERPData = shouldTouchMeta
+    ? {
+        ...data,
+        meta: {
+          ...data.meta,
+          updatedAt: new Date().toISOString(),
+        },
+      }
+    : data
+  saveStorage(next)
+  if (shouldEmitEvent) {
+    if (typeof queueMicrotask === 'function') {
+      queueMicrotask(dispatchDataEvent)
+    } else {
+      setTimeout(dispatchDataEvent, 0)
+    }
+  }
+  if (remoteSync && !options?.skipSync) {
+    void remoteSync(next)
+  }
+}
+
+const applyAudit = (data: ERPData, options?: SaveOptions) => {
+  if (options?.auditEvent) {
+    return appendAuditEvent(data, options.auditEvent)
+  }
+  return data
 }
 
 export type DataService = {
   getAll: () => ERPData
-  replaceAll: (data: ERPData) => void
+  replaceAll: (data: ERPData, options?: SaveOptions) => void
   exportJson: () => string
   importJson: (payload: string) => void
-  upsertQuote: (quote: Quote) => void
-  upsertOrder: (order: Order) => void
-  addReceipt: (receipt: Receipt) => void
-  addFinanceEntry: (entry: FinanceEntry) => void
+  upsertQuote: (quote: Quote, options?: SaveOptions) => void
+  upsertOrder: (order: Order, options?: SaveOptions) => void
+  addReceipt: (receipt: Receipt, options?: SaveOptions) => void
+  addFinanceEntry: (entry: FinanceEntry, options?: SaveOptions) => void
 }
 
 const upsert = <T extends { id: string }>(items: T[], next: T) => {
@@ -454,6 +495,7 @@ const normalizeData = (data: ERPData) => {
     ...client,
     obras: Array.isArray(client.obras) ? client.obras : [],
   }))
+  const meta = data.meta && typeof data.meta === 'object' ? data.meta : undefined
   const fornecedores = ensureArray(data.fornecedores, [])
   const materiais = rawMaterials.map((material) => {
     const unit = normalizeMaterialUnit(material.unit)
@@ -485,6 +527,8 @@ const normalizeData = (data: ERPData) => {
     return mold
   })
   const ordensProducao = ensureArray(data.ordensProducao, [])
+  const lotesProducao = ensureArray(data.lotesProducao, [])
+  const refugosProducao = ensureArray(data.refugosProducao, [])
   const consumosMateriais = ensureArray(data.consumosMateriais, [])
   const orcamentos = ensureArray(data.orcamentos, []).map((quote) => ({
     ...quote,
@@ -504,6 +548,9 @@ const normalizeData = (data: ERPData) => {
     return purchase
   })
   const entregas = ensureArray(data.entregas, [])
+  const fiscalNotas = ensureArray(data.fiscalNotas, [])
+  const qualidadeChecks = ensureArray(data.qualidadeChecks, [])
+  const manutencoes = ensureArray(data.manutencoes, [])
   const financeiro = ensureArray(data.financeiro, []).map((entry) => {
     if (!entry.cashboxId) {
       changed = true
@@ -513,6 +560,27 @@ const normalizeData = (data: ERPData) => {
   })
   const caixas = ensureArray(data.caixas, DEFAULT_CASHBOXES.map((cashbox) => ({ ...cashbox })))
   const conferenciasCaixaFisico = ensureArray(data.conferenciasCaixaFisico, [])
+  const tabelasRaw =
+    data.tabelas && typeof data.tabelas === 'object' ? data.tabelas : undefined
+  if (!tabelasRaw) {
+    changed = true
+  }
+  const tabelas = {
+    units: ensureArray(tabelasRaw?.units, DEFAULT_TABLES.units.map((item) => ({ ...item }))),
+    categories: ensureArray(
+      tabelasRaw?.categories,
+      DEFAULT_TABLES.categories.map((item) => ({ ...item })),
+    ),
+    paymentMethods: ensureArray(
+      tabelasRaw?.paymentMethods,
+      DEFAULT_TABLES.paymentMethods.map((item) => ({ ...item })),
+    ),
+  }
+  const auditoria = ensureArray(data.auditoria, [])
+  const integracoes = ensureArray(
+    data.integracoes,
+    DEFAULT_INTEGRATIONS.map((item) => ({ ...item })),
+  )
   let empresa = data.empresa && typeof data.empresa === 'object' ? data.empresa : null
   if (!empresa) {
     changed = true
@@ -579,16 +647,23 @@ const normalizeData = (data: ERPData) => {
     materiais,
     moldes,
     ordensProducao: normalizedProducao,
+    lotesProducao,
+    refugosProducao,
     consumosMateriais,
     orcamentos,
     pedidos,
     recibos,
     comprasHistorico,
     entregas,
+    fiscalNotas,
+    qualidadeChecks,
+    manutencoes,
     financeiro,
     caixas,
     conferenciasCaixaFisico,
+    tabelas,
     empresa: { ...DEFAULT_COMPANY, ...empresa },
+    integracoes,
     funcionarios,
     cargos,
     niveis,
@@ -597,10 +672,12 @@ const normalizeData = (data: ERPData) => {
     pagamentosRH,
     ocorrenciasRH,
     usuarios,
+    auditoria,
+    meta,
   }
 
   if (changed) {
-    saveAndSync(normalized)
+    saveAndSync(normalized, { emitEvent: false })
   }
 
   return normalized
@@ -608,31 +685,31 @@ const normalizeData = (data: ERPData) => {
 
 export const dataService: DataService = {
   getAll: () => normalizeData(getStorage() ?? createEmptyState()),
-  replaceAll: (data) => saveAndSync(data),
+  replaceAll: (data, options) => saveAndSync(applyAudit(data, options), options),
   exportJson: () => JSON.stringify(normalizeData(getStorage() ?? createEmptyState()), null, 2),
   importJson: (payload) => {
     const parsed = JSON.parse(payload) as ERPData
     saveAndSync(parsed)
   },
-  upsertQuote: (quote) => {
+  upsertQuote: (quote, options) => {
     const data = getStorage() ?? createEmptyState()
     data.orcamentos = upsert(data.orcamentos, quote)
-    saveAndSync(data)
+    saveAndSync(applyAudit(data, options), options)
   },
-  upsertOrder: (order) => {
+  upsertOrder: (order, options) => {
     const data = getStorage() ?? createEmptyState()
     data.pedidos = upsert(data.pedidos, order)
-    saveAndSync(data)
+    saveAndSync(applyAudit(data, options), options)
   },
-  addReceipt: (receipt) => {
+  addReceipt: (receipt, options) => {
     const data = getStorage() ?? createEmptyState()
     data.recibos = [...data.recibos, receipt]
-    saveAndSync(data)
+    saveAndSync(applyAudit(data, options), options)
   },
-  addFinanceEntry: (entry) => {
+  addFinanceEntry: (entry, options) => {
     const data = getStorage() ?? createEmptyState()
     data.financeiro = [...data.financeiro, entry]
-    saveAndSync(data)
+    saveAndSync(applyAudit(data, options), options)
   },
 }
 

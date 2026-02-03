@@ -128,7 +128,7 @@ const EstoqueMateriais = () => {
       </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="estoque-materiais__summary">
+      <div className="estoque-materiais__summary summary-card">
         <article className="estoque-materiais__stat">
           <span className="estoque-materiais__stat-label">Materiais</span>
           <strong className="estoque-materiais__stat-value">{summary.total}</strong>
@@ -183,10 +183,12 @@ const EstoqueMateriais = () => {
                   return (
                     <tr key={material.id}>
                       <td>{material.name}</td>
-                      <td>{getMaterialUnitLabel(material.unit)}</td>
+                      <td>{getMaterialUnitLabel(material.unit, data.tabelas)}</td>
                       <td>
                         {material.stock ?? 0}
-                        {material.unit ? ` ${getMaterialUnitLabel(material.unit)}` : ''}
+                        {material.unit
+                          ? ` ${getMaterialUnitLabel(material.unit, data.tabelas)}`
+                          : ''}
                       </td>
                       <td>{material.minStock ?? '-'}</td>
                       <td>{formatValue(material.marketUnitPrice ?? material.cost)}</td>

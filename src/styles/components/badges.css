@@ -1,0 +1,88 @@
+.badge,
+.ui-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: var(--border-radius-full);
+  border: 1px solid var(--color-line);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+  background: transparent;
+  font-weight: var(--font-weight-semibold);
+}
+
+.badge--aprovado,
+.badge--pago,
+.badge--entregue,
+.badge--ativo,
+.badge--autorizada,
+.badge--pronto,
+.badge--finalizada,
+.badge--resolvido,
+.badge--ok {
+  border-color: rgba(76, 210, 123, 0.4);
+  color: var(--color-success);
+  background: rgba(76, 210, 123, 0.12);
+}
+
+.badge--rascunho,
+.badge--pendente,
+.badge--aguardando,
+.badge--aberta,
+.badge--inativo {
+  border-color: var(--color-line-strong);
+  color: var(--color-ink-muted);
+  background: rgba(15, 17, 22, 0.04);
+}
+
+.badge--recusado,
+.badge--cancelada,
+.badge--saida,
+.badge--refugo {
+  border-color: rgba(255, 92, 92, 0.35);
+  color: var(--color-danger);
+  background: rgba(255, 92, 92, 0.12);
+}
+
+.badge--em_producao,
+.badge--em_rota,
+.badge--produzindo,
+.badge--curando,
+.badge--retrabalho,
+.badge--transferencia {
+  border-color: rgba(74, 163, 255, 0.4);
+  color: var(--color-info);
+  background: rgba(74, 163, 255, 0.12);
+}
+
+.badge--entrada {
+  border-color: rgba(76, 210, 123, 0.4);
+  color: var(--color-success);
+  background: rgba(76, 210, 123, 0.12);
+}
+
+.ui-badge--neutral {
+  border-color: var(--color-line);
+  color: var(--color-ink-muted);
+}
+
+.ui-badge--info {
+  border-color: rgba(74, 163, 255, 0.4);
+  color: var(--color-info);
+  background: rgba(74, 163, 255, 0.12);
+}
+
+.ui-badge--warning {
+  border-color: rgba(255, 179, 71, 0.4);
+  color: var(--color-warning);
+  background: rgba(255, 179, 71, 0.12);
+}
+
+.ui-badge--danger {
+  border-color: rgba(255, 92, 92, 0.35);
+  color: var(--color-danger);
+  background: rgba(255, 92, 92, 0.12);
+}

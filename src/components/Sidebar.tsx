@@ -202,7 +202,7 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange, canView }: SidebarProp
               <div key={group.id} className="sidebar__group">
                 <button
                   className={`sidebar__link sidebar__section${
-                    isActive ? ' sidebar__section--active' : ''
+                    isActive ? ' sidebar__section--active sidebar__link--active' : ''
                   }`}
                   type="button"
                   aria-current={isActive ? 'page' : undefined}
@@ -227,10 +227,13 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange, canView }: SidebarProp
             return []
           }
           const isOpen = openGroups[group.id]
+          const isGroupActive = visibleItems.some((item) => item.id === activePage)
           return (
             <div key={group.id} className="sidebar__group">
               <button
-                className="sidebar__toggle sidebar__section"
+                className={`sidebar__toggle sidebar__section${
+                  isGroupActive ? ' sidebar__section--active' : ''
+                }`}
                 type="button"
                 aria-expanded={isOpen}
                 onClick={() => toggleGroup(group.id)}

@@ -126,7 +126,7 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="usuarios-permissoes__summary">
+      <div className="usuarios-permissoes__summary summary-card">
         <article className="usuarios-permissoes__stat">
           <span className="usuarios-permissoes__stat-label">Cargos cadastrados</span>
           <strong className="usuarios-permissoes__stat-value">{roles.length}</strong>

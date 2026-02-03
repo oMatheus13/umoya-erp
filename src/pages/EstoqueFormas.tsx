@@ -181,7 +181,7 @@ const EstoqueFormas = () => {
       </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="moldes__summary">
+      <div className="moldes__summary summary-card">
         <article className="moldes__stat">
           <span className="moldes__stat-label">Formas cadastradas</span>
           <strong className="moldes__stat-value">{summary.total}</strong>

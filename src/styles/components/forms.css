@@ -1,0 +1,103 @@
+.form {
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.form__group {
+  display: grid;
+  gap: var(--spacing-xs);
+}
+
+.form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.form__section {
+  display: grid;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.form__label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-ink-muted);
+}
+
+.form__input,
+.form__textarea {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--color-line);
+  background: transparent;
+  padding: 0.45rem 0.1rem;
+  color: inherit;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form__input:focus,
+.form__textarea:focus {
+  border-bottom-color: var(--color-ink);
+  box-shadow: 0 2px 0 var(--color-lime);
+  outline: none;
+}
+
+.form__input:disabled,
+.form__textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.form__textarea {
+  min-height: 110px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--border-radius-md);
+  padding: 0.6rem 0.75rem;
+}
+
+.form__help {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.form__status {
+  font-size: var(--font-size-sm);
+  color: var(--color-ink);
+  border-left: 3px solid var(--color-lime);
+  padding: 0.4rem 0.75rem;
+  background: rgba(170, 255, 0, 0.08);
+  border-radius: var(--border-radius-md);
+}
+
+.form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.form__summary {
+  display: grid;
+  gap: var(--spacing-2xs);
+  border: 1px dashed var(--color-line);
+  border-radius: var(--border-radius-md);
+  padding: 0.6rem 0.75rem;
+  font-weight: var(--font-weight-medium);
+  font-family: var(--font-family-primary);
+}
+
+.form__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--font-size-sm);
+  color: var(--color-ink);
+}
+
+.form__checkbox input {
+  accent-color: var(--color-ink);
+}

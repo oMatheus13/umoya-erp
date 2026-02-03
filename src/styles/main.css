@@ -1,36 +1,31 @@
 @import url("variables.css");
 @import url("fonts.css");
 @import url("reset.css");
+@import url("components/utilities.css");
+@import url("components/app-shell.css");
+@import url("components/buttons.css");
+@import url("components/forms.css");
+@import url("components/badges.css");
+@import url("components/tables.css");
+@import url("components/lists.css");
 @import url("components/ui.css");
 @import url("components/modal.css");
-@import url("components/app-shell.css");
+@import url("components/action-menu.css");
+@import url("components/charts.css");
+@import url("modules/cards.css");
+@import url("pages/base.css");
 @import url("components/login.css");
-@import url("components/placeholder.css");
-@import url("components/data-tools.css");
-@import url("components/table.css");
-@import url("components/orcamentos.css");
-@import url("components/pedidos.css");
-@import url("components/produtos.css");
-@import url("components/producao.css");
-@import url("components/financeiro.css");
-@import url("components/estoque.css");
-@import url("components/moldes.css");
-@import url("components/estoque-materiais.css");
-@import url("components/compras.css");
-@import url("components/entregas.css");
-@import url("components/clientes.css");
-@import url("components/fornecedores.css");
-@import url("components/materiais.css");
-@import url("components/empresa.css");
-@import url("components/funcionarios.css");
-@import url("components/rh.css");
-@import url("components/indicadores.css");
-@import url("components/bi.css");
-@import url("components/consumo-produtos.css");
-@import url("components/configuracoes.css");
-@import url("components/usuarios-permissoes.css");
-@import url("components/perfil.css");
-@import url("components/dashboard.css");
+@import url("pages/placeholder.css");
+@import url("pages/data-tools.css");
+@import url("pages/tabelas.css");
+@import url("pages/usuarios-permissoes.css");
+@import url("pages/entregas.css");
+@import url("pages/producao.css");
+@import url("pages/bi.css");
+@import url("pages/orcamentos.css");
+@import url("pages/perfil.css");
+@import url("pages/relatorios.css");
+@import url("pages/funcionarios.css");
 
 html,
 body,
@@ -40,10 +35,17 @@ body,
 
 body {
   -webkit-tap-highlight-color: transparent;
-  background-color: var(--color-sand-light);
+  background: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-family-secondary);
+  line-height: 1.5;
   overflow: hidden;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(170, 255, 0, 0.35);
+  color: var(--color-ink);
 }
 
 .material-symbols-outlined,
@@ -78,6 +80,7 @@ h4,
 h5,
 h6 {
   font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-regular);
 }
 
 p,
@@ -95,59 +98,3 @@ fieldset,
 legend {
   font-family: var(--font-family-secondary);
 }
-
-.main section {
-  background-color: var(--color-sand-light);
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: var(--spacing-md);
-}
-
-.main article {
-  background-color: var(--color-sand-light);
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: var(--spacing-md);
-}
-
-/*
-* {
-    outline: 1px solid red;
-}
-
-* * {
-    outline: 1px solid orange;
-}
-
-* * * {
-    outline: 1px solid yellow;
-}
-
-* * * * {
-    outline: 1px solid green;
-}
-
-* * * * * {
-    outline: 1px solid blue;
-}
-
-* * * * * * {
-    outline: 2px solid purple;
-}
-
-* * * * * * * {
-    outline: 2px solid pink;
-}
-
-* * * * * * * * {
-    outline: 3px solid cyan;
-}
-
-* * * * * * * * * {
-    outline: 3px solid lime;
-}
-
-* * * * * * * * * * {
-    outline: 4px solid brown;
-}
-*/

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AppShell from './layouts/AppShell'
 import Dashboard from './pages/Dashboard'
 import DataTools from './pages/DataTools'
@@ -8,6 +8,8 @@ import Orcamentos from './pages/Orcamentos'
 import Pedidos from './pages/Pedidos'
 import Placeholder from './pages/Placeholder'
 import Producao from './pages/Producao'
+import ProducaoLotes from './pages/ProducaoLotes'
+import ProducaoRefugo from './pages/ProducaoRefugo'
 import ConsumoProdutos from './pages/ConsumoProdutos'
 import Financeiro from './pages/Financeiro'
 import Estoque from './pages/Estoque'
@@ -17,6 +19,7 @@ import Compras from './pages/Compras'
 import Entregas from './pages/Entregas'
 import Clientes from './pages/Clientes'
 import Materiais from './pages/Materiais'
+import Tabelas from './pages/Tabelas'
 import Empresa from './pages/Empresa'
 import Fornecedores from './pages/Fornecedores'
 import Funcionarios from './pages/Funcionarios'
@@ -24,13 +27,23 @@ import Indicadores from './pages/Indicadores'
 import Bi from './pages/Bi'
 import Configuracoes from './pages/Configuracoes'
 import UsuariosPermissoes from './pages/UsuariosPermissoes'
+import Fiscal from './pages/Fiscal'
+import Qualidade from './pages/Qualidade'
+import RelatoriosProducao from './pages/RelatoriosProducao'
+import RelatoriosVendas from './pages/RelatoriosVendas'
+import RelatoriosConsumo from './pages/RelatoriosConsumo'
+import Integracoes from './pages/Integracoes'
+import AuditoriaLog from './pages/AuditoriaLog'
+import AuditoriaHistorico from './pages/AuditoriaHistorico'
+import AuditoriaBackup from './pages/AuditoriaBackup'
+import AuditoriaAcesso from './pages/AuditoriaAcesso'
 import Perfil from './pages/Perfil'
 import RhPresenca from './pages/RhPresenca'
 import RhPagamentos from './pages/RhPagamentos'
 import RhHistorico from './pages/RhHistorico'
 import RhOcorrencias from './pages/RhOcorrencias'
 import type { User } from '@supabase/supabase-js'
-import type { UserAccount } from './types/erp'
+import type { ERPData, UserAccount } from './types/erp'
 import { erpRemote } from './services/erpRemote'
 import { dataService, ensureStorageSeed, setRemoteSync } from './services/dataService'
 import { supabase } from './services/supabaseClient'
@@ -46,6 +59,7 @@ function App() {
   const [permissionsVersion, setPermissionsVersion] = useState(0)
   const allowDevMode =
     (import.meta.env && import.meta.env.DEV) || import.meta.env.VITE_DEV_ACCESS === 'true'
+  const syncHandlerRef = useRef<((data: ERPData) => void) | null>(null)
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
     if (typeof window === 'undefined') {
       return 'expanded'
@@ -144,7 +158,24 @@ function App() {
   }
 
   const breadcrumbs = breadcrumbMap[activePage] ?? ['Inicio', pageTitles[activePage] ?? 'Modulo']
-  const dataSnapshot = useMemo(() => dataService.getAll(), [permissionsVersion])
+  const [dataSnapshot, setDataSnapshot] = useState(() => dataService.getAll())
+  useEffect(() => {
+    const handleSync = () => {
+      setDataSnapshot(dataService.getAll())
+    }
+    handleSync()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('umoya:data', handleSync)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('umoya:data', handleSync)
+      }
+    }
+  }, [])
+  useEffect(() => {
+    setDataSnapshot(dataService.getAll())
+  }, [permissionsVersion])
   const permissionCheck = createPermissionCheck(dataSnapshot, currentUser)
   const canView = (pageId: string) =>
     !isPermissionKey(pageId) ? true : permissionCheck.canView(pageId)
@@ -165,18 +196,107 @@ function App() {
     return currentUser.role === 'admin' ? 'Administrador' : 'Funcionario'
   })()
 
+  const hasMeaningfulData = (payload: ERPData) =>
+    payload.produtos.length > 0 ||
+    payload.clientes.length > 0 ||
+    payload.orcamentos.length > 0 ||
+    payload.pedidos.length > 0 ||
+    payload.financeiro.length > 0 ||
+    payload.materiais.length > 0 ||
+    payload.comprasHistorico.length > 0 ||
+    payload.ordensProducao.length > 0 ||
+    payload.entregas.length > 0
+
+  const resolveUpdatedAt = (payload: ERPData | null, fallback?: string) =>
+    payload?.meta?.updatedAt ?? fallback
+
+  const shouldBackup = () => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+    try {
+      const raw = window.localStorage.getItem('umoya_last_backup_at')
+      const last = raw ? Number(raw) : 0
+      const now = Date.now()
+      if (Number.isFinite(last) && now - last < 1000 * 60 * 60) {
+        return false
+      }
+      window.localStorage.setItem('umoya_last_backup_at', String(now))
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const runBackup = async (userId: string, payload: ERPData) => {
+    if (shouldBackup()) {
+      await erpRemote.backupState(userId, payload)
+    }
+  }
+
+  const createRemoteSync = (userId: string) => {
+    let pending: ERPData | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+    let inFlight = false
+
+    const flush = async () => {
+      if (!pending || inFlight) {
+        return
+      }
+      inFlight = true
+      const payload = pending
+      pending = null
+      const result = await erpRemote.upsertState(userId, payload)
+      if (!result.error) {
+        await runBackup(userId, payload)
+      }
+      if (result.error) {
+        pending = payload
+        if (!timer) {
+          timer = setTimeout(() => {
+            timer = null
+            void flush()
+          }, 4000)
+        }
+      }
+      inFlight = false
+    }
+
+    return (data: ERPData) => {
+      pending = data
+      if (timer) {
+        return
+      }
+      timer = setTimeout(() => {
+        timer = null
+        void flush()
+      }, 1200)
+    }
+  }
+
   const fetchRemoteState = async (userId: string) => {
     const timeout = new Promise<{ data: null; error: string }>((resolve) => {
-      setTimeout(() => resolve({ data: null, error: 'timeout' }), 4500)
+      setTimeout(() => resolve({ data: null, error: 'timeout' }), 2500)
     })
     return Promise.race([erpRemote.fetchState(userId), timeout])
   }
 
   const startSession = async (user: User) => {
     setRemoteSync(null)
+    syncHandlerRef.current = null
+    const localSnapshot = dataService.getAll()
+    const localHasData = hasMeaningfulData(localSnapshot)
     const remote = await fetchRemoteState(user.id)
-    if (remote.data) {
-      dataService.replaceAll(remote.data)
+    const remoteError = !!remote.error
+    const remotePayload = remote.data
+    const remoteUpdatedAt = resolveUpdatedAt(remotePayload, remote.updatedAt)
+    const localUpdatedAt = resolveUpdatedAt(localSnapshot)
+    const remoteIsNewer =
+      !!remotePayload &&
+      !!remoteUpdatedAt &&
+      (!localUpdatedAt || remoteUpdatedAt > localUpdatedAt)
+    if (remotePayload && (!localHasData || remoteIsNewer)) {
+      dataService.replaceAll(remotePayload, { touchMeta: false, skipSync: true })
     }
     const payload = dataService.getAll()
     const existing = payload.usuarios.find((item) => item.id === user.id)
@@ -204,7 +324,6 @@ function App() {
       role: resolvedRole,
     }
 
-    let createdUser = false
     const shouldUpdate =
       !existing ||
       existing.name !== nextUser.name ||
@@ -220,14 +339,23 @@ function App() {
         ? payload.usuarios.map((item) => (item.id === user.id ? nextUser : item))
         : [...payload.usuarios, nextUser]
       dataService.replaceAll(payload)
-      createdUser = !existing
     }
 
-    setRemoteSync((data) => {
-      void erpRemote.upsertState(user.id, data)
-    })
-    if (!remote.data || createdUser) {
-      await erpRemote.upsertState(user.id, dataService.getAll())
+    const localIsNewer =
+      localHasData &&
+      !!localUpdatedAt &&
+      (!remoteUpdatedAt || localUpdatedAt > remoteUpdatedAt)
+    const shouldSeedRemote = !remoteError && !remotePayload && localHasData
+    const shouldPushLocal = !remoteError && (shouldSeedRemote || localIsNewer || shouldUpdate)
+    if (!remoteError) {
+      const handler = createRemoteSync(user.id)
+      syncHandlerRef.current = handler
+      setRemoteSync(handler)
+    }
+    if (shouldPushLocal) {
+      const latest = dataService.getAll()
+      await erpRemote.upsertState(user.id, latest)
+      await runBackup(user.id, latest)
     }
     setCurrentUser(nextUser)
     setIsAuthenticated(true)
@@ -252,6 +380,7 @@ function App() {
       window.localStorage.setItem(DEV_MODE_KEY, 'true')
     }
     setRemoteSync(null)
+    syncHandlerRef.current = null
     if (seed) {
       dataService.replaceAll(createDevSeed(devUserId))
       if (typeof window !== 'undefined') {
@@ -288,6 +417,45 @@ function App() {
     })
   }, [])
 
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser || !supabase) {
+      return
+    }
+    if (currentUser.id === 'dev-user') {
+      return
+    }
+    const interval = setInterval(async () => {
+      const remote = await erpRemote.fetchState(currentUser.id)
+      if (remote.error) {
+        return
+      }
+      const local = dataService.getAll()
+      const localHasData = hasMeaningfulData(local)
+      const remoteUpdatedAt = resolveUpdatedAt(remote.data, remote.updatedAt)
+      const localUpdatedAt = resolveUpdatedAt(local)
+      const handler = syncHandlerRef.current ?? createRemoteSync(currentUser.id)
+      if (!syncHandlerRef.current) {
+        syncHandlerRef.current = handler
+        setRemoteSync(handler)
+      }
+      if (
+        remote.data &&
+        (!localHasData ||
+          (remoteUpdatedAt && (!localUpdatedAt || remoteUpdatedAt > localUpdatedAt)))
+      ) {
+        setRemoteSync(null)
+        dataService.replaceAll(remote.data, { touchMeta: false, skipSync: true })
+        setRemoteSync(handler)
+        return
+      }
+      if (!remote.data && localHasData) {
+        await erpRemote.upsertState(currentUser.id, local)
+        await runBackup(currentUser.id, local)
+      }
+    }, 30000)
+    return () => clearInterval(interval)
+  }, [isAuthenticated, currentUser?.id])
+
   if (!isAuthenticated) {
     return (
       <Login
@@ -310,23 +478,25 @@ function App() {
       const devMode = window.localStorage.getItem(DEV_MODE_KEY) === 'true'
       if (devMode) {
         const backup = window.localStorage.getItem(DEV_BACKUP_KEY)
-        if (backup) {
-          dataService.replaceAll(JSON.parse(backup))
-        }
-        window.localStorage.removeItem(DEV_BACKUP_KEY)
-        window.localStorage.removeItem(DEV_MODE_KEY)
-        window.localStorage.removeItem(DEV_SEEDED_KEY)
-        setRemoteSync(null)
-        setCurrentUser(null)
-        setIsAuthenticated(false)
-        setActivePage('dashboard')
-        return
+      if (backup) {
+        dataService.replaceAll(JSON.parse(backup))
+      }
+      window.localStorage.removeItem(DEV_BACKUP_KEY)
+      window.localStorage.removeItem(DEV_MODE_KEY)
+      window.localStorage.removeItem(DEV_SEEDED_KEY)
+      setRemoteSync(null)
+      syncHandlerRef.current = null
+      setCurrentUser(null)
+      setIsAuthenticated(false)
+      setActivePage('dashboard')
+      return
       }
     }
     if (supabase) {
       void supabase.auth.signOut()
     }
     setRemoteSync(null)
+    syncHandlerRef.current = null
     setCurrentUser(null)
     setIsAuthenticated(false)
     setActivePage('dashboard')
@@ -347,6 +517,12 @@ function App() {
     }
     if (activePage === 'producao') {
       return <Producao />
+    }
+    if (activePage === 'producao-lotes') {
+      return <ProducaoLotes />
+    }
+    if (activePage === 'producao-refugo') {
+      return <ProducaoRefugo />
     }
     if (activePage === 'producao-consumo') {
       return <ConsumoProdutos />
@@ -369,11 +545,17 @@ function App() {
     if (activePage === 'financeiro') {
       return <Financeiro />
     }
+    if (activePage === 'fiscal') {
+      return <Fiscal />
+    }
     if (activePage === 'clientes') {
       return <Clientes />
     }
     if (activePage === 'cadastros-materiais') {
       return <Materiais />
+    }
+    if (activePage === 'cadastros-tabelas') {
+      return <Tabelas />
     }
     if (activePage === 'config-empresa') {
       return <Empresa />
@@ -396,14 +578,38 @@ function App() {
     if (activePage === 'rh-ocorrencias') {
       return <RhOcorrencias />
     }
+    if (activePage === 'qualidade') {
+      return <Qualidade />
+    }
     if (activePage === 'indicadores') {
       return <Indicadores />
     }
     if (activePage === 'bi') {
       return <Bi />
     }
+    if (activePage === 'relatorios-producao') {
+      return <RelatoriosProducao />
+    }
+    if (activePage === 'relatorios-vendas') {
+      return <RelatoriosVendas />
+    }
+    if (activePage === 'relatorios-consumo') {
+      return <RelatoriosConsumo />
+    }
     if (activePage === 'dados') {
       return <DataTools />
+    }
+    if (activePage === 'auditoria-log') {
+      return <AuditoriaLog />
+    }
+    if (activePage === 'auditoria-historico') {
+      return <AuditoriaHistorico />
+    }
+    if (activePage === 'auditoria-backup') {
+      return <AuditoriaBackup />
+    }
+    if (activePage === 'auditoria-acesso') {
+      return <AuditoriaAcesso />
     }
     if (activePage === 'config-usuarios') {
       return (
@@ -412,6 +618,9 @@ function App() {
           onPermissionsChange={() => setPermissionsVersion((prev) => prev + 1)}
         />
       )
+    }
+    if (activePage === 'config-integracoes') {
+      return <Integracoes />
     }
     if (activePage === 'perfil') {
       return <Perfil currentUser={currentUser} onUpdate={setCurrentUser} />

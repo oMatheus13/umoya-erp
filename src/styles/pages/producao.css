@@ -1,0 +1,19 @@
+.producao__card {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.producao__meta {
+  text-align: right;
+  gap: 0.25rem;
+}
+
+@media (max-width: 720px) {
+  .producao__card {
+    grid-template-columns: 1fr;
+  }
+
+  .producao__meta {
+    text-align: left;
+  }
+}

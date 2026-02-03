@@ -2,7 +2,12 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../components/ActionMenu'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Modal from '../components/Modal'
-import { PAYMENT_METHODS, getPaymentCashboxId, getPaymentMethodId, getPaymentMethodLabel } from '../data/paymentMethods'
+import {
+  getPaymentCashboxId,
+  getPaymentMethodId,
+  getPaymentMethodLabel,
+  getPaymentMethodOptions,
+} from '../data/paymentMethods'
 import { dataService } from '../services/dataService'
 import { useERPData } from '../store/appStore'
 import type { Client, FulfillmentMode, Order, ProductVariant, ProductionOrder } from '../types/erp'
@@ -74,6 +79,11 @@ const Pedidos = () => {
     status: 'aguardando_pagamento',
     fulfillment: 'producao',
   })
+
+  const paymentOptions = useMemo(
+    () => getPaymentMethodOptions(data.tabelas?.paymentMethods),
+    [data.tabelas?.paymentMethods],
+  )
 
   const subtotal = useMemo(
     () => form.items.reduce((acc, item) => acc + item.quantity * item.unitPrice, 0),
@@ -529,7 +539,10 @@ const Pedidos = () => {
     }
 
     if (nextOrder.status === 'pago' && previousOrder?.status !== 'pago') {
-      const cashboxId = getPaymentCashboxId(nextOrder.paymentMethod)
+      const cashboxId = getPaymentCashboxId(
+        nextOrder.paymentMethod,
+        data.tabelas?.paymentMethods,
+      )
       payload.recibos = [
         ...payload.recibos,
         {
@@ -724,7 +737,9 @@ const Pedidos = () => {
       )
       return
     }
-    const normalizedPayment = getPaymentMethodId(form.paymentMethod) || form.paymentMethod
+    const normalizedPayment =
+      getPaymentMethodId(form.paymentMethod, data.tabelas?.paymentMethods) ||
+      form.paymentMethod
     if (form.status === 'pago' && (!normalizedPayment || normalizedPayment === 'a_definir')) {
       setStatus('Defina a forma de pagamento antes de marcar como pago.')
       return
@@ -812,7 +827,13 @@ const Pedidos = () => {
       return
     }
 
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: existingOrder ? 'Pedido atualizado' : 'Pedido criado',
+        description: `${resolvedClient.name} · ${items.length} item(ns) · ${formatCurrency(total)}`,
+      },
+    })
     refresh()
     setStatus(existingOrder ? 'Pedido atualizado com sucesso.' : 'Pedido salvo com sucesso.')
     setIsModalOpen(false)
@@ -906,7 +927,9 @@ const Pedidos = () => {
         }
       }),
       paymentMethod:
-        getPaymentMethodId(order.paymentMethod) || order.paymentMethod || 'a_definir',
+        getPaymentMethodId(order.paymentMethod, data.tabelas?.paymentMethods) ||
+        order.paymentMethod ||
+        'a_definir',
       discountType: inferredDiscountType as OrderForm['discountType'],
       discountValue: order.discountValue !== undefined ? String(order.discountValue) : '',
       discountPercent:
@@ -933,7 +956,13 @@ const Pedidos = () => {
     )
     payload.recibos = payload.recibos.filter((receipt) => receipt.orderId !== deleteId)
     payload.entregas = payload.entregas.filter((delivery) => delivery.orderId !== deleteId)
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Pedido excluido',
+        description: orderToDelete ? getClientName(orderToDelete.clientId) : undefined,
+      },
+    })
     refresh()
     setStatus('Pedido excluido.')
     setDeleteId(null)
@@ -952,7 +981,13 @@ const Pedidos = () => {
       return
     }
     payload.pedidos = payload.pedidos.map((item) => (item.id === updated.id ? updated : item))
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'alteracao',
+        title: 'Status do pedido atualizado',
+        description: `${getClientName(updated.clientId)} → ${statusLabels[nextStatus]}`,
+      },
+    })
     refresh()
   }
 
@@ -979,7 +1014,7 @@ const Pedidos = () => {
       </header>
       {status && <p className="form__status">{status}</p>}
 
-      <div className="pedidos__summary">
+      <div className="pedidos__summary summary-card">
         <article className="pedidos__stat">
           <span className="pedidos__stat-label">Total</span>
           <strong className="pedidos__stat-value">{orderSummary.total}</strong>
@@ -1358,12 +1393,12 @@ const Pedidos = () => {
               onChange={(event) => updateForm({ paymentMethod: event.target.value })}
             >
               {form.paymentMethod &&
-                !PAYMENT_METHODS.some((method) => method.id === form.paymentMethod) && (
+                !paymentOptions.some((method) => method.id === form.paymentMethod) && (
                   <option value={form.paymentMethod}>
                     Outro ({form.paymentMethod})
                   </option>
                 )}
-              {PAYMENT_METHODS.map((method) => (
+              {paymentOptions.map((method) => (
                 <option key={method.id} value={method.id}>
                   {method.label}
                 </option>
@@ -1504,7 +1539,12 @@ const Pedidos = () => {
                           : '-'}
                       </td>
                       <td>{formatCurrency(order.total)}</td>
-                      <td>{getPaymentMethodLabel(order.paymentMethod)}</td>
+                      <td>
+                        {getPaymentMethodLabel(
+                          order.paymentMethod,
+                          data.tabelas?.paymentMethods,
+                        )}
+                      </td>
                       <td>
                         <select
                           className="table__select"

@@ -175,7 +175,7 @@ const RhPagamentos = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="rh-page__summary">
+      <div className="rh-page__summary summary-card">
         <article className="rh-page__stat">
           <span className="rh-page__stat-label">Pagamentos</span>
           <strong className="rh-page__stat-value">{pagamentos.length}</strong>

@@ -190,7 +190,7 @@ const Bi = () => {
         </div>
       </header>
 
-      <div className="bi__cards">
+      <div className="bi__cards summary-card">
         <article className="card">
           <span className="card__label">Receita</span>
           <span className="card__value">{formatCurrency(revenue)}</span>

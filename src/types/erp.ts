@@ -309,6 +309,99 @@ export type ProductionOrder = {
   source?: 'pedido' | 'estoque'
 }
 
+export type ProductionLotStatus = 'aguardando' | 'produzindo' | 'curando' | 'pronto'
+
+export type ProductionLot = {
+  id: UUID
+  productId: UUID
+  variantId?: UUID
+  quantity: number
+  customLength?: number
+  status: ProductionLotStatus
+  moldedAt?: string
+  demoldedAt?: string
+  curingUntil?: string
+  notes?: string
+  createdAt: string
+}
+
+export type ProductionScrapStatus = 'aberto' | 'resolvido'
+export type ProductionScrapType = 'refugo' | 'retrabalho'
+
+export type ProductionScrap = {
+  id: UUID
+  productId: UUID
+  variantId?: UUID
+  productionOrderId?: UUID
+  quantity: number
+  type: ProductionScrapType
+  reason: string
+  estimatedCost?: number
+  status: ProductionScrapStatus
+  createdAt: string
+  notes?: string
+}
+
+export type FiscalNoteStatus = 'pendente' | 'autorizada' | 'cancelada'
+export type FiscalNoteType = 'nfe' | 'nfse'
+
+export type FiscalNote = {
+  id: UUID
+  type: FiscalNoteType
+  orderId?: UUID
+  clientId?: UUID
+  number?: string
+  series?: string
+  issueDate?: string
+  status: FiscalNoteStatus
+  xmlStored?: boolean
+  notes?: string
+  createdAt: string
+}
+
+export type QualityCheckStatus = 'aberto' | 'resolvido'
+export type QualityCheckType = 'checklist' | 'falha'
+export type QualitySeverity = 'baixa' | 'media' | 'alta'
+
+export type QualityCheck = {
+  id: UUID
+  type: QualityCheckType
+  productId?: UUID
+  productionOrderId?: UUID
+  description: string
+  severity?: QualitySeverity
+  estimatedCost?: number
+  status: QualityCheckStatus
+  notes?: string
+  createdAt: string
+}
+
+export type MaintenanceStatus = 'aberta' | 'finalizada'
+export type MaintenanceType = 'preventiva' | 'corretiva'
+
+export type MaintenanceLog = {
+  id: UUID
+  equipment: string
+  type: MaintenanceType
+  status: MaintenanceStatus
+  scheduledAt?: string
+  performedAt?: string
+  cost?: number
+  notes?: string
+  createdAt: string
+}
+
+export type IntegrationStatus = 'ativo' | 'inativo'
+
+export type IntegrationConfig = {
+  id: UUID
+  name: string
+  provider?: string
+  status: IntegrationStatus
+  lastSync?: string
+  notes?: string
+}
+
 export type MaterialConsumption = {
   id: UUID
   productionOrderId: UUID
@@ -343,6 +436,39 @@ export type CashDailyCheck = {
   actual: number
   notes?: string
   createdAt: string
+}
+
+export type TableEntry = {
+  id: UUID
+  label: string
+  active?: boolean
+  description?: string
+}
+
+export type UnitTableEntry = TableEntry & {
+  symbol?: string
+}
+
+export type PaymentTableEntry = TableEntry & {
+  cashboxId?: UUID
+}
+
+export type SystemTables = {
+  units: UnitTableEntry[]
+  categories: TableEntry[]
+  paymentMethods: PaymentTableEntry[]
+}
+
+export type AuditCategory = 'acao' | 'alteracao' | 'backup' | 'acesso'
+
+export type AuditEvent = {
+  id: UUID
+  category: AuditCategory
+  title: string
+  description?: string
+  actorName?: string
+  createdAt: string
+  metadata?: string
 }
 
 export type CompanyProfile = {
@@ -462,16 +588,23 @@ export type ERPData = {
   materiais: Material[]
   moldes: Mold[]
   ordensProducao: ProductionOrder[]
+  lotesProducao: ProductionLot[]
+  refugosProducao: ProductionScrap[]
   consumosMateriais: MaterialConsumption[]
   orcamentos: Quote[]
   pedidos: Order[]
   recibos: Receipt[]
   comprasHistorico: PurchaseRecord[]
   entregas: Delivery[]
+  fiscalNotas: FiscalNote[]
+  qualidadeChecks: QualityCheck[]
+  manutencoes: MaintenanceLog[]
   financeiro: FinanceEntry[]
   caixas: Cashbox[]
   conferenciasCaixaFisico: CashDailyCheck[]
+  tabelas: SystemTables
   empresa: CompanyProfile
+  integracoes: IntegrationConfig[]
   funcionarios: Employee[]
   cargos: EmployeeRole[]
   niveis: EmployeeLevel[]
@@ -480,4 +613,8 @@ export type ERPData = {
   pagamentosRH: EmployeePayment[]
   ocorrenciasRH: EmployeeOccurrence[]
   usuarios: UserAccount[]
+  auditoria: AuditEvent[]
+  meta?: {
+    updatedAt?: string
+  }
 }

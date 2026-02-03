@@ -1,6 +1,17 @@
 import { useMemo, useState } from 'react'
 import Modal from '../components/Modal'
-import { PAYMENT_METHODS, getPaymentMethodId } from '../data/paymentMethods'
+import {
+  List,
+  ListItem,
+  Page,
+  PageHeader,
+  Panel,
+  Section,
+  SectionHeader,
+  Summary,
+  SummaryItem,
+} from '../components/ui'
+import { getPaymentMethodId, getPaymentMethodOptions } from '../data/paymentMethods'
 import { useERPData } from '../store/appStore'
 import { dataService } from '../services/dataService'
 import { createId } from '../utils/ids'
@@ -30,6 +41,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   const availableProducts = useMemo(
     () => data.produtos.filter((product) => product.active !== false),
     [data.produtos],
+  )
+  const paymentOptions = useMemo(
+    () => getPaymentMethodOptions(data.tabelas?.paymentMethods),
+    [data.tabelas?.paymentMethods],
   )
 
   const resolveUnitPrice = (productId: string, variantId?: string) => {
@@ -309,247 +324,197 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   }, [data.financeiro, now])
 
   return (
-    <section className="dashboard">
-      <header className="dashboard__header">
-        <div className="dashboard__headline">
-          <span className="dashboard__eyebrow">Visao geral</span>
-          <h1 className="dashboard__title">Resumo da operacao</h1>
-          <p className="dashboard__subtitle">
-            Visao minimalista com foco no que move a fabrica hoje.
-          </p>
-        </div>
-        <div className="dashboard__meta">
-          <span>Atualizado</span>
-          <strong>{formatDateShort(new Date().toISOString())}</strong>
-        </div>
-      </header>
+    <Page>
+      <PageHeader
+        eyebrow="Visao geral"
+        title="Resumo da operacao"
+        subtitle="Visao minimalista com foco no que move a fabrica hoje."
+        meta={
+          <>
+            <span>Atualizado</span>
+            <strong>{formatDateShort(new Date().toISOString())}</strong>
+          </>
+        }
+      />
 
-      <div className="dashboard__hero">
-        <section className="dashboard__section dashboard__section--summary">
-          <div className="dashboard__section-header">
-            <div>
-              <h2 className="dashboard__section-title">Resumo do dia</h2>
-              <p className="dashboard__section-subtitle">
-                Producao, financeiro e pendencias em um olhar.
-              </p>
-            </div>
-          </div>
-          <div className="dashboard__summary">
-            <div className="dashboard__summary-grid">
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Pedidos em aberto</span>
-                <strong className="dashboard__summary-value">{openOrders}</strong>
-              </div>
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Producao em andamento</span>
-                <strong className="dashboard__summary-value">{inProduction}</strong>
-              </div>
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Caixa atual</span>
-                <strong className="dashboard__summary-value">{formatCurrency(cash)}</strong>
-              </div>
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Producao do mes</span>
-                <strong className="dashboard__summary-value">
-                  {formatCurrency(productionSummary.total)}
-                </strong>
-                <span className="dashboard__summary-meta">
-                  {productionSummary.count} ordens finalizadas
-                </span>
-              </div>
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Orcamentos pendentes</span>
-                <strong className="dashboard__summary-value">{pendingQuotes}</strong>
-              </div>
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Pagamentos pendentes</span>
-                <strong className="dashboard__summary-value">{pendingPayments}</strong>
-              </div>
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Ordens abertas</span>
-                <strong className="dashboard__summary-value">{openProduction}</strong>
-              </div>
-              <div className="dashboard__summary-item">
-                <span className="dashboard__summary-label">Movimento de hoje</span>
-                <strong className="dashboard__summary-value">
-                  {ordersToday} pedidos / {formatCurrency(receiptsToday)}
-                </strong>
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="ui-grid ui-grid--2">
+        <Section>
+          <SectionHeader
+            title="Resumo do dia"
+            subtitle="Producao, financeiro e pendencias em um olhar."
+          />
+          <Summary>
+            <SummaryItem label="Pedidos em aberto" value={openOrders} />
+            <SummaryItem label="Producao em andamento" value={inProduction} />
+            <SummaryItem label="Caixa atual" value={formatCurrency(cash)} />
+            <SummaryItem
+              label="Producao do mes"
+              value={formatCurrency(productionSummary.total)}
+              meta={`${productionSummary.count} ordens finalizadas`}
+            />
+            <SummaryItem label="Orcamentos pendentes" value={pendingQuotes} />
+            <SummaryItem label="Pagamentos pendentes" value={pendingPayments} />
+            <SummaryItem label="Ordens abertas" value={openProduction} />
+            <SummaryItem
+              label="Movimento de hoje"
+              value={`${ordersToday} pedidos / ${formatCurrency(receiptsToday)}`}
+            />
+          </Summary>
+        </Section>
 
-        <section className="dashboard__section dashboard__section--actions">
-          <div className="dashboard__section-header">
-            <div>
-              <h2 className="dashboard__section-title">Atalhos rapidos</h2>
-              <p className="dashboard__section-subtitle">
-                Crie operacoes sem perder contexto.
-              </p>
-            </div>
-          </div>
-          <div className="dashboard__actions">
+        <Section>
+          <SectionHeader title="Atalhos rapidos" subtitle="Crie operacoes sem perder contexto." />
+          <div className="ui-action-grid">
             {quickActions.map((action) => (
               <button
                 key={action.id}
-                className="dashboard__action"
+                className="ui-action"
                 type="button"
                 onClick={() => openQuickAction(action.id)}
               >
-                <span className="dashboard__action-icon material-symbols-outlined" aria-hidden="true">
+                <span className="material-symbols-outlined" aria-hidden="true">
                   {action.icon}
                 </span>
                 <span>
-                  <strong className="dashboard__action-title">{action.title}</strong>
-                  <span className="dashboard__action-meta">{action.description}</span>
+                  <strong className="ui-action__title">{action.title}</strong>
+                  <span className="ui-action__meta">{action.description}</span>
                 </span>
               </button>
             ))}
           </div>
-        </section>
+        </Section>
       </div>
 
-      <div className="dashboard__grid">
-        <section className="dashboard__panel dashboard__panel--chart">
-          <div className="dashboard__panel-header">
-            <div>
-              <h2 className="dashboard__panel-title">Fluxo financeiro</h2>
-              <p className="dashboard__panel-subtitle">Entradas vs saidas (6 meses)</p>
-            </div>
-            <div className="dashboard__legend">
-              <span className="dashboard__legend-item">
-                <i className="dashboard__legend-dot dashboard__legend-dot--in" />
-                Entradas
-              </span>
-              <span className="dashboard__legend-item">
-                <i className="dashboard__legend-dot dashboard__legend-dot--out" />
-                Saidas
-              </span>
-            </div>
-          </div>
-          <div className="dashboard__chart" role="img" aria-label="Fluxo financeiro mensal">
+      <div className="ui-grid ui-grid--2">
+        <Panel>
+          <SectionHeader
+            title="Fluxo financeiro"
+            subtitle="Entradas vs saidas (6 meses)"
+            actions={
+              <div className="ui-page__meta">
+                <span>Entradas</span>
+                <span>Saidas</span>
+              </div>
+            }
+          />
+          <div className="ui-chart" role="img" aria-label="Fluxo financeiro mensal">
             {monthlyFlow.months.map((month) => (
-              <div key={month.label} className="dashboard__chart-group">
-                <div className="dashboard__chart-bars">
+              <div key={month.label} className="ui-chart__group">
+                <div className="ui-chart__bars">
                   <span
-                    className="dashboard__chart-bar dashboard__chart-bar--in"
+                    className="ui-chart__bar ui-chart__bar--in"
                     style={{ height: `${(month.in / monthlyFlow.maxValue) * 100}%` }}
                   />
                   <span
-                    className="dashboard__chart-bar dashboard__chart-bar--out"
+                    className="ui-chart__bar ui-chart__bar--out"
                     style={{ height: `${(month.out / monthlyFlow.maxValue) * 100}%` }}
                   />
                 </div>
-                <span className="dashboard__chart-label">{month.label}</span>
+                <span className="ui-chart__label">{month.label}</span>
               </div>
             ))}
           </div>
-        </section>
+        </Panel>
 
-        <section className="dashboard__panel">
-          <div className="dashboard__panel-header">
+        <Panel>
+          <SectionHeader title="Alertas" subtitle="Itens que pedem atencao" />
+          <div className="ui-grid ui-grid--3">
             <div>
-              <h2 className="dashboard__panel-title">Alertas</h2>
-              <p className="dashboard__panel-subtitle">Itens que pedem atencao</p>
-            </div>
-          </div>
-          <div className="dashboard__alert-grid">
-            <div className="dashboard__alert">
-              <span className="dashboard__alert-title">Orcamentos vencendo</span>
-              <div className="dashboard__mini-list">
+              <span className="ui-summary__label">Orcamentos vencendo</span>
+              <div className="ui-list">
                 {expiringQuotes.length === 0 && (
-                  <div className="dashboard__empty">Nenhum orcamento nos proximos 7 dias.</div>
+                  <div className="ui-summary__meta">Nenhum orcamento nos proximos 7 dias.</div>
                 )}
                 {expiringQuotes.map((quote) => (
-                  <div key={quote.id} className="dashboard__mini-item">
-                    <span>{getClientName(quote.clientId)}</span>
-                    <strong>{formatDateShort(quote.validUntil)}</strong>
+                  <div key={quote.id} className="ui-list__item">
+                    <span className="ui-list__item-title">{getClientName(quote.clientId)}</span>
+                    <strong className="ui-list__item-value">
+                      {formatDateShort(quote.validUntil)}
+                    </strong>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="dashboard__alert">
-              <span className="dashboard__alert-title">Producao atrasada</span>
-              <div className="dashboard__mini-list">
+            <div>
+              <span className="ui-summary__label">Producao atrasada</span>
+              <div className="ui-list">
                 {delayedProduction.length === 0 && (
-                  <div className="dashboard__empty">Nenhuma ordem atrasada no momento.</div>
+                  <div className="ui-summary__meta">Nenhuma ordem atrasada no momento.</div>
                 )}
                 {delayedProduction.map((entry) => (
-                  <div key={entry.id} className="dashboard__mini-item">
-                    <span>{getProductLabel(entry.productId, entry.variantId)}</span>
-                    <strong>{entry.days} dias</strong>
+                  <div key={entry.id} className="ui-list__item">
+                    <span className="ui-list__item-title">
+                      {getProductLabel(entry.productId, entry.variantId)}
+                    </span>
+                    <strong className="ui-list__item-value">{entry.days} dias</strong>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="dashboard__alert">
-              <span className="dashboard__alert-title">Estoque baixo</span>
-              <div className="dashboard__mini-list">
+            <div>
+              <span className="ui-summary__label">Estoque baixo</span>
+              <div className="ui-list">
                 {lowStock.length === 0 && (
-                  <div className="dashboard__empty">Nenhum item abaixo do minimo.</div>
+                  <div className="ui-summary__meta">Nenhum item abaixo do minimo.</div>
                 )}
                 {lowStock.map((entry) => (
-                  <div key={`${entry.productId}-${entry.variantId}`} className="dashboard__mini-item">
-                    <span>
+                  <div key={`${entry.productId}-${entry.variantId}`} className="ui-list__item">
+                    <span className="ui-list__item-title">
                       {entry.variantName
                         ? entry.variantLocked
                           ? `${entry.productName} ${entry.variantName}`
                           : `${entry.productName} • ${entry.variantName}`
                         : entry.productName}
                     </span>
-                    <strong>{entry.stock}</strong>
+                    <strong className="ui-list__item-value">{entry.stock}</strong>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </section>
+        </Panel>
       </div>
 
-      <div className="dashboard__grid">
-        <section className="dashboard__panel">
-          <div className="dashboard__panel-header">
-            <div>
-              <h2 className="dashboard__panel-title">Pedidos recentes</h2>
-              <p className="dashboard__panel-subtitle">Ultimas movimentacoes</p>
-            </div>
-          </div>
-          <div className="dashboard__list">
-            {recentOrders.length === 0 && (
-              <div className="dashboard__empty">Nenhum pedido criado.</div>
-            )}
-            {recentOrders.map((order) => (
-              <div key={order.id} className="dashboard__list-item">
-                <span>{getClientName(order.clientId)}</span>
-                <strong>{formatCurrency(order.total)}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
+      <div className="ui-grid ui-grid--2">
+        <Panel>
+          <SectionHeader title="Pedidos recentes" subtitle="Ultimas movimentacoes" />
+          {recentOrders.length === 0 ? (
+            <div className="ui-summary__meta">Nenhum pedido criado.</div>
+          ) : (
+            <List>
+              {recentOrders.map((order) => (
+                <ListItem
+                  key={order.id}
+                  title={getClientName(order.clientId)}
+                  meta={`Pedido #${order.id.slice(-6)}`}
+                  value={formatCurrency(order.total)}
+                />
+              ))}
+            </List>
+          )}
+        </Panel>
 
-        <section className="dashboard__panel">
-          <div className="dashboard__panel-header">
-            <div>
-              <h2 className="dashboard__panel-title">Pagamentos recentes</h2>
-              <p className="dashboard__panel-subtitle">Entradas confirmadas</p>
-            </div>
-          </div>
-          <div className="dashboard__list">
-            {recentReceipts.length === 0 && (
-              <div className="dashboard__empty">Nenhum pagamento registrado.</div>
-            )}
-            {recentReceipts.map((receipt) => {
-              const order = data.pedidos.find((item) => item.id === receipt.orderId)
-              const clientName = order ? getClientName(order.clientId) : 'Cliente'
-              return (
-                <div key={receipt.id} className="dashboard__list-item">
-                  <span>{clientName}</span>
-                  <strong>{formatCurrency(receipt.amount)}</strong>
-                </div>
-              )
-            })}
-          </div>
-        </section>
+        <Panel>
+          <SectionHeader title="Pagamentos recentes" subtitle="Entradas confirmadas" />
+          {recentReceipts.length === 0 ? (
+            <div className="ui-summary__meta">Nenhum pagamento registrado.</div>
+          ) : (
+            <List>
+              {recentReceipts.map((receipt) => {
+                const order = data.pedidos.find((item) => item.id === receipt.orderId)
+                const clientName = order ? getClientName(order.clientId) : 'Cliente'
+                return (
+                  <ListItem
+                    key={receipt.id}
+                    title={clientName}
+                    meta={`Pedido #${receipt.orderId.slice(-6)}`}
+                    value={formatCurrency(receipt.amount)}
+                  />
+                )
+              })}
+            </List>
+          )}
+        </Panel>
       </div>
 
       <Modal
@@ -594,7 +559,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                 status: 'rascunho',
                 createdAt: nowIso,
               }
-              dataService.upsertQuote(quote)
+              const clientName =
+                availableClients.find((client) => client.id === quickQuote.clientId)?.name ??
+                'Cliente'
+              dataService.upsertQuote(quote, {
+                auditEvent: {
+                  category: 'acao',
+                  title: 'Orcamento criado (atalho)',
+                  description: `${clientName} · 1 item`,
+                },
+              })
               refresh()
               setQuickStatus('Orcamento rapido criado.')
             }}
@@ -758,7 +732,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
               const nowIso = new Date().toISOString()
               const total = quickOrder.quantity * quickOrder.unitPrice
               const normalizedPayment =
-                getPaymentMethodId(quickOrder.paymentMethod) || quickOrder.paymentMethod
+                getPaymentMethodId(
+                  quickOrder.paymentMethod,
+                  data.tabelas?.paymentMethods,
+                ) || quickOrder.paymentMethod
               const order: Order = {
                 id: createId(),
                 clientId: quickOrder.clientId,
@@ -775,7 +752,16 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                 status: 'aguardando_pagamento',
                 createdAt: nowIso,
               }
-              dataService.upsertOrder(order)
+              const clientName =
+                availableClients.find((client) => client.id === quickOrder.clientId)?.name ??
+                'Cliente'
+              dataService.upsertOrder(order, {
+                auditEvent: {
+                  category: 'acao',
+                  title: 'Pedido criado (atalho)',
+                  description: `${clientName} · 1 item`,
+                },
+              })
               refresh()
               setQuickStatus('Pedido rapido criado.')
             }}
@@ -925,12 +911,12 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
                   }
                 >
                   {quickOrder.paymentMethod &&
-                    !PAYMENT_METHODS.some((method) => method.id === quickOrder.paymentMethod) && (
+                    !paymentOptions.some((method) => method.id === quickOrder.paymentMethod) && (
                       <option value={quickOrder.paymentMethod}>
                         Outro ({quickOrder.paymentMethod})
                       </option>
                     )}
-                  {PAYMENT_METHODS.map((method) => (
+                  {paymentOptions.map((method) => (
                     <option key={method.id} value={method.id}>
                       {method.label}
                     </option>
@@ -1138,7 +1124,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
           </div>
         )}
       </Modal>
-    </section>
+    </Page>
   )
 }
 

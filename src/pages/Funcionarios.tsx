@@ -844,7 +844,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       {employeeStatus && <p className="form__status">{employeeStatus}</p>}
       {logStatus && <p className="form__status">{logStatus}</p>}
 
-      <div className="funcionarios__cards">
+      <div className="funcionarios__cards summary-card">
         <article className="card">
           <span className="card__label">Funcionarios ativos</span>
           <span className="card__value">

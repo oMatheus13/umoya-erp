@@ -1,0 +1,14 @@
+.action-menu {
+  display: inline-flex;
+}
+
+.action-menu__select {
+  border: 1px solid var(--color-line);
+  border-radius: var(--border-radius-md);
+  padding: 0.3rem 0.7rem;
+  background: transparent;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-ink);
+}

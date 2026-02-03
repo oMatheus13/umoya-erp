@@ -68,6 +68,18 @@ const Producao = () => {
     data.produtos
       .find((product) => product.id === productId)
       ?.variants?.find((variant) => variant.id === variantId)
+  const getOrderLabel = (order: ProductionOrder) => {
+    const productName = getProductName(order.productId)
+    const variantName = order.variantId
+      ? getVariant(order.productId, order.variantId)?.name
+      : ''
+    const lengthLabel =
+      order.customLength && order.customLength > 0
+        ? `${Math.round(order.customLength * 100)} cm`
+        : ''
+    const parts = [productName, variantName, lengthLabel].filter(Boolean)
+    return `${parts.join(' · ')} · ${order.quantity} un`
+  }
 
   const availableProducts = data.produtos.filter((product) => product.active !== false)
   const manualProduct = data.produtos.find((product) => product.id === manualForm.productId)
@@ -127,12 +139,19 @@ const Producao = () => {
     }))
   }
 
-  const updateProduction = (next: ProductionOrder) => {
+  const updateProduction = (
+    next: ProductionOrder,
+    audit?: { title: string; description?: string },
+  ) => {
     const payload = dataService.getAll()
     payload.ordensProducao = payload.ordensProducao.map((item) =>
       item.id === next.id ? next : item,
     )
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: audit
+        ? { category: 'acao', title: audit.title, description: audit.description }
+        : undefined,
+    })
     refresh()
   }
 
@@ -271,11 +290,17 @@ const Producao = () => {
     if (order.status !== 'aberta') {
       return
     }
-    updateProduction({
-      ...order,
-      status: 'em_producao',
-      plannedAt: order.plannedAt ?? new Date().toISOString(),
-    })
+    updateProduction(
+      {
+        ...order,
+        status: 'em_producao',
+        plannedAt: order.plannedAt ?? new Date().toISOString(),
+      },
+      {
+        title: 'Producao iniciada',
+        description: getOrderLabel(order),
+      },
+    )
     setStatus(`Ordem ${order.id.slice(0, 6)} em producao.`)
   }
 
@@ -346,7 +371,13 @@ const Producao = () => {
         },
       ]
     }
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Producao finalizada',
+        description: getOrderLabel(order),
+      },
+    })
     refresh()
     const warnings = consumptionResult.warnings.join(' ')
     const consumptionMessage = consumptionResult.applied
@@ -393,7 +424,13 @@ const Producao = () => {
       source: 'estoque',
     }
     payload.ordensProducao = [...payload.ordensProducao, next]
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Ordem manual criada',
+        description: getOrderLabel(next),
+      },
+    })
     refresh()
     setStatus('Ordem de producao criada para estoque.')
     setIsManualOpen(false)
@@ -462,7 +499,13 @@ const Producao = () => {
     payload.entregas = payload.entregas.filter(
       (delivery) => delivery.productionOrderId !== deleteId,
     )
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Ordem de producao excluida',
+        description: target ? getOrderLabel(target) : undefined,
+      },
+    })
     refresh()
     setStatus('Ordem de producao excluida.')
     setDeleteId(null)
@@ -487,7 +530,7 @@ const Producao = () => {
 
       {status && <p className="producao__status">{status}</p>}
 
-      <div className="producao__summary">
+      <div className="producao__summary summary-card">
         <article className="producao__stat">
           <span className="producao__stat-label">Total</span>
           <strong className="producao__stat-value">{productionSummary.total}</strong>

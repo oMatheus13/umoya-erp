@@ -344,7 +344,13 @@ const Compras = () => {
       },
     ]
 
-    dataService.replaceAll(payload)
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Compra registrada',
+        description: `${summary} · ${formatCurrency(totalAmount)}`,
+      },
+    })
     refresh()
     setStatus('Compra registrada no financeiro.')
     setIsModalOpen(false)
@@ -369,7 +375,7 @@ const Compras = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="compras__summary">
+      <div className="compras__summary summary-card">
         <article className="compras__stat">
           <span className="compras__stat-label">Fornecedores ativos</span>
           <strong className="compras__stat-value">{suppliers.length}</strong>
@@ -448,7 +454,7 @@ const Compras = () => {
             <div key={material.id} className="compras__list-item">
               <span>{material.name}</span>
               <strong>
-                {getMaterialUnitLabel(material.unit)}
+                {getMaterialUnitLabel(material.unit, data.tabelas)}
                 {material.marketUnitPrice ? ` • ${formatCurrency(material.marketUnitPrice)}` : ''}
               </strong>
             </div>

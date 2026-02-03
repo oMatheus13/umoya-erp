@@ -218,7 +218,7 @@ const Entregas = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="entregas__summary">
+      <div className="entregas__summary summary-card">
         <article className="entregas__stat">
           <span className="entregas__stat-label">Total de entregas</span>
           <strong className="entregas__stat-value">{summary.total}</strong>
