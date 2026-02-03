@@ -65,8 +65,9 @@ const Tabelas = () => {
       setEditingId(entry.id)
       setForm({
         label: entry.label,
-        symbol: 'symbol' in entry ? entry.symbol ?? '' : '',
-        cashboxId: 'cashboxId' in entry ? entry.cashboxId ?? '' : '',
+        symbol: kind === 'units' ? (entry as UnitTableEntry).symbol ?? '' : '',
+        cashboxId:
+          kind === 'paymentMethods' ? (entry as PaymentTableEntry).cashboxId ?? '' : '',
         description: entry.description ?? '',
         active: entry.active ?? true,
       })

@@ -97,7 +97,10 @@ const Qualidade = () => {
     [data.produtos],
   )
   const productionOrders = useMemo(
-    () => [...data.ordensProducao].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    () =>
+      [...data.ordensProducao].sort((a, b) =>
+        (b.plannedAt ?? b.finishedAt ?? '').localeCompare(a.plannedAt ?? a.finishedAt ?? ''),
+      ),
     [data.ordensProducao],
   )
 

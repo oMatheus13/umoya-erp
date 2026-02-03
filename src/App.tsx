@@ -275,10 +275,11 @@ function App() {
   }
 
   const fetchRemoteState = async (userId: string) => {
-    const timeout = new Promise<{ data: null; error: string }>((resolve) => {
+    type RemoteState = Awaited<ReturnType<typeof erpRemote.fetchState>>
+    const timeout = new Promise<RemoteState>((resolve) => {
       setTimeout(() => resolve({ data: null, error: 'timeout' }), 2500)
     })
-    return Promise.race([erpRemote.fetchState(userId), timeout])
+    return Promise.race<RemoteState>([erpRemote.fetchState(userId), timeout])
   }
 
   const startSession = async (user: User) => {
