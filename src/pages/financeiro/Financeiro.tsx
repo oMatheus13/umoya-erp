@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { FinanceEntry } from '../../types/erp'
@@ -275,19 +276,15 @@ const Financeiro = () => {
   }
 
   return (
-    <section className="financeiro">
-      <header className="financeiro__header">
-        <div className="financeiro__headline">
-          <span className="financeiro__eyebrow">Financeiro</span>
-          <h1 className="financeiro__title">Fluxo de caixa</h1>
-          <p className="financeiro__subtitle">Controle entradas, saidas e saldo.</p>
-        </div>
-        <div className="financeiro__actions">
+    <Page className="financeiro">
+      <PageHeader
+        title="Fluxo de caixa"
+        actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
             Novo lancamento
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <div className="financeiro__summary summary-card">
@@ -679,7 +676,7 @@ const Financeiro = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

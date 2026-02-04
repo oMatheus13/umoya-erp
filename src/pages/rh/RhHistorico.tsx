@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Page, PageHeader } from '../../components/ui'
 import { useERPData } from '../../store/appStore'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 
@@ -72,14 +73,8 @@ const RhHistorico = () => {
   }, [data.funcionarios, data.presencas, data.pagamentosRH, data.ocorrenciasRH, employees])
 
   return (
-    <section className="rh-page">
-      <header className="rh-page__header">
-        <div className="rh-page__headline">
-          <span className="rh-page__eyebrow">RH</span>
-          <h1 className="rh-page__title">Historico</h1>
-          <p className="rh-page__subtitle">Linha do tempo de eventos do time.</p>
-        </div>
-      </header>
+    <Page className="rh-page">
+      <PageHeader title="Historico" />
 
       <section className="rh-page__panel">
         <div className="rh-page__panel-header">
@@ -117,7 +112,7 @@ const RhHistorico = () => {
           </table>
         </div>
       </section>
-    </section>
+    </Page>
   )
 }
 

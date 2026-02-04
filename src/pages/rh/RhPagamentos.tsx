@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { EmployeePayment, EmployeePaymentStatus } from '../../types/erp'
@@ -159,19 +160,15 @@ const RhPagamentos = () => {
   }
 
   return (
-    <section className="rh-page">
-      <header className="rh-page__header">
-        <div className="rh-page__headline">
-          <span className="rh-page__eyebrow">RH</span>
-          <h1 className="rh-page__title">Pagamentos</h1>
-          <p className="rh-page__subtitle">Controle de pagamentos da equipe e periodos.</p>
-        </div>
-        <div className="rh-page__actions">
+    <Page className="rh-page">
+      <PageHeader
+        title="Pagamentos"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Registrar pagamento
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -435,7 +432,7 @@ const RhPagamentos = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

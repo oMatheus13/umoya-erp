@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
 import Placeholder from '../shared/Placeholder'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { UserAccount } from '../../types/erp'
@@ -159,14 +160,8 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
   }
 
   return (
-    <section className="perfil">
-      <header className="perfil__header">
-        <div className="perfil__headline">
-          <span className="perfil__eyebrow">Conta</span>
-          <h1 className="perfil__title">Meu perfil</h1>
-          <p className="perfil__subtitle">Atualize seus dados pessoais e o avatar do sistema.</p>
-        </div>
-      </header>
+    <Page className="perfil">
+      <PageHeader title="Meu perfil" />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -315,7 +310,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
           </form>
         </section>
       </div>
-    </section>
+    </Page>
   )
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Mold } from '../../types/erp'
@@ -164,21 +165,15 @@ const EstoqueFormas = () => {
   }
 
   return (
-    <section className="moldes">
-      <header className="moldes__header">
-        <div className="moldes__headline">
-          <span className="moldes__eyebrow">Estoque</span>
-          <h1 className="moldes__title">Formas e moldes</h1>
-          <p className="moldes__subtitle">
-            Controle simples de quantidade e medidas das formas.
-          </p>
-        </div>
-        <div className="moldes__actions">
+    <Page className="moldes">
+      <PageHeader
+        title="Formas e moldes"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Nova forma
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <div className="moldes__summary summary-card">
@@ -388,7 +383,7 @@ const EstoqueFormas = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

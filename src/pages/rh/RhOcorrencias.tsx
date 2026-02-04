@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { EmployeeOccurrence } from '../../types/erp'
@@ -123,19 +124,15 @@ const RhOcorrencias = () => {
   }
 
   return (
-    <section className="rh-page">
-      <header className="rh-page__header">
-        <div className="rh-page__headline">
-          <span className="rh-page__eyebrow">RH</span>
-          <h1 className="rh-page__title">Ocorrencias</h1>
-          <p className="rh-page__subtitle">Registre incidentes, atrasos e observacoes.</p>
-        </div>
-        <div className="rh-page__actions">
+    <Page className="rh-page">
+      <PageHeader
+        title="Ocorrencias"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Registrar ocorrencia
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -292,7 +289,7 @@ const RhOcorrencias = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

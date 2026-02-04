@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { IntegrationConfig, IntegrationStatus } from '../../types/erp'
@@ -118,16 +119,8 @@ const Integracoes = () => {
   }
 
   return (
-    <section className="integracoes">
-      <header className="integracoes__header">
-        <div className="integracoes__headline">
-          <span className="integracoes__eyebrow">Configuracoes</span>
-          <h1 className="integracoes__title">Integracoes</h1>
-          <p className="integracoes__subtitle">
-            Conecte serviços externos para emissao fiscal, mensagens e backup.
-          </p>
-        </div>
-      </header>
+    <Page className="integracoes">
+      <PageHeader title="Integracoes" />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -244,7 +237,7 @@ const Integracoes = () => {
           </div>
         </form>
       </Modal>
-    </section>
+    </Page>
   )
 }
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Page, PageHeader } from '../../components/ui'
 import { useERPData } from '../../store/appStore'
 import { formatDateShort } from '../../utils/format'
 import { getProductUnitLabel } from '../../utils/units'
@@ -73,16 +74,8 @@ const RelatoriosProducao = () => {
     data.produtos.find((product) => product.id === id)?.name ?? 'Produto'
 
   return (
-    <section className="relatorios">
-      <header className="relatorios__header">
-        <div className="relatorios__headline">
-          <span className="relatorios__eyebrow">Relatorios</span>
-          <h1 className="relatorios__title">Producao por periodo</h1>
-          <p className="relatorios__subtitle">
-            Volume produzido, lotes ativos e andamento geral.
-          </p>
-        </div>
-      </header>
+    <Page className="relatorios">
+      <PageHeader title="Producao por periodo" />
 
       <div className="card-grid summary-card">
         <article className="card">
@@ -159,7 +152,7 @@ const RelatoriosProducao = () => {
           </div>
         </section>
       </div>
-    </section>
+    </Page>
   )
 }
 

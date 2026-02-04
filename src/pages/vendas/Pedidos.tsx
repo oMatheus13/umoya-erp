@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import {
   getPaymentCashboxId,
   getPaymentMethodId,
@@ -992,16 +993,10 @@ const Pedidos = () => {
   }
 
   return (
-    <section className="pedidos">
-      <header className="pedidos__header">
-        <div className="pedidos__headline">
-          <span className="pedidos__eyebrow">Comercial</span>
-          <h1 className="pedidos__title">Pedidos</h1>
-          <p className="pedidos__subtitle">
-            Pedidos sao gerados automaticamente quando um orcamento e aprovado.
-          </p>
-        </div>
-        <div className="pedidos__actions">
+    <Page className="pedidos">
+      <PageHeader
+        title="Pedidos"
+        actions={
           <button
             className="button button--primary"
             type="button"
@@ -1010,8 +1005,8 @@ const Pedidos = () => {
           >
             Novo pedido
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <div className="pedidos__summary summary-card">
@@ -1595,7 +1590,7 @@ const Pedidos = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { AuditCategory, AuditEvent } from '../../types/erp'
@@ -11,8 +12,6 @@ import { createId } from '../../utils/ids'
 type AuditoriaPageProps = {
   category: AuditCategory
   title: string
-  subtitle: string
-  eyebrow: string
 }
 
 type AuditForm = {
@@ -22,7 +21,7 @@ type AuditForm = {
   metadata: string
 }
 
-const AuditoriaPage = ({ category, title, subtitle, eyebrow }: AuditoriaPageProps) => {
+const AuditoriaPage = ({ category, title }: AuditoriaPageProps) => {
   const { data, refresh } = useERPData()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingCreatedAt, setEditingCreatedAt] = useState<string | null>(null)
@@ -136,19 +135,15 @@ const AuditoriaPage = ({ category, title, subtitle, eyebrow }: AuditoriaPageProp
   const entryToDelete = deleteId ? data.auditoria.find((item) => item.id === deleteId) : null
 
   return (
-    <section className="auditoria">
-      <header className="auditoria__header">
-        <div className="auditoria__headline">
-          <span className="auditoria__eyebrow">{eyebrow}</span>
-          <h1 className="auditoria__title">{title}</h1>
-          <p className="auditoria__subtitle">{subtitle}</p>
-        </div>
-        <div className="auditoria__actions">
+    <Page className="auditoria">
+      <PageHeader
+        title={title}
+        actions={
           <button className="button button--primary" type="button" onClick={() => openModal()}>
             Novo registro
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -288,7 +283,7 @@ const AuditoriaPage = ({ category, title, subtitle, eyebrow }: AuditoriaPageProp
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Placeholder from '../shared/Placeholder'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { PermissionKey, PermissionLevel, RolePermissions, UserAccount } from '../../types/erp'
@@ -102,27 +103,35 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
   }
 
   return (
-    <section className="usuarios-permissoes">
-      <header className="usuarios-permissoes__header">
-        <div className="usuarios-permissoes__headline">
-          <span className="usuarios-permissoes__eyebrow">Configuracoes</span>
-          <h1 className="usuarios-permissoes__title">Usuarios e permissoes</h1>
-          <p className="usuarios-permissoes__subtitle">
-            Defina o nivel de acesso por cargo e mantenha o controle do sistema.
-          </p>
-        </div>
-        <div className="usuarios-permissoes__actions">
-          <button className="button button--ghost" type="button" onClick={() => applyPreset('view')}>
-            Somente leitura
-          </button>
-          <button className="button button--ghost" type="button" onClick={() => applyPreset('none')}>
-            Sem acesso
-          </button>
-          <button className="button button--primary" type="button" onClick={() => applyPreset('edit')}>
-            Liberar tudo
-          </button>
-        </div>
-      </header>
+    <Page className="usuarios-permissoes">
+      <PageHeader
+        title="Usuarios e permissoes"
+        actions={
+          <>
+            <button
+              className="button button--ghost"
+              type="button"
+              onClick={() => applyPreset('view')}
+            >
+              Somente leitura
+            </button>
+            <button
+              className="button button--ghost"
+              type="button"
+              onClick={() => applyPreset('none')}
+            >
+              Sem acesso
+            </button>
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={() => applyPreset('edit')}
+            >
+              Liberar tudo
+            </button>
+          </>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -240,7 +249,7 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
           </section>
         </div>
       )}
-    </section>
+    </Page>
   )
 }
 

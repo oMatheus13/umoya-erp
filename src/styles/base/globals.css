@@ -1,0 +1,78 @@
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-family-secondary);
+  line-height: 1.5;
+  overflow: hidden;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(170, 255, 0, 0.35);
+  color: var(--color-ink);
+}
+
+input,
+textarea,
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: transparent;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  font: inherit;
+  color: inherit;
+  line-height: inherit;
+}
+
+/* DEBUG
+
+* {
+    outline: 1px solid red;
+}
+
+* * {
+    outline: 1px solid orange;
+}
+
+* * * {
+    outline: 1px solid yellow;
+}
+
+* * * * {
+    outline: 1px solid green;
+}
+
+* * * * * {
+    outline: 1px solid blue;
+}
+
+* * * * * * {
+    outline: 2px solid purple;
+}
+
+* * * * * * * {
+    outline: 2px solid pink;
+}
+
+* * * * * * * * {
+    outline: 3px solid cyan;
+}
+
+* * * * * * * * * {
+    outline: 3px solid lime;
+}
+
+* * * * * * * * * * {
+    outline: 4px solid brown;
+}
+*/

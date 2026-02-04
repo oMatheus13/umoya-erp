@@ -326,9 +326,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   return (
     <Page>
       <PageHeader
-        eyebrow="Visao geral"
-        title="Resumo da operacao"
-        subtitle="Visao minimalista com foco no que move a fabrica hoje."
+        title="Painel"
         meta={
           <>
             <span>Atualizado</span>
@@ -391,7 +389,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
             title="Fluxo financeiro"
             subtitle="Entradas vs saidas (6 meses)"
             actions={
-              <div className="ui-page__meta">
+              <div className="page-header__meta">
                 <span>Entradas</span>
                 <span>Saidas</span>
               </div>

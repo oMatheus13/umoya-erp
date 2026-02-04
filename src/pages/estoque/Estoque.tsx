@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Page, PageHeader } from '../../components/ui'
 import { useERPData } from '../../store/appStore'
 
 const Estoque = () => {
@@ -60,16 +61,8 @@ const Estoque = () => {
       : item.productName
 
   return (
-    <section className="estoque">
-      <header className="estoque__header">
-        <div className="estoque__headline">
-          <span className="estoque__eyebrow">Estoque</span>
-          <h1 className="estoque__title">Estoque consolidado</h1>
-          <p className="estoque__subtitle">
-            Controle rapido de saldos, alertas e itens criticos.
-          </p>
-        </div>
-      </header>
+    <Page className="estoque">
+      <PageHeader title="Estoque consolidado" />
 
       <div className="estoque__summary summary-card">
         <article className="estoque__stat">
@@ -133,7 +126,7 @@ const Estoque = () => {
         </section>
       </div>
 
-    </section>
+    </Page>
   )
 }
 

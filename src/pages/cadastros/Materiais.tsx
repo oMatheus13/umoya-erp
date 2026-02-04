@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Material, MaterialKind, MaterialUnit } from '../../types/erp'
@@ -211,21 +212,15 @@ const Materiais = () => {
     : 'unidade'
 
   return (
-    <section className="materiais">
-      <header className="materiais__header">
-        <div className="materiais__headline">
-          <span className="materiais__eyebrow">Cadastros</span>
-          <h1 className="materiais__title">Materia-prima</h1>
-          <p className="materiais__subtitle">
-            Precos de mercado, unidades e referencias para compras.
-          </p>
-        </div>
-        <div className="materiais__actions">
+    <Page className="materiais">
+      <PageHeader
+        title='Matéria-prima'
+        actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
             Novo material
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <div className="materiais__summary summary-card">
@@ -566,7 +561,7 @@ const Materiais = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

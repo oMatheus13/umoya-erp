@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Page, PageHeader } from '../../components/ui'
 import { useERPData } from '../../store/appStore'
 import { formatCurrency } from '../../utils/format'
 
@@ -142,14 +143,10 @@ const Bi = () => {
   }, [filteredOrders, data.clientes])
 
   return (
-    <section className="bi">
-      <header className="bi__header">
-        <div className="bi__headline">
-          <span className="bi__eyebrow">Inteligencia</span>
-          <h1 className="bi__title">BI</h1>
-          <p className="bi__subtitle">Analise o desempenho e as tendencias do negocio.</p>
-        </div>
-        <div className="bi__actions">
+    <Page className="bi">
+      <PageHeader
+        title="BI"
+        actions={
           <div className="bi__filters">
             <div className="bi__filter">
               <label className="form__label" htmlFor="bi-range">
@@ -187,8 +184,8 @@ const Bi = () => {
               </select>
             </div>
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <div className="bi__cards summary-card">
         <article className="card">
@@ -301,7 +298,7 @@ const Bi = () => {
           </div>
         </section>
       </div>
-    </section>
+    </Page>
   )
 }
 

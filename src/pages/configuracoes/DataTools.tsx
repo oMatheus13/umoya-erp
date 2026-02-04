@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { createEmptyState } from '../../services/storage'
 import { useERPData } from '../../store/appStore'
@@ -20,16 +21,8 @@ const DataTools = () => {
   }
 
   return (
-    <section className="data-tools">
-      <header className="data-tools__header">
-        <div className="data-tools__headline">
-          <span className="data-tools__eyebrow">Admin</span>
-          <h1 className="data-tools__title">Dados do sistema</h1>
-          <p className="data-tools__subtitle">
-            Reinicie o ambiente de testes e acompanhe o resumo atual.
-          </p>
-        </div>
-      </header>
+    <Page className="data-tools">
+      <PageHeader title="Dados do sistema" />
 
       <div className="data-tools__grid">
         <div className="data-tools__panel">
@@ -84,7 +77,7 @@ const DataTools = () => {
         onClose={() => setIsResetOpen(false)}
         onConfirm={handleReset}
       />
-    </section>
+    </Page>
   )
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Product, ProductUnit, ProductVariant } from '../../types/erp'
@@ -547,21 +548,15 @@ const Produtos = () => {
   }
 
   return (
-    <section className="produtos">
-      <header className="produtos__header">
-        <div className="produtos__headline">
-          <span className="produtos__eyebrow">Catalogo</span>
-          <h1 className="produtos__title">Produtos</h1>
-          <p className="produtos__subtitle">
-            Cadastre produtos e controle variacoes com estoque independente.
-          </p>
-        </div>
-        <div className="produtos__actions">
+    <Page className="produtos">
+      <PageHeader
+        title="Produtos"
+        actions={
           <button className="button button--primary" type="button" onClick={openProductModal}>
             Novo produto
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <div className="produtos__summary summary-card">
@@ -1266,7 +1261,7 @@ const Produtos = () => {
         onClose={() => setDeleteVariantId(null)}
         onConfirm={handleDeleteVariant}
       />
-    </section>
+    </Page>
   )
 }
 

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { MaterialConsumption, ProductionOrder, ProductMaterialUsage } from '../../types/erp'
@@ -512,21 +513,15 @@ const Producao = () => {
   }
 
   return (
-    <section className="producao">
-      <header className="producao__header">
-        <div className="producao__headline">
-          <span className="producao__eyebrow">Operacao</span>
-          <h1 className="producao__title">Producao</h1>
-          <p className="producao__subtitle">
-            Ordens sao criadas automaticamente quando um pedido e marcado como pago.
-          </p>
-        </div>
-        <div className="producao__actions">
+    <Page className="producao">
+      <PageHeader
+        title="Producao"
+        actions={
           <button className="button button--ghost" type="button" onClick={handleManualOrder}>
             Criar ordem manual
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="producao__status">{status}</p>}
 
@@ -765,7 +760,7 @@ const Producao = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { PresenceEntry, PresenceStatus } from '../../types/erp'
@@ -137,19 +138,15 @@ const RhPresenca = () => {
   }
 
   return (
-    <section className="rh-page">
-      <header className="rh-page__header">
-        <div className="rh-page__headline">
-          <span className="rh-page__eyebrow">RH</span>
-          <h1 className="rh-page__title">Presenca</h1>
-          <p className="rh-page__subtitle">Controle diario de presencas da equipe.</p>
-        </div>
-        <div className="rh-page__actions">
+    <Page className="rh-page">
+      <PageHeader
+        title="Presenca"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Registrar presenca
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -317,7 +314,7 @@ const RhPresenca = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

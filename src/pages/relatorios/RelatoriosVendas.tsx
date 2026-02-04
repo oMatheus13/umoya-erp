@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Page, PageHeader } from '../../components/ui'
 import { useERPData } from '../../store/appStore'
 import { formatCurrency } from '../../utils/format'
 
@@ -44,16 +45,8 @@ const RelatoriosVendas = () => {
   }, [data.pedidos, data.clientes])
 
   return (
-    <section className="relatorios">
-      <header className="relatorios__header">
-        <div className="relatorios__headline">
-          <span className="relatorios__eyebrow">Relatorios</span>
-          <h1 className="relatorios__title">Vendas por cliente e obra</h1>
-          <p className="relatorios__subtitle">
-            Distribuicao de receita, ticket medio e clientes mais ativos.
-          </p>
-        </div>
-      </header>
+    <Page className="relatorios">
+      <PageHeader title="Vendas por cliente e obra" />
 
       <div className="card-grid summary-card">
         <article className="card">
@@ -133,7 +126,7 @@ const RelatoriosVendas = () => {
           </div>
         </section>
       </div>
-    </section>
+    </Page>
   )
 }
 

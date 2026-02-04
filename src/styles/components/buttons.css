@@ -1,0 +1,204 @@
+.button {
+  --btn-bg: var(--color-ink);
+  --btn-fg: var(--color-true-white);
+  --btn-border: transparent;
+  --btn-shadow: var(--box-shadow-sm);
+  --btn-radius: var(--border-radius-md);
+  --btn-padding-y: 0.65rem;
+  --btn-padding-x: 1.1rem;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  padding: var(--btn-padding-y) var(--btn-padding-x);
+  border-radius: var(--btn-radius);
+  border: 1px solid var(--btn-border);
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: var(--btn-shadow);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast),
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--box-shadow-md);
+}
+
+.button:active {
+  transform: translateY(0);
+  box-shadow: var(--box-shadow-sm);
+}
+
+.button:disabled,
+.button[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.button--primary {
+  --btn-bg: var(--color-lime);
+  --btn-fg: var(--color-ink);
+  --btn-border: transparent;
+
+}
+
+.button--secondary {
+  --btn-bg: var(--color-ink-soft);
+  --btn-fg: var(--color-true-white);
+}
+
+.button--ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-ink);
+  --btn-border: var(--color-line);
+  --btn-shadow: none;
+}
+
+.button--ghost:hover {
+  background: var(--color-lime-soft);
+  border-color: var(--color-line-strong);
+  box-shadow: none;
+  transform: none;
+}
+
+.button--outline {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-ink);
+  --btn-border: var(--color-ink);
+  --btn-shadow: none;
+}
+
+.button--danger {
+  --btn-bg: var(--color-danger);
+  --btn-fg: var(--color-true-white);
+}
+
+.button--success {
+  --btn-bg: var(--color-success);
+  --btn-fg: var(--color-true-white);
+}
+
+.button--warning {
+  --btn-bg: var(--color-warning);
+  --btn-fg: var(--color-ink);
+}
+
+.button--link {
+  --btn-bg: transparent;
+  --btn-fg: var(--color-ink);
+  --btn-border: transparent;
+  --btn-shadow: none;
+  padding: 0;
+}
+
+.button--sm {
+  --btn-padding-y: 0.4rem;
+  --btn-padding-x: 0.75rem;
+  --btn-radius: var(--border-radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.button--lg {
+  --btn-padding-y: 0.8rem;
+  --btn-padding-x: 1.4rem;
+  --btn-radius: var(--border-radius-lg);
+  font-size: var(--font-size-lg);
+}
+
+.button--pill {
+  --btn-radius: var(--border-radius-full);
+}
+
+.button--block {
+  width: 100%;
+}
+
+.button--icon {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+}
+
+.button--bezel {
+  --bezel: var(--bezel-sm);
+  border-radius: 0;
+  clip-path: var(--bezel-clip);
+}
+
+.toggle {
+  --toggle-width: 42px;
+  --toggle-height: 22px;
+  --toggle-thumb: 18px;
+  --toggle-track: var(--color-line);
+  --toggle-track-active: var(--color-lime);
+  --toggle-thumb-bg: var(--color-true-white);
+  --toggle-shadow: 0 2px 6px rgba(15, 17, 22, 0.25);
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+  user-select: none;
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toggle__track {
+  position: relative;
+  width: var(--toggle-width);
+  height: var(--toggle-height);
+  border-radius: var(--border-radius-full);
+  background: var(--toggle-track);
+  transition: background var(--transition-fast);
+}
+
+.toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: var(--toggle-thumb);
+  height: var(--toggle-thumb);
+  border-radius: 50%;
+  background: var(--toggle-thumb-bg);
+  box-shadow: var(--toggle-shadow);
+  transition: transform var(--transition-fast);
+}
+
+.toggle input:checked + .toggle__track {
+  background: var(--toggle-track-active);
+}
+
+.toggle input:checked + .toggle__track .toggle__thumb {
+  transform: translateX(calc(var(--toggle-width) - var(--toggle-thumb) - 4px));
+}
+
+.toggle input:focus-visible + .toggle__track {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
+}

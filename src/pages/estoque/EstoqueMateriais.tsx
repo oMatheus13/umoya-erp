@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Material } from '../../types/erp'
@@ -116,16 +117,8 @@ const EstoqueMateriais = () => {
   }
 
   return (
-    <section className="estoque-materiais">
-      <header className="estoque-materiais__header">
-        <div className="estoque-materiais__headline">
-          <span className="estoque-materiais__eyebrow">Estoque</span>
-          <h1 className="estoque-materiais__title">Materia-prima</h1>
-          <p className="estoque-materiais__subtitle">
-            Saldos atualizados por compras e ajustes manuais.
-          </p>
-        </div>
-      </header>
+    <Page className="estoque-materiais">
+      <PageHeader title="Materia-prima" />
       {status && <p className="form__status">{status}</p>}
 
       <div className="estoque-materiais__summary summary-card">
@@ -285,7 +278,7 @@ const EstoqueMateriais = () => {
           </div>
         </form>
       </Modal>
-    </section>
+    </Page>
   )
 }
 

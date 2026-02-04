@@ -473,11 +473,15 @@ const Topbar = ({
             {isSensitiveHidden ? 'visibility_off' : 'visibility'}
           </span>
         </button>
-        <div className="topbar__notifications" ref={notificationsRef}>
+        <div className="topbar__notifications">
           <button
             className="topbar__icon"
             type="button"
-            aria-label="Notificacoes"
+            aria-label={
+              notifications.length > 0
+                ? `Notificacoes (${notifications.length})`
+                : 'Notificacoes'
+            }
             onClick={() => {
               setIsNotificationsOpen((prev) => !prev)
               setIsSearchOpen(false)
@@ -488,15 +492,26 @@ const Topbar = ({
               notifications
             </span>
             {notifications.length > 0 && (
-              <span className="topbar__notification-count">{notifications.length}</span>
+              <span className="topbar__notification-dot" aria-hidden="true" />
             )}
           </button>
-          {isNotificationsOpen && (
-            <div className="topbar__notifications-panel" role="dialog" aria-modal="true">
+        </div>
+        {isNotificationsOpen && (
+          <div
+            className="topbar__notifications-overlay"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setIsNotificationsOpen(false)}
+          >
+            <div
+              className="topbar__notifications-panel topbar__mini-modal"
+              ref={notificationsRef}
+              onClick={(event) => event.stopPropagation()}
+            >
               <div className="topbar__notifications-header">
                 <strong>Notificacoes</strong>
                 <button
-                  className="topbar__notifications-close"
+                  className="topbar__notifications-close topbar__icon"
                   type="button"
                   onClick={() => setIsNotificationsOpen(false)}
                   aria-label="Fechar notificacoes"
@@ -532,8 +547,8 @@ const Topbar = ({
                 ))}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
         <div className="topbar__profile">
           <button className="topbar__profile-main" type="button" onClick={onProfileOpen}>
             {userAvatarUrl ? (
@@ -564,7 +579,10 @@ const Topbar = ({
           aria-modal="true"
           onClick={() => setIsSearchOpen(false)}
         >
-          <div className="topbar__search-surface" onClick={(event) => event.stopPropagation()}>
+          <div
+            className="topbar__search-surface topbar__mini-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
             <span className="material-symbols-outlined" aria-hidden="true">
               search
             </span>
@@ -578,7 +596,7 @@ const Topbar = ({
               autoFocus
             />
             <button
-              className="topbar__search-close"
+              className="topbar__icon topbar__search-close"
               type="button"
               onClick={() => setIsSearchOpen(false)}
               aria-label="Fechar busca"

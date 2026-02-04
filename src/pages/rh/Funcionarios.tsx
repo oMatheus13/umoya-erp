@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { isSupabaseEnabled, supabaseNoPersist } from '../../services/supabaseClient'
 import { useERPData } from '../../store/appStore'
@@ -817,30 +818,26 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
   const selectedLaborLength = selectedLogVariant?.length ?? selectedLogProduct?.length ?? 0
 
   return (
-    <section className="funcionarios">
-      <header className="funcionarios__header">
-        <div className="funcionarios__headline">
-          <span className="funcionarios__eyebrow">Operacao</span>
-          <h1 className="funcionarios__title">Funcionarios</h1>
-          <p className="funcionarios__subtitle">
-            Registre producao diaria e calcule pagamentos automaticamente.
-          </p>
-        </div>
-        <div className="funcionarios__actions">
-          <button className="button button--ghost" type="button" onClick={openRoleModal}>
-            Novo cargo
-          </button>
-          <button className="button button--ghost" type="button" onClick={openLevelModal}>
-            Novo nivel
-          </button>
-          <button className="button button--primary" type="button" onClick={openEmployeeModal}>
-            Novo funcionario
-          </button>
-          <button className="button button--primary" type="button" onClick={openLogModal}>
-            Registrar producao
-          </button>
-        </div>
-      </header>
+    <Page className="funcionarios">
+      <PageHeader
+        title="Funcionarios"
+        actions={
+          <>
+            <button className="button button--ghost" type="button" onClick={openRoleModal}>
+              Novo cargo
+            </button>
+            <button className="button button--ghost" type="button" onClick={openLevelModal}>
+              Novo nivel
+            </button>
+            <button className="button button--primary" type="button" onClick={openEmployeeModal}>
+              Novo funcionario
+            </button>
+            <button className="button button--primary" type="button" onClick={openLogModal}>
+              Registrar producao
+            </button>
+          </>
+        }
+      />
       {employeeStatus && <p className="form__status">{employeeStatus}</p>}
       {logStatus && <p className="form__status">{logStatus}</p>}
 
@@ -1701,7 +1698,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         onClose={() => setDeleteUserId(null)}
         onConfirm={handleDeleteUserAccess}
       />
-    </section>
+    </Page>
   )
 }
 

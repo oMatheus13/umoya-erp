@@ -1,3 +1,4 @@
+import { Page, PageHeader } from '../../components/ui'
 import type { SidebarMode } from '../../types/ui'
 
 type ConfiguracoesProps = {
@@ -29,16 +30,8 @@ const Configuracoes = ({ sidebarMode, onSidebarModeChange }: ConfiguracoesProps)
   ]
 
   return (
-    <section className="configuracoes">
-      <header className="configuracoes__header">
-        <div className="configuracoes__headline">
-          <span className="configuracoes__eyebrow">Sistema</span>
-          <h1 className="configuracoes__title">Configuracoes</h1>
-          <p className="configuracoes__subtitle">
-            Personalize o comportamento da barra lateral.
-          </p>
-        </div>
-      </header>
+    <Page className="configuracoes">
+      <PageHeader title="Configuracoes" />
 
       <div className="configuracoes__grid">
         <div className="panel configuracoes__panel">
@@ -74,7 +67,7 @@ const Configuracoes = ({ sidebarMode, onSidebarModeChange }: ConfiguracoesProps)
           </div>
         </div>
       </div>
-    </section>
+    </Page>
   )
 }
 

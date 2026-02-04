@@ -25,6 +25,9 @@ const normalizeCpf = (value: string) => value.replace(/\D/g, '')
 const Login = ({ onLogin, onDevLogin }: LoginProps) => {
   const [status, setStatus] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState<LoginForm>(createEmptyLogin())
+  const [rememberMe, setRememberMe] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const supabaseEnabled = isSupabaseEnabled()
 
   const updateLoginForm = (patch: Partial<LoginForm>) => {
     setLoginForm((prev) => ({ ...prev, ...patch }))
@@ -93,131 +96,116 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
   return (
     <div className="login">
       <div className="login__panel">
-        <img className="login__logo" src={logotipo} alt="Umoya ERP" />
-        <h1 className="login__title">Bem-vindo ao Umoya ERP</h1>
-        <p className="login__subtitle">
-          Controle pedidos, producao e financeiro com uma visao clara do seu negocio.
-        </p>
+        <div className="login__mock">
+          <img src="src/assets/brand/login-mock-3.webp" alt="" />
+        </div>
 
-        {status && <p className="login__status">{status}</p>}
+        <div className="login__auth">
+          <img className="login__logo" src={logotipo} alt="Umoya ERP" />
 
-        {onDevLogin && (
-          <div className="login__dev login__dev--highlight">
-            <button className="button button--ghost" type="button" onClick={onDevLogin}>
-              Entrar em modo teste
-            </button>
-            <p className="login__hint">
-              Usa dados locais de exemplo e nao sincroniza com sua conta real.
+          {!supabaseEnabled ? (
+            <p className="login__status">
+              Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no arquivo `.env` para
+              ativar login.
             </p>
-          </div>
-        )}
+          ) : (
+            <form className="login__form" onSubmit={handleLoginSubmit}>
+              <input
+                id="login-identifier"
+                className="form__input"
+                type="text"
+                value={loginForm.identifier}
+                onChange={(event) => updateLoginForm({ identifier: event.target.value })}
+                placeholder="Email ou CPF"
+              />
 
-        {!isSupabaseEnabled() ? (
-          <p className="login__status">
-            Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no arquivo `.env` para
-            ativar login.
-          </p>
-        ) : (
-          <form className="login__form" onSubmit={handleLoginSubmit}>
-            <label className="form__label" htmlFor="login-identifier">
-              Email ou CPF
-            </label>
-            <input
-              id="login-identifier"
-              className="form__input"
-              type="text"
-              value={loginForm.identifier}
-              onChange={(event) => updateLoginForm({ identifier: event.target.value })}
-              placeholder="voce@umoya.com ou 000.000.000-00"
-            />
+              <div className="login__password">
+                <div className="login__field">
+                  <input
+                    id="password"
+                    className="form__input"
+                    type={showPassword ? 'text' : 'password'}
+                    value={loginForm.password}
+                    onChange={(event) => updateLoginForm({ password: event.target.value })}
+                    placeholder="Senha"
+                  />
+                  <button
+                    className="login__toggle"
+                    type="button"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-pressed={showPassword}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+                <a className="login__forgot" href="#">
+                  Esqueceu sua senha?
+                </a>
+              </div>
 
-            <label className="form__label" htmlFor="password">
-              Senha
-            </label>
-            <input
-              id="password"
-              className="form__input"
-              type="password"
-              value={loginForm.password}
-              onChange={(event) => updateLoginForm({ password: event.target.value })}
-              placeholder="••••••••"
-            />
+              {status && <p className="login__status">{status}</p>}
 
-            <button className="button button--primary" type="submit">
-              Entrar
-            </button>
-            <p className="login__hint">
-              Contas de acesso sao criadas pelo administrador. Use email ou CPF cadastrado.
-            </p>
-          </form>
-        )}
+              <div className="login__actions">
+                <label className="toggle login__remember">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
+                  />
+                  <span className="toggle__track" aria-hidden="true">
+                    <span className="toggle__thumb" />
+                  </span>
+                  <span className="toggle__label">Manter conectado</span>
+                </label>
+
+                <div className="login__buttons">
+                  <button
+                    className="button button--primary button--sm login__button"
+                    type="submit"
+                  >
+                    Entrar
+                  </button>
+                  {onDevLogin && (
+                    <button
+                      className="button button--ghost button--sm login__dev-button"
+                      type="button"
+                      onClick={onDevLogin}
+                    >
+                      <span className="material-symbols-outlined" aria-hidden="true">
+                        science
+                      </span>
+                      Dev
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <p className="login__hint">
+                Não tem uma conta? <br />
+                Solicite acesso ao administrador.
+              </p>
+            </form>
+          )}
+
+          {!supabaseEnabled && onDevLogin && (
+            <div className="login__dev">
+              <button
+                className="button button--ghost button--sm login__dev-button"
+                type="button"
+                onClick={onDevLogin}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  science
+                </span>
+                Dev
+              </button>
+            </div>
+          )}
+        </div>
       </div>
-
-      <aside className="login__aside">
-        <div className="login__mock" aria-hidden="true">
-          <div className="login__mock-card login__mock-card--primary">
-            <div className="login__mock-header">
-              <span>Visao geral</span>
-              <span>Hoje</span>
-            </div>
-            <div className="login__mock-metrics">
-              <div className="login__mock-metric">
-                <span>Caixa</span>
-                <strong>R$ 86.450</strong>
-              </div>
-              <div className="login__mock-metric">
-                <span>Pedidos</span>
-                <strong>18</strong>
-              </div>
-              <div className="login__mock-metric">
-                <span>Producao</span>
-                <strong>7 ordens</strong>
-              </div>
-            </div>
-            <div className="login__mock-chart">
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-          <div className="login__mock-card login__mock-card--secondary">
-            <div className="login__mock-header">
-              <span>Financeiro</span>
-              <span>Semana</span>
-            </div>
-            <div className="login__mock-lines">
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-        </div>
-        <div className="login__card">
-          <span className="login__tag">Visao rapida</span>
-          <h2>Seu negocio em tempo real</h2>
-          <p>
-            Acompanhe producao, caixa e pedidos sem abrir planilhas. Tudo em um painel
-            limpo e objetivo.
-          </p>
-        </div>
-        <div className="login__stats">
-          <div className="login__stat">
-            <span className="login__stat-label">Pedidos no mes</span>
-            <strong>128</strong>
-          </div>
-          <div className="login__stat">
-            <span className="login__stat-label">Producao ativa</span>
-            <strong>9 ordens</strong>
-          </div>
-          <div className="login__stat">
-            <span className="login__stat-label">Saldo em caixa</span>
-            <strong>R$ 86.450</strong>
-          </div>
-        </div>
-      </aside>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { FiscalNote, FiscalNoteStatus, FiscalNoteType } from '../../types/erp'
@@ -204,21 +205,15 @@ const Fiscal = () => {
   }
 
   return (
-    <section className="fiscal">
-      <header className="fiscal__header">
-        <div className="fiscal__headline">
-          <span className="fiscal__eyebrow">Fiscal</span>
-          <h1 className="fiscal__title">Notas fiscais</h1>
-          <p className="fiscal__subtitle">
-            Emissao, acompanhamento e armazenamento de documentos fiscais.
-          </p>
-        </div>
-        <div className="fiscal__actions">
+    <Page className="fiscal">
+      <PageHeader
+        title="Notas fiscais"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Nova nota
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -463,7 +458,7 @@ const Fiscal = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

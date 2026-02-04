@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Page, PageHeader } from '../../components/ui'
 import { useERPData } from '../../store/appStore'
 import { formatCurrency } from '../../utils/format'
 import { getMaterialUnitLabel } from '../../utils/units'
@@ -54,16 +55,8 @@ const RelatoriosConsumo = () => {
   )
 
   return (
-    <section className="relatorios">
-      <header className="relatorios__header">
-        <div className="relatorios__headline">
-          <span className="relatorios__eyebrow">Relatorios</span>
-          <h1 className="relatorios__title">Consumo de material</h1>
-          <p className="relatorios__subtitle">
-            Baixas registradas em producao e alertas de estoque minimo.
-          </p>
-        </div>
-      </header>
+    <Page className="relatorios">
+      <PageHeader title="Consumo de material" />
 
       <div className="card-grid summary-card">
         <article className="card">
@@ -144,7 +137,7 @@ const RelatoriosConsumo = () => {
           </div>
         </section>
       </div>
-    </section>
+    </Page>
   )
 }
 

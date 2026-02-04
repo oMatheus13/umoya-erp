@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Supplier } from '../../types/erp'
@@ -138,19 +139,15 @@ const Fornecedores = () => {
   }
 
   return (
-    <section className="fornecedores">
-      <header className="fornecedores__header">
-        <div className="fornecedores__headline">
-          <span className="fornecedores__eyebrow">Compras</span>
-          <h1 className="fornecedores__title">Fornecedores</h1>
-          <p className="fornecedores__subtitle">Gerencie contatos e parceiros de compra.</p>
-        </div>
-        <div className="fornecedores__actions">
+    <Page className="fornecedores">
+      <PageHeader
+        title="Fornecedores"
+        actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
             Novo fornecedor
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <Modal
@@ -360,7 +357,7 @@ const Fornecedores = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

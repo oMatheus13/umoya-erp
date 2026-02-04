@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Page, PageHeader } from '../../components/ui'
 import { useERPData } from '../../store/appStore'
 import { formatCurrency } from '../../utils/format'
 
@@ -54,14 +55,8 @@ const Indicadores = () => {
   }, [data.produtos])
 
   return (
-    <section className="indicadores">
-      <header className="indicadores__header">
-        <div className="indicadores__headline">
-          <span className="indicadores__eyebrow">Resumo</span>
-          <h1 className="indicadores__title">Indicadores</h1>
-          <p className="indicadores__subtitle">Visao rapida dos principais numeros.</p>
-        </div>
-      </header>
+    <Page className="indicadores">
+      <PageHeader title="Indicadores" />
 
       <div className="card-grid summary-card">
         <article className="card">
@@ -129,7 +124,7 @@ const Indicadores = () => {
           </div>
         </section>
       </div>
-    </section>
+    </Page>
   )
 }
 

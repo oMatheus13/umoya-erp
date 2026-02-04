@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Material, PurchaseRecord } from '../../types/erp'
@@ -357,21 +358,15 @@ const Compras = () => {
   }
 
   return (
-    <section className="compras">
-      <header className="compras__header">
-        <div className="compras__headline">
-          <span className="compras__eyebrow">Compras</span>
-          <h1 className="compras__title">Controle de compras</h1>
-          <p className="compras__subtitle">
-            Fornecedores, materiais e despesas acompanhados em um so lugar.
-          </p>
-        </div>
-        <div className="compras__actions">
+    <Page className="compras">
+      <PageHeader
+        title="Controle de compras"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Registrar compra
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -758,7 +753,7 @@ const Compras = () => {
           {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>
-    </section>
+    </Page>
   )
 }
 

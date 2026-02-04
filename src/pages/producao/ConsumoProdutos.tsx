@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type {
@@ -482,17 +483,8 @@ const ConsumoProdutos = () => {
   }
 
   return (
-    <section className="consumo-produtos">
-      <header className="consumo-produtos__header">
-        <div className="consumo-produtos__headline">
-          <span className="consumo-produtos__eyebrow">Producao</span>
-          <h1 className="consumo-produtos__title">Consumo por produto</h1>
-          <p className="consumo-produtos__subtitle">
-            Defina a quantidade de materia-prima usada por unidade de venda. O sistema
-            converte baldes/carrinhos/sacos automaticamente.
-          </p>
-        </div>
-      </header>
+    <Page className="consumo-produtos">
+      <PageHeader title="Consumo por produto" />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -1039,7 +1031,7 @@ const ConsumoProdutos = () => {
           </div>
         </div>
       </Modal>
-    </section>
+    </Page>
   )
 }
 

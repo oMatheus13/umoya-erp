@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { PaymentTableEntry, TableEntry, UnitTableEntry } from '../../types/erp'
@@ -206,16 +207,8 @@ const Tabelas = () => {
   }
 
   return (
-    <section className="tabelas">
-      <header className="tabelas__header">
-        <div className="tabelas__headline">
-          <span className="tabelas__eyebrow">Cadastros</span>
-          <h1 className="tabelas__title">Tabelas</h1>
-          <p className="tabelas__subtitle">
-            Padronize unidades, categorias e formas de pagamento usadas no ERP.
-          </p>
-        </div>
-      </header>
+    <Page className="tabelas">
+      <PageHeader title="Tabelas" />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -357,7 +350,7 @@ const Tabelas = () => {
           </div>
         </form>
       </Modal>
-    </section>
+    </Page>
   )
 }
 

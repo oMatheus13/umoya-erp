@@ -2,7 +2,7 @@
   /* Core palette */
   --color-ink: #0f1116;
   --color-ink-soft: #1b1f2a;
-  --color-ink-muted: rgba(15, 17, 22, 0.7);
+  --color-ink-muted: rgba(15, 17, 22, 0.5);
   --color-cloud: #f0eee9;
   --color-paper: #f7f5f1;
   --color-true-white: #ffffff;
@@ -87,6 +87,22 @@
   --border-radius-2xl: 28px;
   --border-radius-full: 9999px;
   --border-thin: 1px solid var(--color-line);
+
+  /* Bezel (chamfer) */
+  --bezel-xs: 6px;
+  --bezel-sm: 10px;
+  --bezel-md: 14px;
+  --bezel-lg: 18px;
+  --bezel-hi: rgba(255, 255, 255, 0.6);
+  --bezel-lo: rgba(15, 17, 22, 0.2);
+  --bezel-clip: polygon(
+    var(--bezel) 0,
+    100% 0,
+    100% calc(100% - var(--bezel)),
+    calc(100% - var(--bezel)) 100%,
+    0 100%,
+    0 var(--bezel)
+  );
 
   /* Shadows */
   --box-shadow-sm: 0 6px 16px rgba(15, 17, 22, 0.06);

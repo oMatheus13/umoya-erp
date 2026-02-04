@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Client, ClientObra } from '../../types/erp'
@@ -199,19 +200,15 @@ const Clientes = () => {
   }
 
   return (
-    <section className="clientes">
-      <header className="clientes__header">
-        <div className="clientes__headline">
-          <span className="clientes__eyebrow">Comercial</span>
-          <h1 className="clientes__title">Clientes</h1>
-          <p className="clientes__subtitle">Cadastre clientes para orcamentos e pedidos.</p>
-        </div>
-        <div className="clientes__actions">
+    <Page className="clientes">
+      <PageHeader
+        title="Clientes"
+        actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
             Novo cliente
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <Modal
@@ -494,7 +491,7 @@ const Clientes = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

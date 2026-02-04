@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type {
@@ -345,24 +346,24 @@ const Qualidade = () => {
   }
 
   return (
-    <section className="qualidade">
-      <header className="qualidade__header">
-        <div className="qualidade__headline">
-          <span className="qualidade__eyebrow">Qualidade</span>
-          <h1 className="qualidade__title">Qualidade e manutencao</h1>
-          <p className="qualidade__subtitle">
-            Checklists, falhas registradas e manutencao preventiva da fabrica.
-          </p>
-        </div>
-        <div className="qualidade__actions">
-          <button className="button button--ghost" type="button" onClick={openQualityModal}>
-            Novo checklist/falha
-          </button>
-          <button className="button button--primary" type="button" onClick={openMaintenanceModal}>
-            Nova manutencao
-          </button>
-        </div>
-      </header>
+    <Page className="qualidade">
+      <PageHeader
+        title="Qualidade e manutencao"
+        actions={
+          <>
+            <button className="button button--ghost" type="button" onClick={openQualityModal}>
+              Novo checklist/falha
+            </button>
+            <button
+              className="button button--primary"
+              type="button"
+              onClick={openMaintenanceModal}
+            >
+              Nova manutencao
+            </button>
+          </>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -843,7 +844,7 @@ const Qualidade = () => {
         onClose={() => setDeleteMaintenanceId(null)}
         onConfirm={handleMaintenanceDelete}
       />
-    </section>
+    </Page>
   )
 }
 

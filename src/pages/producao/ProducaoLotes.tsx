@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { ProductionLot, ProductionLotStatus } from '../../types/erp'
@@ -234,21 +235,15 @@ const ProducaoLotes = () => {
       ?.variants?.find((variant) => variant.id === variantId)?.name ?? '-'
 
   return (
-    <section className="lotes">
-      <header className="lotes__header">
-        <div className="lotes__headline">
-          <span className="lotes__eyebrow">Producao</span>
-          <h1 className="lotes__title">Lotes</h1>
-          <p className="lotes__subtitle">
-            Registre moldagem, desforma e cura para organizar a producao.
-          </p>
-        </div>
-        <div className="lotes__actions">
+    <Page className="lotes">
+      <PageHeader
+        title="Lotes"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Novo lote
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -545,7 +540,7 @@ const ProducaoLotes = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

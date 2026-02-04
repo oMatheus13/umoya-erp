@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { ProductionScrap, ProductionScrapStatus, ProductionScrapType } from '../../types/erp'
@@ -243,21 +244,15 @@ const ProducaoRefugo = () => {
   }
 
   return (
-    <section className="refugo">
-      <header className="refugo__header">
-        <div className="refugo__headline">
-          <span className="refugo__eyebrow">Producao</span>
-          <h1 className="refugo__title">Refugo e retrabalho</h1>
-          <p className="refugo__subtitle">
-            Registre perdas, retrabalhos e custos estimados de producao.
-          </p>
-        </div>
-        <div className="refugo__actions">
+    <Page className="refugo">
+      <PageHeader
+        title="Refugo e retrabalho"
+        actions={
           <button className="button button--primary" type="button" onClick={openModal}>
             Novo registro
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -575,7 +570,7 @@ const ProducaoRefugo = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

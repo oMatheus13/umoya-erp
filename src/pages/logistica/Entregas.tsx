@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Delivery } from '../../types/erp'
@@ -205,16 +206,8 @@ const Entregas = () => {
   }
 
   return (
-    <section className="entregas">
-      <header className="entregas__header">
-        <div className="entregas__headline">
-          <span className="entregas__eyebrow">Logistica</span>
-          <h1 className="entregas__title">Logistica e entregas</h1>
-          <p className="entregas__subtitle">
-            Agenda de entregas, comprovantes e ocorrencias em um painel unico.
-          </p>
-        </div>
-      </header>
+    <Page className="entregas">
+      <PageHeader title="Logistica e entregas" />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -554,7 +547,7 @@ const Entregas = () => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-    </section>
+    </Page>
   )
 }
 

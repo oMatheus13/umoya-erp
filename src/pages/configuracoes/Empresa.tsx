@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
+import { Page, PageHeader } from '../../components/ui'
 import type { CompanyProfile } from '../../types/erp'
 
 const Empresa = () => {
@@ -46,16 +47,8 @@ const Empresa = () => {
   }
 
   return (
-    <section className="empresa">
-      <header className="empresa__header">
-        <div className="empresa__headline">
-          <span className="empresa__eyebrow">Configuracoes</span>
-          <h1 className="empresa__title">Dados da empresa</h1>
-          <p className="empresa__subtitle">
-            Informacoes usadas em impressos, contratos e comunicacao oficial.
-          </p>
-        </div>
-      </header>
+    <Page className="empresa">
+      <PageHeader title="Dados da empresa" />
       {status && <p className="form__status">{status}</p>}
 
       <div className="empresa__layout">
@@ -276,7 +269,7 @@ const Empresa = () => {
           </form>
         </section>
       </div>
-    </section>
+    </Page>
   )
 }
 

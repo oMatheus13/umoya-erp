@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import { Page, PageHeader } from '../../components/ui'
 import logotipo from '../../assets/brand/logotipo.svg'
 import {
   getPaymentMethodId,
@@ -822,16 +823,10 @@ const Orcamentos = () => {
   }
 
   return (
-    <section className="orcamentos">
-      <header className="orcamentos__header">
-        <div className="orcamentos__headline">
-          <span className="orcamentos__eyebrow">Comercial</span>
-          <h1 className="orcamentos__title">Orcamentos</h1>
-          <p className="orcamentos__subtitle">
-            Propostas claras, aprovacao rapida e conversao automatica em pedidos.
-          </p>
-        </div>
-        <div className="orcamentos__actions">
+    <Page className="orcamentos">
+      <PageHeader
+        title="Orcamentos"
+        actions={
           <button
             className="button button--primary"
             type="button"
@@ -840,8 +835,8 @@ const Orcamentos = () => {
           >
             Novo orcamento
           </button>
-        </div>
-      </header>
+        }
+      />
       {status && <p className="form__status">{status}</p>}
 
       <div className="orcamentos__summary summary-card">
@@ -1528,7 +1523,7 @@ const Orcamentos = () => {
           </section>
         </div>
       )}
-    </section>
+    </Page>
   )
 }
 
