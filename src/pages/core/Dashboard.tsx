@@ -1,1127 +1,637 @@
-import { useMemo, useState } from 'react'
-import Modal from '../../components/Modal'
-import {
-  List,
-  ListItem,
-  Page,
-  PageHeader,
-  Panel,
-  Section,
-  SectionHeader,
-  Summary,
-  SummaryItem,
-} from '../../components/ui'
-import { getPaymentMethodId, getPaymentMethodOptions } from '../../data/paymentMethods'
+import { useMemo } from 'react'
+import { Page, PageHeader } from '../../components/ui'
+import type { Product } from '../../types/erp'
+import type { PageIntentAction } from '../../types/ui'
 import { useERPData } from '../../store/appStore'
-import { dataService } from '../../services/dataService'
-import { createId } from '../../utils/ids'
-import { formatCurrency, formatDateShort } from '../../utils/format'
-import type { Order, ProductionOrder, Quote } from '../../types/erp'
+import { formatCurrency } from '../../utils/format'
 
 type DashboardProps = {
-  onNavigate?: (page: string) => void
+  onNavigate?: (page: string, intent?: PageIntentAction) => void
+}
+
+type QuickAction = {
+  id: string
+  label: string
+  page: string
+  intent?: PageIntentAction
+  icon: string
+}
+
+type Bottleneck = {
+  name: string
+  capacity: number
+  produced: number
+  status: string
+}
+
+type AlertTone = 'danger' | 'warning'
+
+type ProductionSummary = {
+  producedToday: number
+  producedMonth: number
+  capacityTotal: number
+  bottleneck: Bottleneck | null
+}
+
+const formatNumber = (value: number) => new Intl.NumberFormat('pt-BR').format(value)
+
+const formatPercent = (value: number) =>
+  new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value)
+
+const getMonthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}`
+
+const isSameDay = (value: string | undefined, dayKey: string) => {
+  if (!value) {
+    return false
+  }
+  return new Date(value).toDateString() === dayKey
+}
+
+const isSameMonth = (value: string | undefined, monthKey: string) => {
+  if (!value) {
+    return false
+  }
+  const date = new Date(value)
+  return `${date.getFullYear()}-${date.getMonth()}` === monthKey
+}
+
+const getProductStock = (product: Product) => {
+  const variants = product.variants ?? []
+  const usesVariants = product.hasVariants ?? false
+  const hasLinearVariants = product.unit === 'metro_linear' && variants.length > 0
+  if (usesVariants || hasLinearVariants) {
+    return variants.reduce((sum, variant) => sum + (variant.stock ?? 0), 0)
+  }
+  return product.stock ?? 0
+}
+
+const summarizeNames = (items: string[], limit = 3) => {
+  if (items.length === 0) {
+    return 'Nenhum'
+  }
+  const visible = items.slice(0, limit)
+  const remaining = items.length - visible.length
+  const list = visible.join(', ')
+  return remaining > 0 ? `${list} +${formatNumber(remaining)}` : list
+}
+
+const summarizeWithCount = (items: string[], limit = 3) => {
+  if (items.length === 0) {
+    return 'Nenhum'
+  }
+  return `${formatNumber(items.length)} (${summarizeNames(items, limit)})`
+}
+
+const getValueToneClass = (value: number) => {
+  if (value < 0) {
+    return ' dashboard__metric-value--negative'
+  }
+  if (value > 0) {
+    return ' dashboard__metric-value--positive'
+  }
+  return ''
 }
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {
-  const { data, refresh } = useERPData()
-  const now = new Date()
-  const todayKey = now.toDateString()
-  const todayInput = now.toISOString().slice(0, 10)
+  const { data } = useERPData()
+  const today = new Date()
+  const todayKey = today.toDateString()
+  const monthKey = getMonthKey(today)
+  const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  const previousMonthKey = getMonthKey(previousMonth)
 
-  const createDefaultDate = () => {
-    const date = new Date()
-    date.setDate(date.getDate() + 7)
-    return date.toISOString().slice(0, 10)
-  }
-
-  const availableClients = useMemo(
-    () => [...data.clientes].sort((a, b) => a.name.localeCompare(b.name)),
-    [data.clientes],
-  )
-  const availableProducts = useMemo(
-    () => data.produtos.filter((product) => product.active !== false),
-    [data.produtos],
-  )
-  const paymentOptions = useMemo(
-    () => getPaymentMethodOptions(data.tabelas?.paymentMethods),
-    [data.tabelas?.paymentMethods],
-  )
-
-  const resolveUnitPrice = (productId: string, variantId?: string) => {
-    const product = data.produtos.find((item) => item.id === productId)
-    if (!product) {
-      return 0
-    }
-    if (product.hasVariants) {
-      const variant = product.variants?.find((item) => item.id === variantId)
-      return variant?.priceOverride ?? 0
-    }
-    return product.price ?? 0
-  }
-
-  const buildQuickQuote = () => {
-    const firstClient = availableClients[0]
-    const firstProduct = availableProducts[0]
-    const firstVariant = firstProduct?.hasVariants ? firstProduct?.variants?.[0] : undefined
-    return {
-      clientId: firstClient?.id ?? '',
-      productId: firstProduct?.id ?? '',
-      variantId: firstVariant?.id ?? '',
-      quantity: 1,
-      unitPrice: firstProduct ? resolveUnitPrice(firstProduct.id, firstVariant?.id) : 0,
-    }
-  }
-
-  const buildQuickOrder = () => {
-    const firstClient = availableClients[0]
-    const firstProduct = availableProducts[0]
-    const firstVariant = firstProduct?.hasVariants ? firstProduct?.variants?.[0] : undefined
-    return {
-      clientId: firstClient?.id ?? '',
-      productId: firstProduct?.id ?? '',
-      variantId: firstVariant?.id ?? '',
-      quantity: 1,
-      unitPrice: firstProduct ? resolveUnitPrice(firstProduct.id, firstVariant?.id) : 0,
-      paymentMethod: 'a_definir',
-    }
-  }
-
-  const buildQuickProduction = () => {
-    const firstOrder = data.pedidos[0]
-    const firstItem = firstOrder?.items[0]
-    const lengthKey =
-      firstItem?.customLength && firstItem.customLength > 0
-        ? firstItem.customLength.toFixed(4)
-        : ''
-    const itemKey = firstItem
-      ? `${firstItem.productId}:${firstItem.variantId ?? ''}:${lengthKey}`
-      : ''
-    return {
-      orderId: firstOrder?.id ?? '',
-      itemKey,
-      quantity: firstItem?.quantity ?? 1,
-      customLength: firstItem?.customLength ?? 0,
-      plannedAt: todayInput,
-    }
-  }
-
-  const openOrders = data.pedidos.filter((order) => order.status !== 'entregue').length
-  const inProduction = data.ordensProducao.filter(
-    (order) => order.status === 'em_producao',
-  ).length
-
-  const expiringQuotes = useMemo(() => {
-    const now = new Date()
-    const limit = new Date()
-    limit.setDate(now.getDate() + 7)
-    return data.orcamentos
-      .filter(
-        (quote) =>
-          (quote.status === 'rascunho' || quote.status === 'enviado') &&
-          new Date(quote.validUntil) <= limit,
-      )
-      .sort((a, b) => a.validUntil.localeCompare(b.validUntil))
-      .slice(0, 3)
-  }, [data.orcamentos])
-
-  const cash = data.financeiro.reduce(
-    (acc, entry) => acc + (entry.type === 'entrada' ? entry.amount : -entry.amount),
-    0,
-  )
-
-  const productionSummary = useMemo(() => {
-    const finishedThisMonth = data.ordensProducao.filter((order) => {
-      if (!order.finishedAt) {
-        return false
-      }
-      const date = new Date(order.finishedAt)
-      return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
-    })
-    const total = finishedThisMonth.reduce((acc, order) => {
-      const pedido = data.pedidos.find((item) => item.id === order.orderId)
-      return acc + (pedido?.total ?? 0)
-    }, 0)
-    return { total, count: finishedThisMonth.length }
-  }, [data.ordensProducao, data.pedidos, now])
-
-  const recentReceipts = useMemo(
-    () => [...data.recibos].sort((a, b) => b.issuedAt.localeCompare(a.issuedAt)).slice(0, 3),
-    [data.recibos],
-  )
-
-  const recentOrders = useMemo(
-    () =>
-      [...data.pedidos]
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-        .slice(0, 4),
-    [data.pedidos],
-  )
-
-  const lowStock = useMemo(() => {
-    const entries = data.produtos.flatMap((product) => {
-      const hasLinearVariants =
-        product.unit === 'metro_linear' && (product.variants ?? []).length > 0
-      if (product.hasVariants || hasLinearVariants) {
-        return (product.variants ?? []).map((variant) => ({
-          productId: product.id,
-          productName: product.name,
-          variantId: variant.id,
-          variantName: variant.name,
-          variantLocked: variant.locked ?? false,
-          stock: variant.stock ?? 0,
-        }))
-      }
-      return [
-        {
-          productId: product.id,
-          productName: product.name,
-          variantId: '',
-          variantName: '',
-          variantLocked: false,
-          stock: product.stock ?? 0,
-        },
-      ]
-    })
-    return entries
-      .filter((entry) => entry.stock <= 5)
-      .sort((a, b) => a.stock - b.stock)
-      .slice(0, 4)
-  }, [data.produtos])
-
-  const getClientName = (id: string) =>
-    data.clientes.find((client) => client.id === id)?.name ?? 'Cliente'
-
-  const getProductLabel = (productId: string, variantId?: string, length?: number) => {
-    const product = data.produtos.find((item) => item.id === productId)
-    if (!product) {
-      return 'Produto'
-    }
-    if (product.unit === 'metro_linear' && length && length > 0) {
-      const cm = length * 100
-      const lengthLabel = cm % 1 === 0 ? `${cm.toFixed(0)} cm` : `${cm.toFixed(1)} cm`
-      return `${product.name} • ${lengthLabel}`
-    }
-    const variant = product.variants?.find((item) => item.id === variantId)
-    return variant ? `${product.name} • ${variant.name}` : product.name
-  }
-
-  const delayedProduction = useMemo(() => {
-    const nowTime = now.getTime()
-    return data.ordensProducao
-      .filter((order) => order.status !== 'finalizada')
-      .map((order) => {
-        const orderCreatedAt = data.pedidos.find((item) => item.id === order.orderId)?.createdAt
-        const referenceDate = order.plannedAt ?? orderCreatedAt
-        if (!referenceDate) {
-          return null
-        }
-        const days = Math.floor((nowTime - new Date(referenceDate).getTime()) / 86400000)
-        return {
-          id: order.id,
-          productId: order.productId,
-          variantId: order.variantId,
-          days,
-        }
-      })
-      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry && entry.days >= 5))
-      .sort((a, b) => b.days - a.days)
-      .slice(0, 3)
-  }, [data.ordensProducao, data.pedidos, now])
-
-  const pendingQuotes = data.orcamentos.filter(
-    (quote) => quote.status === 'rascunho' || quote.status === 'enviado',
-  ).length
-  const pendingPayments = data.pedidos.filter(
-    (order) => order.status === 'aguardando_pagamento',
-  ).length
-  const openProduction = data.ordensProducao.filter((order) => order.status === 'aberta').length
-
-  const ordersToday = data.pedidos.filter(
-    (order) => new Date(order.createdAt).toDateString() === todayKey,
-  ).length
-  const receiptsToday = data.recibos
-    .filter((receipt) => new Date(receipt.issuedAt).toDateString() === todayKey)
-    .reduce((acc, receipt) => acc + receipt.amount, 0)
-
-  type QuickActionId = 'orcamentos' | 'pedidos' | 'producao' | 'presenca'
-
-  const [quickAction, setQuickAction] = useState<QuickActionId | null>(null)
-  const [quickStatus, setQuickStatus] = useState<string | null>(null)
-  const [quickQuote, setQuickQuote] = useState(buildQuickQuote)
-  const [quickOrder, setQuickOrder] = useState(buildQuickOrder)
-  const [quickProduction, setQuickProduction] = useState(buildQuickProduction)
-
-  const openQuickAction = (actionId: QuickActionId) => {
-    setQuickStatus(null)
-    if (actionId === 'orcamentos') {
-      setQuickQuote(buildQuickQuote())
-    }
-    if (actionId === 'pedidos') {
-      setQuickOrder(buildQuickOrder())
-    }
-    if (actionId === 'producao') {
-      setQuickProduction(buildQuickProduction())
-    }
-    setQuickAction(actionId)
-  }
-
-  const closeQuickAction = () => {
-    setQuickAction(null)
-    setQuickStatus(null)
-  }
-
-  const quickActions = [
+  const quickActions: QuickAction[] = [
     {
-      id: 'orcamentos' as const,
-      title: 'Novo orcamento',
-      description: 'Criar proposta rapida',
-      icon: 'description',
+      id: 'orcamentos',
+      label: 'Novo Orçamento',
+      page: 'orcamentos',
+      intent: 'new',
+      icon: 'request_quote',
     },
     {
-      id: 'pedidos' as const,
-      title: 'Novo pedido',
-      description: 'Vincular a um cliente',
-      icon: 'shopping_bag',
-    },
-    {
-      id: 'producao' as const,
-      title: 'Nova producao',
-      description: 'Gerar ordem de producao',
+      id: 'producao',
+      label: 'Nova Ordem',
+      page: 'producao',
+      intent: 'new',
       icon: 'factory',
     },
     {
-      id: 'presenca' as const,
-      title: 'Registrar presenca',
-      description: 'Apontar equipe do dia',
-      icon: 'how_to_reg',
+      id: 'compras',
+      label: 'Registrar Compra',
+      page: 'compras',
+      intent: 'new',
+      icon: 'shopping_cart',
     },
   ]
 
-  const monthlyFlow = useMemo(() => {
-    const months = Array.from({ length: 6 }, (_, index) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)
-      const label = `${String(date.getMonth() + 1).padStart(2, '0')}/${String(
-        date.getFullYear(),
-      ).slice(-2)}`
-      return { label, in: 0, out: 0, key: `${date.getFullYear()}-${date.getMonth()}` }
+  const cashSummary = useMemo(() => {
+    const balances = new Map<string, number>()
+    data.caixas.forEach((cashbox) => {
+      balances.set(cashbox.id, 0)
     })
-
     data.financeiro.forEach((entry) => {
-      const date = new Date(entry.createdAt)
-      const key = `${date.getFullYear()}-${date.getMonth()}`
-      const target = months.find((month) => month.key === key)
-      if (target) {
-        if (entry.type === 'entrada') {
-          target.in += entry.amount
-        } else {
-          target.out += entry.amount
+      const current = balances.get(entry.cashboxId) ?? 0
+      if (entry.type === 'entrada') {
+        balances.set(entry.cashboxId, current + entry.amount)
+        return
+      }
+      if (entry.type === 'saida') {
+        balances.set(entry.cashboxId, current - entry.amount)
+        return
+      }
+      if (entry.type === 'transferencia') {
+        balances.set(entry.cashboxId, current - entry.amount)
+        if (entry.transferToId) {
+          const target = balances.get(entry.transferToId) ?? 0
+          balances.set(entry.transferToId, target + entry.amount)
         }
       }
     })
+    let totalBalance = 0
+    balances.forEach((value) => {
+      totalBalance += value
+    })
+    const bankBalance = balances.get('caixa_bancario') ?? 0
+    const cashBalance = balances.get('caixa_fisico') ?? 0
+    const reservedBalance =
+      (balances.get('caixa_impostos') ?? 0) + (balances.get('caixa_reserva') ?? 0)
+    const availableReal = totalBalance - reservedBalance
+    return {
+      balances,
+      totalBalance,
+      bankBalance,
+      cashBalance,
+      reservedBalance,
+      availableReal,
+    }
+  }, [data.caixas, data.financeiro])
 
-    const maxValue = Math.max(1, ...months.flatMap((month) => [month.in, month.out]))
-    return { months, maxValue }
-  }, [data.financeiro, now])
+  const periodSummary = useMemo(() => {
+    const monthEntries = data.financeiro.filter((entry) =>
+      isSameMonth(entry.createdAt, monthKey),
+    )
+    const previousEntries = data.financeiro.filter((entry) =>
+      isSameMonth(entry.createdAt, previousMonthKey),
+    )
+    const monthRevenue = monthEntries
+      .filter((entry) => entry.type === 'entrada')
+      .reduce((acc, entry) => acc + entry.amount, 0)
+    const monthCost = monthEntries
+      .filter((entry) => entry.type === 'saida')
+      .reduce((acc, entry) => acc + entry.amount, 0)
+    const grossProfit = monthRevenue - monthCost
+    const margin = monthRevenue > 0 ? grossProfit / monthRevenue : 0
+    const previousRevenue = previousEntries
+      .filter((entry) => entry.type === 'entrada')
+      .reduce((acc, entry) => acc + entry.amount, 0)
+    const revenueDelta = monthRevenue - previousRevenue
+    return { monthRevenue, monthCost, grossProfit, margin, previousRevenue, revenueDelta }
+  }, [data.financeiro, monthKey, previousMonthKey])
+
+  const salesSummary = useMemo(() => {
+    const ordersToday = data.pedidos.filter((order) => isSameDay(order.createdAt, todayKey))
+    const ordersMonth = data.pedidos.filter((order) => isSameMonth(order.createdAt, monthKey))
+    const salesToday = ordersToday.reduce((acc, order) => acc + order.total, 0)
+    const salesMonth = ordersMonth.reduce((acc, order) => acc + order.total, 0)
+    const openOrders = data.pedidos.filter((order) => order.status !== 'entregue').length
+    const pendingDeliveries = data.entregas.filter(
+      (delivery) => delivery.status !== 'entregue',
+    ).length
+
+    const todayStart = new Date(todayKey)
+    const overdueDeliveries = data.entregas.filter(
+      (delivery) =>
+        delivery.status !== 'entregue' &&
+        delivery.scheduledAt &&
+        new Date(delivery.scheduledAt) < todayStart,
+    ).length
+
+    const delinquentThreshold = new Date(todayStart)
+    delinquentThreshold.setDate(delinquentThreshold.getDate() - 7)
+    const delinquentOrders = data.pedidos.filter(
+      (order) =>
+        order.status === 'aguardando_pagamento' &&
+        new Date(order.createdAt) < delinquentThreshold,
+    ).length
+
+    return {
+      salesToday,
+      salesMonth,
+      openOrders,
+      pendingDeliveries,
+      overdueDeliveries,
+      delinquentOrders,
+    }
+  }, [data.pedidos, data.entregas, todayKey, monthKey])
+
+  const productionSummary = useMemo<ProductionSummary>(() => {
+    const finishedToday = data.ordensProducao.filter((order) => {
+      if (order.status !== 'finalizada') {
+        return false
+      }
+      const date = order.finishedAt ?? order.plannedAt
+      return isSameDay(date, todayKey)
+    })
+    let producedToday = 0
+    const producedByMold = new Map<string, number>()
+    finishedToday.forEach((order) => {
+      producedToday += order.quantity
+      if (order.moldId) {
+        producedByMold.set(order.moldId, (producedByMold.get(order.moldId) ?? 0) + order.quantity)
+      }
+    })
+    const producedMonth = data.ordensProducao
+      .filter((order) => {
+        if (order.status !== 'finalizada') {
+          return false
+        }
+        const date = order.finishedAt ?? order.plannedAt
+        return isSameMonth(date, monthKey)
+      })
+      .reduce((acc, order) => acc + order.quantity, 0)
+    const capacityTotal = data.moldes.reduce((acc, mold) => acc + (mold.stock ?? 0), 0)
+    let bottleneck: Bottleneck | null = null
+    let bottleneckRatio = -1
+    data.moldes.forEach((mold) => {
+      const capacity = mold.stock ?? 0
+      const produced = producedByMold.get(mold.id) ?? 0
+      if (capacity <= 0 && produced <= 0) {
+        return
+      }
+      const ratio = capacity > 0 ? produced / capacity : 0
+      if (ratio > bottleneckRatio) {
+        bottleneckRatio = ratio
+        bottleneck = {
+          name: mold.name,
+          capacity,
+          produced,
+          status: ratio >= 1 ? 'no limite' : ratio >= 0.8 ? 'atenção' : 'ok',
+        }
+      }
+    })
+    return { producedToday, producedMonth, capacityTotal, bottleneck }
+  }, [data.ordensProducao, data.moldes, todayKey, monthKey])
+
+  const stockSummary = useMemo(() => {
+    const materialsBelowMin = data.materiais
+      .filter((material) => {
+        if (typeof material.minStock !== 'number' || typeof material.stock !== 'number') {
+          return false
+        }
+        return material.stock < material.minStock
+      })
+      .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0))
+
+    const productLastOrder = new Map<string, Date>()
+    data.pedidos.forEach((order) => {
+      const orderDate = new Date(order.createdAt)
+      order.items.forEach((item) => {
+        const current = productLastOrder.get(item.productId)
+        if (!current || orderDate > current) {
+          productLastOrder.set(item.productId, orderDate)
+        }
+      })
+    })
+
+    const idleThreshold = new Date(todayKey)
+    idleThreshold.setDate(idleThreshold.getDate() - 30)
+
+    const idleProducts = data.produtos
+      .map((product) => {
+        const stock = getProductStock(product)
+        const lastOrder = productLastOrder.get(product.id)
+        return { name: product.name, stock, lastOrder }
+      })
+      .filter((product) => product.stock > 0)
+      .filter((product) => !product.lastOrder || product.lastOrder < idleThreshold)
+      .sort((a, b) => {
+        const aTime = a.lastOrder ? a.lastOrder.getTime() : 0
+        const bTime = b.lastOrder ? b.lastOrder.getTime() : 0
+        return aTime - bTime
+      })
+
+    const lowStockProducts = data.produtos
+      .map((product) => ({ name: product.name, stock: getProductStock(product) }))
+      .filter((product) => product.stock > 0 && product.stock <= 5)
+      .sort((a, b) => a.stock - b.stock)
+
+    const materialNames = materialsBelowMin.map((material) => material.name)
+    const idleNames = idleProducts.map((product) => product.name)
+    const lowStockNames = lowStockProducts.map((product) => product.name)
+    const criticalCount = materialNames.length + idleNames.length + lowStockNames.length
+
+    return {
+      materialNames,
+      idleNames,
+      lowStockNames,
+      criticalCount,
+    }
+  }, [data.materiais, data.produtos, data.pedidos, todayKey])
+
+  const pendingFiscalCount = useMemo(
+    () => data.fiscalNotas.filter((note) => note.status === 'pendente').length,
+    [data.fiscalNotas],
+  )
+
+  const alertItems = useMemo(() => {
+    const items: Array<{
+      id: string
+      label: string
+      count: number
+      page: string
+      tone: AlertTone
+    }> = [
+      {
+        id: 'cash-low',
+        label: 'Caixa baixo',
+        count: cashSummary.availableReal <= 0 ? 1 : 0,
+        page: 'financeiro',
+        tone: 'danger',
+      },
+      {
+        id: 'taxes',
+        label: 'Imposto a vencer',
+        count: pendingFiscalCount,
+        page: 'fiscal',
+        tone: 'warning',
+      },
+      {
+        id: 'overdue-orders',
+        label: 'Pedido atrasado',
+        count: salesSummary.overdueDeliveries,
+        page: 'entregas',
+        tone: 'danger',
+      },
+      {
+        id: 'delinquent',
+        label: 'Cliente inadimplente',
+        count: salesSummary.delinquentOrders,
+        page: 'pedidos',
+        tone: 'danger',
+      },
+      {
+        id: 'stock-critical',
+        label: 'Estoque crítico',
+        count: stockSummary.criticalCount,
+        page: 'estoque',
+        tone: 'warning',
+      },
+    ]
+    return items.filter((item) => item.count > 0)
+  }, [
+    cashSummary.availableReal,
+    pendingFiscalCount,
+    salesSummary.overdueDeliveries,
+    salesSummary.delinquentOrders,
+    stockSummary.criticalCount,
+  ])
+
+  const handleQuickAction = (action: QuickAction) => {
+    if (action.intent) {
+      onNavigate?.(action.page, action.intent)
+      return
+    }
+    onNavigate?.(action.page)
+  }
+
+  const showComparison =
+    periodSummary.previousRevenue > 0 || periodSummary.monthRevenue > 0
+  const comparisonSignal = periodSummary.revenueDelta >= 0 ? '↑' : '↓'
+  const comparisonValue = formatCurrency(Math.abs(periodSummary.revenueDelta))
+  const comparisonClass =
+    periodSummary.revenueDelta < 0 ? ' dashboard__comparison--down' : ' dashboard__comparison--up'
+  const availableRealClass =
+    cashSummary.availableReal <= 0 ? ' dashboard__metric-value--negative' : ''
+  const grossProfitClass = getValueToneClass(periodSummary.grossProfit)
+  const marginClass = getValueToneClass(periodSummary.margin)
+  const materialAlert = stockSummary.materialNames.length > 0
+  const idleAlert = stockSummary.idleNames.length > 0
+  const lowStockAlert = stockSummary.lowStockNames.length > 0
 
   return (
     <Page>
       <PageHeader
-        title="Painel"
-        meta={
-          <>
-            <span>Atualizado</span>
-            <strong>{formatDateShort(new Date().toISOString())}</strong>
-          </>
-        }
+        actions={quickActions.map((action) => (
+          <button
+            key={action.id}
+            className="button button--primary dashboard__quick-action"
+            type="button"
+            onClick={() => handleQuickAction(action)}
+            aria-label={action.label}
+          >
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              {action.icon}
+            </span>
+            <span className="page-header__action-label">{action.label}</span>
+          </button>
+        ))}
       />
 
-      <div className="ui-grid ui-grid--2">
-        <Section>
-          <SectionHeader
-            title="Resumo do dia"
-            subtitle="Producao, financeiro e pendencias em um olhar."
-          />
-          <Summary>
-            <SummaryItem label="Pedidos em aberto" value={openOrders} />
-            <SummaryItem label="Producao em andamento" value={inProduction} />
-            <SummaryItem label="Caixa atual" value={formatCurrency(cash)} />
-            <SummaryItem
-              label="Producao do mes"
-              value={formatCurrency(productionSummary.total)}
-              meta={`${productionSummary.count} ordens finalizadas`}
-            />
-            <SummaryItem label="Orcamentos pendentes" value={pendingQuotes} />
-            <SummaryItem label="Pagamentos pendentes" value={pendingPayments} />
-            <SummaryItem label="Ordens abertas" value={openProduction} />
-            <SummaryItem
-              label="Movimento de hoje"
-              value={`${ordersToday} pedidos / ${formatCurrency(receiptsToday)}`}
-            />
-          </Summary>
-        </Section>
-
-        <Section>
-          <SectionHeader title="Atalhos rapidos" subtitle="Crie operacoes sem perder contexto." />
-          <div className="ui-action-grid">
-            {quickActions.map((action) => (
-              <button
-                key={action.id}
-                className="ui-action"
-                type="button"
-                onClick={() => openQuickAction(action.id)}
-              >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  {action.icon}
-                </span>
-                <span>
-                  <strong className="ui-action__title">{action.title}</strong>
-                  <span className="ui-action__meta">{action.description}</span>
-                </span>
-              </button>
-            ))}
+      <section className="dashboard">
+        <section className="dashboard__section dashboard__section--cash">
+          <header className="dashboard__section-header">
+            <h2 className="dashboard__section-title">Caixa</h2>
+          </header>
+        <dl className="dashboard__metrics dashboard__metrics--pairs">
+          <div className="dashboard__metric dashboard__metric--no-divider">
+            <dt className="dashboard__metric-label">No Banco</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(cashSummary.bankBalance)}</strong>
+            </dd>
           </div>
-        </Section>
-      </div>
-
-      <div className="ui-grid ui-grid--2">
-        <Panel>
-          <SectionHeader
-            title="Fluxo financeiro"
-            subtitle="Entradas vs saidas (6 meses)"
-            actions={
-              <div className="page-header__meta">
-                <span>Entradas</span>
-                <span>Saidas</span>
-              </div>
-            }
-          />
-          <div className="ui-chart" role="img" aria-label="Fluxo financeiro mensal">
-            {monthlyFlow.months.map((month) => (
-              <div key={month.label} className="ui-chart__group">
-                <div className="ui-chart__bars">
-                  <span
-                    className="ui-chart__bar ui-chart__bar--in"
-                    style={{ height: `${(month.in / monthlyFlow.maxValue) * 100}%` }}
-                  />
-                  <span
-                    className="ui-chart__bar ui-chart__bar--out"
-                    style={{ height: `${(month.out / monthlyFlow.maxValue) * 100}%` }}
-                  />
-                </div>
-                <span className="ui-chart__label">{month.label}</span>
-              </div>
-            ))}
+          <div className="dashboard__metric dashboard__metric--no-divider">
+            <dt className="dashboard__metric-label">Em Espécie</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(cashSummary.cashBalance)}</strong>
+            </dd>
           </div>
-        </Panel>
-
-        <Panel>
-          <SectionHeader title="Alertas" subtitle="Itens que pedem atencao" />
-          <div className="ui-grid ui-grid--3">
-            <div>
-              <span className="ui-summary__label">Orcamentos vencendo</span>
-              <div className="ui-list">
-                {expiringQuotes.length === 0 && (
-                  <div className="ui-summary__meta">Nenhum orcamento nos proximos 7 dias.</div>
-                )}
-                {expiringQuotes.map((quote) => (
-                  <div key={quote.id} className="ui-list__item">
-                    <span className="ui-list__item-title">{getClientName(quote.clientId)}</span>
-                    <strong className="ui-list__item-value">
-                      {formatDateShort(quote.validUntil)}
-                    </strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <span className="ui-summary__label">Producao atrasada</span>
-              <div className="ui-list">
-                {delayedProduction.length === 0 && (
-                  <div className="ui-summary__meta">Nenhuma ordem atrasada no momento.</div>
-                )}
-                {delayedProduction.map((entry) => (
-                  <div key={entry.id} className="ui-list__item">
-                    <span className="ui-list__item-title">
-                      {getProductLabel(entry.productId, entry.variantId)}
-                    </span>
-                    <strong className="ui-list__item-value">{entry.days} dias</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <span className="ui-summary__label">Estoque baixo</span>
-              <div className="ui-list">
-                {lowStock.length === 0 && (
-                  <div className="ui-summary__meta">Nenhum item abaixo do minimo.</div>
-                )}
-                {lowStock.map((entry) => (
-                  <div key={`${entry.productId}-${entry.variantId}`} className="ui-list__item">
-                    <span className="ui-list__item-title">
-                      {entry.variantName
-                        ? entry.variantLocked
-                          ? `${entry.productName} ${entry.variantName}`
-                          : `${entry.productName} • ${entry.variantName}`
-                        : entry.productName}
-                    </span>
-                    <strong className="ui-list__item-value">{entry.stock}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="dashboard__metric">
+            <dt className="dashboard__metric-label">Total em caixa</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(cashSummary.totalBalance)}</strong>
+            </dd>
           </div>
-        </Panel>
-      </div>
+          <div className="dashboard__metric">
+            <dt className="dashboard__metric-label">Disponível real</dt>
+            <dd className={`dashboard__metric-value${availableRealClass}`}>
+              <strong>{formatCurrency(cashSummary.availableReal)}</strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric dashboard__metric--full">
+            <dt className="dashboard__metric-label">Reservado (imposto + reserva)</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(cashSummary.reservedBalance)}</strong>
+            </dd>
+          </div>
+        </dl>
+      </section>
 
-      <div className="ui-grid ui-grid--2">
-        <Panel>
-          <SectionHeader title="Pedidos recentes" subtitle="Ultimas movimentacoes" />
-          {recentOrders.length === 0 ? (
-            <div className="ui-summary__meta">Nenhum pedido criado.</div>
-          ) : (
-            <List>
-              {recentOrders.map((order) => (
-                <ListItem
-                  key={order.id}
-                  title={getClientName(order.clientId)}
-                  meta={`Pedido #${order.id.slice(-6)}`}
-                  value={formatCurrency(order.total)}
-                />
+        <section className="dashboard__section dashboard__section--period">
+          <header className="dashboard__section-header">
+            <h2 className="dashboard__section-title">Resultado do período</h2>
+          </header>
+        <dl className="dashboard__metrics dashboard__metrics--pairs">
+          <div className="dashboard__metric dashboard__metric--full">
+            <dt className="dashboard__metric-label">Faturamento do mês</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(periodSummary.monthRevenue)}</strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric dashboard__metric--full">
+            <dt className="dashboard__metric-label">Custo total</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(periodSummary.monthCost)}</strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric">
+            <dt className="dashboard__metric-label">Lucro bruto</dt>
+            <dd className={`dashboard__metric-value${grossProfitClass}`}>
+              <strong>{formatCurrency(periodSummary.grossProfit)}</strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric">
+            <dt className="dashboard__metric-label">Margem</dt>
+            <dd className={`dashboard__metric-value${marginClass}`}>
+              <strong>{formatPercent(periodSummary.margin * 100)}%</strong>
+            </dd>
+          </div>
+        </dl>
+        {showComparison && (
+          <p className={`dashboard__comparison${comparisonClass}`}>
+            Comparação com mês anterior: {comparisonSignal} {comparisonValue}
+          </p>
+        )}
+        </section>
+
+        <section className="dashboard__section dashboard__section--sales">
+          <header className="dashboard__section-header">
+            <h2 className="dashboard__section-title">Vendas e pedidos</h2>
+          </header>
+        <dl className="dashboard__metrics dashboard__metrics--pairs">
+          <div className="dashboard__metric dashboard__metric--no-divider">
+            <dt className="dashboard__metric-label">Vendas hoje</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(salesSummary.salesToday)}</strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric dashboard__metric--no-divider">
+            <dt className="dashboard__metric-label">Vendas no mês</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatCurrency(salesSummary.salesMonth)}</strong>
+            </dd>
+          </div>
+            <div className="dashboard__metric">
+              <dt className="dashboard__metric-label">Pedidos em aberto</dt>
+              <dd className="dashboard__metric-value">
+                <strong>{formatNumber(salesSummary.openOrders)}</strong>
+              </dd>
+            </div>
+            <div className="dashboard__metric">
+              <dt className="dashboard__metric-label">Encomendas</dt>
+              <dd className="dashboard__metric-value">
+                <strong>{formatNumber(salesSummary.pendingDeliveries)}</strong>
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        <section className="dashboard__section dashboard__section--production">
+          <header className="dashboard__section-header">
+            <h2 className="dashboard__section-title">Produção e gargalos</h2>
+          </header>
+        <dl className="dashboard__metrics dashboard__metrics--pairs">
+          <div className="dashboard__metric dashboard__metric--no-divider">
+            <dt className="dashboard__metric-label">Produção do dia</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatNumber(productionSummary.producedToday)}</strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric dashboard__metric--no-divider">
+            <dt className="dashboard__metric-label">Produção do mês</dt>
+            <dd className="dashboard__metric-value">
+              <strong>{formatNumber(productionSummary.producedMonth)}</strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric dashboard__metric--full">
+            <dt className="dashboard__metric-label">Capacidade vs realizado</dt>
+            <dd className="dashboard__metric-value">
+              <strong>
+                {formatNumber(productionSummary.capacityTotal)} x{' '}
+                {formatNumber(productionSummary.producedToday)}
+              </strong>
+            </dd>
+          </div>
+          <div className="dashboard__metric dashboard__metric--full">
+            <dt className="dashboard__metric-label">Gargalo atual</dt>
+            <dd className="dashboard__metric-value">
+              {productionSummary.bottleneck ? (
+                  <strong>
+                    {productionSummary.bottleneck.name}: capacidade{' '}
+                    {formatNumber(productionSummary.bottleneck.capacity)}/dia, produzido hoje{' '}
+                    {formatNumber(productionSummary.bottleneck.produced)}, status{' '}
+                    {productionSummary.bottleneck.status}
+                  </strong>
+                ) : (
+                  <strong>Sem gargalo crítico registrado.</strong>
+                )}
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+      <section className="dashboard__section dashboard__section--stock">
+        <header className="dashboard__section-header">
+          <h2 className="dashboard__section-title">Estoque crítico</h2>
+        </header>
+        <ul className="dashboard__list">
+          <li
+            className={`dashboard__list-item${
+              materialAlert ? ' dashboard__list-item--alert' : ''
+            }`}
+          >
+            Matéria-prima abaixo do mínimo: {summarizeWithCount(stockSummary.materialNames)}
+          </li>
+          <li
+            className={`dashboard__list-item${idleAlert ? ' dashboard__list-item--alert' : ''}`}
+          >
+            Produto pronto parado demais: {summarizeWithCount(stockSummary.idleNames)}
+          </li>
+          <li
+            className={`dashboard__list-item${
+              lowStockAlert ? ' dashboard__list-item--alert' : ''
+            }`}
+          >
+            Itens que vão faltar em breve: {summarizeWithCount(stockSummary.lowStockNames)}
+          </li>
+        </ul>
+      </section>
+
+        <section className="dashboard__section dashboard__section--alerts">
+          <header className="dashboard__section-header">
+            <h2 className="dashboard__section-title">Alertas e ações</h2>
+          </header>
+        {alertItems.length > 0 ? (
+          <ul className="dashboard__alerts">
+            {alertItems.map((alert) => (
+              <li key={alert.id} className={`dashboard__alert dashboard__alert--${alert.tone}`}>
+                <button
+                  className="button button--ghost dashboard__alert-button"
+                  type="button"
+                  onClick={() => onNavigate?.(alert.page)}
+                  >
+                    {alert.label} ({formatNumber(alert.count)})
+                  </button>
+                </li>
               ))}
-            </List>
-          )}
-        </Panel>
-
-        <Panel>
-          <SectionHeader title="Pagamentos recentes" subtitle="Entradas confirmadas" />
-          {recentReceipts.length === 0 ? (
-            <div className="ui-summary__meta">Nenhum pagamento registrado.</div>
+            </ul>
           ) : (
-            <List>
-              {recentReceipts.map((receipt) => {
-                const order = data.pedidos.find((item) => item.id === receipt.orderId)
-                const clientName = order ? getClientName(order.clientId) : 'Cliente'
-                return (
-                  <ListItem
-                    key={receipt.id}
-                    title={clientName}
-                    meta={`Pedido #${receipt.orderId.slice(-6)}`}
-                    value={formatCurrency(receipt.amount)}
-                  />
-                )
-              })}
-            </List>
+            <p className="dashboard__empty">Nenhum alerta crítico no momento.</p>
           )}
-        </Panel>
-      </div>
-
-      <Modal
-        open={Boolean(quickAction)}
-        title={
-          quickAction === 'orcamentos'
-            ? 'Novo orcamento rapido'
-            : quickAction === 'pedidos'
-              ? 'Novo pedido rapido'
-              : quickAction === 'producao'
-                ? 'Nova producao rapida'
-                : 'Registrar presenca'
-        }
-        onClose={closeQuickAction}
-        size="sm"
-      >
-        {quickAction === 'orcamentos' && (
-          <form
-            className="form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              setQuickStatus(null)
-              if (!quickQuote.clientId || !quickQuote.productId) {
-                setQuickStatus('Selecione cliente e produto.')
-                return
-              }
-              const nowIso = new Date().toISOString()
-              const total = quickQuote.quantity * quickQuote.unitPrice
-              const quote: Quote = {
-                id: createId(),
-                clientId: quickQuote.clientId,
-                items: [
-                  {
-                    productId: quickQuote.productId,
-                    variantId: quickQuote.variantId || undefined,
-                    quantity: quickQuote.quantity,
-                    unitPrice: quickQuote.unitPrice,
-                  },
-                ],
-                total,
-                validUntil: createDefaultDate(),
-                status: 'rascunho',
-                createdAt: nowIso,
-              }
-              const clientName =
-                availableClients.find((client) => client.id === quickQuote.clientId)?.name ??
-                'Cliente'
-              dataService.upsertQuote(quote, {
-                auditEvent: {
-                  category: 'acao',
-                  title: 'Orcamento criado (atalho)',
-                  description: `${clientName} · 1 item`,
-                },
-              })
-              refresh()
-              setQuickStatus('Orcamento rapido criado.')
-            }}
-          >
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-quote-client">
-                  Cliente
-                </label>
-                <select
-                  id="quick-quote-client"
-                  className="form__input"
-                  value={quickQuote.clientId}
-                  onChange={(event) =>
-                    setQuickQuote((prev) => ({ ...prev, clientId: event.target.value }))
-                  }
-                >
-                  <option value="">Selecione</option>
-                  {availableClients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-quote-product">
-                  Produto
-                </label>
-                <select
-                  id="quick-quote-product"
-                  className="form__input"
-                  value={quickQuote.productId}
-                  onChange={(event) => {
-                    const productId = event.target.value
-                    const product = data.produtos.find((item) => item.id === productId)
-                    const variantId = product?.hasVariants ? product?.variants?.[0]?.id ?? '' : ''
-                    setQuickQuote((prev) => ({
-                      ...prev,
-                      productId,
-                      variantId,
-                      unitPrice: resolveUnitPrice(productId, variantId),
-                    }))
-                  }}
-                >
-                  <option value="">Selecione</option>
-                  {availableProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="form__row">
-              {data.produtos.find((item) => item.id === quickQuote.productId)?.hasVariants ? (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="quick-quote-variant">
-                    Variacao
-                  </label>
-                  <select
-                    id="quick-quote-variant"
-                    className="form__input"
-                    value={quickQuote.variantId}
-                    onChange={(event) => {
-                      const variantId = event.target.value
-                      setQuickQuote((prev) => ({
-                        ...prev,
-                        variantId,
-                        unitPrice: resolveUnitPrice(prev.productId, variantId),
-                      }))
-                    }}
-                    disabled={!quickQuote.productId}
-                  >
-                    <option value="">Selecione</option>
-                    {(data.produtos.find((item) => item.id === quickQuote.productId)?.variants ??
-                      []).map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="form__group">
-                  <label className="form__label">Variacao</label>
-                  <input
-                    className="form__input"
-                    type="text"
-                    value="Produto sem variacoes"
-                    disabled
-                  />
-                </div>
-              )}
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-quote-qty">
-                  Quantidade
-                </label>
-                <input
-                  id="quick-quote-qty"
-                  className="form__input"
-                  type="number"
-                  min="1"
-                  value={quickQuote.quantity}
-                  onChange={(event) =>
-                    setQuickQuote((prev) => ({
-                      ...prev,
-                      quantity: Number(event.target.value),
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-quote-price">
-                  Valor unitario
-                </label>
-                <input
-                  id="quick-quote-price"
-                  className="form__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={quickQuote.unitPrice}
-                  onChange={(event) =>
-                    setQuickQuote((prev) => ({
-                      ...prev,
-                      unitPrice: Number(event.target.value),
-                    }))
-                  }
-                />
-              </div>
-              <div className="form__summary">
-                <span>Total</span>
-                <strong>{formatCurrency(quickQuote.quantity * quickQuote.unitPrice)}</strong>
-              </div>
-            </div>
-            {quickStatus && <div className="form__status">{quickStatus}</div>}
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                Criar orcamento
-              </button>
-              <button className="button button--ghost" type="button" onClick={closeQuickAction}>
-                Fechar
-              </button>
-            </div>
-          </form>
-        )}
-
-        {quickAction === 'pedidos' && (
-          <form
-            className="form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              setQuickStatus(null)
-              if (!quickOrder.clientId || !quickOrder.productId) {
-                setQuickStatus('Selecione cliente e produto.')
-                return
-              }
-              const nowIso = new Date().toISOString()
-              const total = quickOrder.quantity * quickOrder.unitPrice
-              const normalizedPayment =
-                getPaymentMethodId(
-                  quickOrder.paymentMethod,
-                  data.tabelas?.paymentMethods,
-                ) || quickOrder.paymentMethod
-              const order: Order = {
-                id: createId(),
-                clientId: quickOrder.clientId,
-                items: [
-                  {
-                    productId: quickOrder.productId,
-                    variantId: quickOrder.variantId || undefined,
-                    quantity: quickOrder.quantity,
-                    unitPrice: quickOrder.unitPrice,
-                  },
-                ],
-                total,
-                paymentMethod: normalizedPayment || 'a_definir',
-                status: 'aguardando_pagamento',
-                createdAt: nowIso,
-              }
-              const clientName =
-                availableClients.find((client) => client.id === quickOrder.clientId)?.name ??
-                'Cliente'
-              dataService.upsertOrder(order, {
-                auditEvent: {
-                  category: 'acao',
-                  title: 'Pedido criado (atalho)',
-                  description: `${clientName} · 1 item`,
-                },
-              })
-              refresh()
-              setQuickStatus('Pedido rapido criado.')
-            }}
-          >
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-order-client">
-                  Cliente
-                </label>
-                <select
-                  id="quick-order-client"
-                  className="form__input"
-                  value={quickOrder.clientId}
-                  onChange={(event) =>
-                    setQuickOrder((prev) => ({ ...prev, clientId: event.target.value }))
-                  }
-                >
-                  <option value="">Selecione</option>
-                  {availableClients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-order-product">
-                  Produto
-                </label>
-                <select
-                  id="quick-order-product"
-                  className="form__input"
-                  value={quickOrder.productId}
-                  onChange={(event) => {
-                    const productId = event.target.value
-                    const product = data.produtos.find((item) => item.id === productId)
-                    const variantId = product?.hasVariants ? product?.variants?.[0]?.id ?? '' : ''
-                    setQuickOrder((prev) => ({
-                      ...prev,
-                      productId,
-                      variantId,
-                      unitPrice: resolveUnitPrice(productId, variantId),
-                    }))
-                  }}
-                >
-                  <option value="">Selecione</option>
-                  {availableProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="form__row">
-              {data.produtos.find((item) => item.id === quickOrder.productId)?.hasVariants ? (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="quick-order-variant">
-                    Variacao
-                  </label>
-                  <select
-                    id="quick-order-variant"
-                    className="form__input"
-                    value={quickOrder.variantId}
-                    onChange={(event) => {
-                      const variantId = event.target.value
-                      setQuickOrder((prev) => ({
-                        ...prev,
-                        variantId,
-                        unitPrice: resolveUnitPrice(prev.productId, variantId),
-                      }))
-                    }}
-                    disabled={!quickOrder.productId}
-                  >
-                    <option value="">Selecione</option>
-                    {(data.produtos.find((item) => item.id === quickOrder.productId)?.variants ??
-                      []).map((variant) => (
-                      <option key={variant.id} value={variant.id}>
-                        {variant.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="form__group">
-                  <label className="form__label">Variacao</label>
-                  <input
-                    className="form__input"
-                    type="text"
-                    value="Produto sem variacoes"
-                    disabled
-                  />
-                </div>
-              )}
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-order-qty">
-                  Quantidade
-                </label>
-                <input
-                  id="quick-order-qty"
-                  className="form__input"
-                  type="number"
-                  min="1"
-                  value={quickOrder.quantity}
-                  onChange={(event) =>
-                    setQuickOrder((prev) => ({
-                      ...prev,
-                      quantity: Number(event.target.value),
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-order-price">
-                  Valor unitario
-                </label>
-                <input
-                  id="quick-order-price"
-                  className="form__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={quickOrder.unitPrice}
-                  onChange={(event) =>
-                    setQuickOrder((prev) => ({
-                      ...prev,
-                      unitPrice: Number(event.target.value),
-                    }))
-                  }
-                />
-              </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-order-payment">
-                  Forma de pagamento
-                </label>
-                <select
-                  id="quick-order-payment"
-                  className="form__input"
-                  value={quickOrder.paymentMethod}
-                  onChange={(event) =>
-                    setQuickOrder((prev) => ({
-                      ...prev,
-                      paymentMethod: event.target.value,
-                    }))
-                  }
-                >
-                  {quickOrder.paymentMethod &&
-                    !paymentOptions.some((method) => method.id === quickOrder.paymentMethod) && (
-                      <option value={quickOrder.paymentMethod}>
-                        Outro ({quickOrder.paymentMethod})
-                      </option>
-                    )}
-                  {paymentOptions.map((method) => (
-                    <option key={method.id} value={method.id}>
-                      {method.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="form__summary">
-              <span>Total</span>
-              <strong>{formatCurrency(quickOrder.quantity * quickOrder.unitPrice)}</strong>
-            </div>
-            {quickStatus && <div className="form__status">{quickStatus}</div>}
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                Criar pedido
-              </button>
-              <button className="button button--ghost" type="button" onClick={closeQuickAction}>
-                Fechar
-              </button>
-            </div>
-          </form>
-        )}
-
-        {quickAction === 'producao' && (
-          <form
-            className="form"
-            onSubmit={(event) => {
-              event.preventDefault()
-              setQuickStatus(null)
-              if (!quickProduction.orderId || !quickProduction.itemKey) {
-                setQuickStatus('Selecione um pedido e item.')
-                return
-              }
-              const [productId, variantValue, lengthValue] = quickProduction.itemKey.split(':')
-              const length = lengthValue ? Number(lengthValue) : quickProduction.customLength
-              const productionOrder: ProductionOrder = {
-                id: createId(),
-                orderId: quickProduction.orderId,
-                productId,
-                variantId: variantValue || undefined,
-                quantity: quickProduction.quantity,
-                customLength: Number.isFinite(length) ? length : undefined,
-                status: 'aberta',
-                plannedAt: quickProduction.plannedAt,
-              }
-              const payload = dataService.getAll()
-              payload.ordensProducao = [...payload.ordensProducao, productionOrder]
-              dataService.replaceAll(payload)
-              refresh()
-              setQuickStatus('Ordem de producao criada.')
-            }}
-          >
-            <div className="form__group">
-              <label className="form__label" htmlFor="quick-production-order">
-                Pedido
-              </label>
-              <select
-                id="quick-production-order"
-                className="form__input"
-                value={quickProduction.orderId}
-                onChange={(event) => {
-                  const orderId = event.target.value
-                  const order = data.pedidos.find((item) => item.id === orderId)
-                  const firstItem = order?.items[0]
-                  const lengthKey =
-                    firstItem?.customLength && firstItem.customLength > 0
-                      ? firstItem.customLength.toFixed(4)
-                      : ''
-                  const itemKey = firstItem
-                    ? `${firstItem.productId}:${firstItem.variantId ?? ''}:${lengthKey}`
-                    : ''
-                  setQuickProduction((prev) => ({
-                    ...prev,
-                    orderId,
-                    itemKey,
-                    quantity: firstItem?.quantity ?? 1,
-                    customLength: firstItem?.customLength ?? 0,
-                  }))
-                }}
-              >
-                <option value="">Selecione</option>
-                {data.pedidos.map((order) => (
-                  <option key={order.id} value={order.id}>
-                    {getClientName(order.clientId)} • {formatCurrency(order.total)}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-production-item">
-                  Item
-                </label>
-                <select
-                  id="quick-production-item"
-                  className="form__input"
-                  value={quickProduction.itemKey}
-                  onChange={(event) => {
-                    const itemKey = event.target.value
-                    const [productId, variantValue, lengthValue] = itemKey.split(':')
-                    const length = lengthValue ? Number(lengthValue) : 0
-                    const order = data.pedidos.find(
-                      (item) => item.id === quickProduction.orderId,
-                    )
-                    const targetItem = order?.items.find(
-                      (item) =>
-                        item.productId === productId &&
-                        (item.variantId ?? '') === variantValue &&
-                        (item.customLength ?? 0) === length,
-                    )
-                    setQuickProduction((prev) => ({
-                      ...prev,
-                      itemKey,
-                      quantity: targetItem?.quantity ?? prev.quantity,
-                      customLength: targetItem?.customLength ?? 0,
-                    }))
-                  }}
-                  disabled={!quickProduction.orderId}
-                >
-                  <option value="">Selecione</option>
-                  {(data.pedidos.find((order) => order.id === quickProduction.orderId)?.items ??
-                    []).map((item) => {
-                    const lengthKey =
-                      item.customLength && item.customLength > 0
-                        ? item.customLength.toFixed(4)
-                        : ''
-                    const itemKey = `${item.productId}:${item.variantId ?? ''}:${lengthKey}`
-                    return (
-                      <option key={itemKey} value={itemKey}>
-                        {getProductLabel(item.productId, item.variantId, item.customLength)}
-                      </option>
-                    )
-                  })}
-                </select>
-              </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="quick-production-qty">
-                  Quantidade
-                </label>
-                <input
-                  id="quick-production-qty"
-                  className="form__input"
-                  type="number"
-                  min="1"
-                  value={quickProduction.quantity}
-                  onChange={(event) =>
-                    setQuickProduction((prev) => ({
-                      ...prev,
-                      quantity: Number(event.target.value),
-                    }))
-                  }
-                />
-              </div>
-            </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="quick-production-date">
-                Data planejada
-              </label>
-              <input
-                id="quick-production-date"
-                className="form__input"
-                type="date"
-                value={quickProduction.plannedAt}
-                onChange={(event) =>
-                  setQuickProduction((prev) => ({
-                    ...prev,
-                    plannedAt: event.target.value,
-                  }))
-                }
-              />
-            </div>
-            {quickStatus && <div className="form__status">{quickStatus}</div>}
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                Criar producao
-              </button>
-              <button className="button button--ghost" type="button" onClick={closeQuickAction}>
-                Fechar
-              </button>
-            </div>
-          </form>
-        )}
-
-        {quickAction === 'presenca' && (
-          <div className="form">
-            <p className="modal__description">
-              Registro rapido de presenca entra na proxima etapa. Por enquanto, use o painel de
-              funcionarios para apontar equipe.
-            </p>
-            <div className="form__actions">
-              <button
-                className="button button--primary"
-                type="button"
-                onClick={() => {
-                  onNavigate?.('funcionarios')
-                  closeQuickAction()
-                }}
-              >
-                Ir para funcionarios
-              </button>
-              <button className="button button--ghost" type="button" onClick={closeQuickAction}>
-                Fechar
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
+        </section>
+      </section>
     </Page>
   )
 }

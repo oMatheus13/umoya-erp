@@ -51,6 +51,7 @@ const RhPagamentos = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form, setForm] = useState<PaymentForm>(createEmptyForm())
+  const paymentFormId = 'pagamento-form'
 
   const employees = useMemo(
     () => [...data.funcionarios].sort((a, b) => a.name.localeCompare(b.name)),
@@ -162,10 +163,12 @@ const RhPagamentos = () => {
   return (
     <Page className="rh-page">
       <PageHeader
-        title="Pagamentos"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Registrar pagamento
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              payments
+            </span>
+            <span className="page-header__action-label">Registrar pagamento</span>
           </button>
         }
       />
@@ -248,8 +251,16 @@ const RhPagamentos = () => {
         onClose={closeModal}
         title={editingId ? 'Editar pagamento' : 'Registrar pagamento'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={paymentFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar</span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={paymentFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="pay-employee">
@@ -414,14 +425,6 @@ const RhPagamentos = () => {
             />
           </div>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              Salvar
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 

@@ -1,7 +1,7 @@
 import AuditoriaPage from './AuditoriaPage'
 
 const AuditoriaBackup = () => (
-  <AuditoriaPage category="backup" title="Backup automatico" />
+  <AuditoriaPage category="backup" />
 )
 
 export default AuditoriaBackup

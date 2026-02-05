@@ -37,6 +37,7 @@ const Financeiro = () => {
     cashboxId: 'caixa_operacional',
     transferToId: '',
   })
+  const financeFormId = 'financeiro-form'
 
   const updateForm = (patch: Partial<FinanceForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
@@ -278,10 +279,12 @@ const Financeiro = () => {
   return (
     <Page className="financeiro">
       <PageHeader
-        title="Fluxo de caixa"
         actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
-            Novo lancamento
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              add
+            </span>
+            <span className="page-header__action-label">Novo lancamento</span>
           </button>
         }
       />
@@ -476,8 +479,16 @@ const Financeiro = () => {
         onClose={closeModal}
         title="Novo lancamento"
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={financeFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Registrar</span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={financeFormId} className="form" onSubmit={handleSubmit}>
             <div className="form__group">
               <label className="form__label" htmlFor="finance-type">
                 Tipo
@@ -581,14 +592,6 @@ const Financeiro = () => {
               )}
             </div>
 
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                Registrar
-              </button>
-              <button className="button button--ghost" type="button" onClick={closeModal}>
-                Cancelar
-              </button>
-            </div>
             {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>

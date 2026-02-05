@@ -37,6 +37,7 @@ const RhPresenca = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [form, setForm] = useState<PresenceForm>(createEmptyPresence())
+  const presenceFormId = 'presenca-form'
 
   const employees = useMemo(
     () => [...data.funcionarios].sort((a, b) => a.name.localeCompare(b.name)),
@@ -140,10 +141,12 @@ const RhPresenca = () => {
   return (
     <Page className="rh-page">
       <PageHeader
-        title="Presenca"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Registrar presenca
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              how_to_reg
+            </span>
+            <span className="page-header__action-label">Registrar presenca</span>
           </button>
         }
       />
@@ -230,8 +233,16 @@ const RhPresenca = () => {
         onClose={closeModal}
         title={editingId ? 'Editar presenca' : 'Registrar presenca'}
         size="sm"
+        actions={
+          <button className="button button--primary" type="submit" form={presenceFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar</span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={presenceFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="presence-employee">
               Funcionario
@@ -295,14 +306,6 @@ const RhPresenca = () => {
               onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
               placeholder="Notas sobre a presenca"
             />
-          </div>
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              Salvar
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
           </div>
         </form>
       </Modal>

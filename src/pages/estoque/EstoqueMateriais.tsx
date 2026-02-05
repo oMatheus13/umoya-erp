@@ -25,6 +25,7 @@ const EstoqueMateriais = () => {
     quantity: 0,
     note: '',
   })
+  const adjustFormId = 'ajuste-material-form'
 
   const materials = useMemo(
     () => [...data.materiais].sort((a, b) => a.name.localeCompare(b.name)),
@@ -118,7 +119,7 @@ const EstoqueMateriais = () => {
 
   return (
     <Page className="estoque-materiais">
-      <PageHeader title="Materia-prima" />
+      <PageHeader />
       {status && <p className="form__status">{status}</p>}
 
       <div className="estoque-materiais__summary summary-card">
@@ -203,8 +204,21 @@ const EstoqueMateriais = () => {
         </section>
       </div>
 
-      <Modal open={isAdjustOpen} onClose={closeAdjust} title="Ajustar estoque" size="sm">
-        <form className="form" onSubmit={handleAdjust}>
+      <Modal
+        open={isAdjustOpen}
+        onClose={closeAdjust}
+        title="Ajustar estoque"
+        size="sm"
+        actions={
+          <button className="button button--primary" type="submit" form={adjustFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar ajuste</span>
+          </button>
+        }
+      >
+        <form id={adjustFormId} className="form" onSubmit={handleAdjust}>
           <div className="form__group">
             <label className="form__label" htmlFor="adjust-material">
               Material
@@ -267,14 +281,6 @@ const EstoqueMateriais = () => {
               onChange={(event) => updateForm({ note: event.target.value })}
               placeholder="Ex: acerto de inventario"
             />
-          </div>
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              Salvar ajuste
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeAdjust}>
-              Cancelar
-            </button>
           </div>
         </form>
       </Modal>

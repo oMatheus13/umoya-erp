@@ -22,7 +22,7 @@ const DataTools = () => {
 
   return (
     <Page className="data-tools">
-      <PageHeader title="Dados do sistema" />
+      <PageHeader />
 
       <div className="data-tools__grid">
         <div className="data-tools__panel">

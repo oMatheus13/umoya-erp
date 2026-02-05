@@ -62,7 +62,7 @@ const Estoque = () => {
 
   return (
     <Page className="estoque">
-      <PageHeader title="Estoque consolidado" />
+      <PageHeader />
 
       <div className="estoque__summary summary-card">
         <article className="estoque__stat">

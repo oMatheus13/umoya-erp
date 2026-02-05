@@ -145,7 +145,6 @@ const Bi = () => {
   return (
     <Page className="bi">
       <PageHeader
-        title="BI"
         actions={
           <div className="bi__filters">
             <div className="bi__filter">

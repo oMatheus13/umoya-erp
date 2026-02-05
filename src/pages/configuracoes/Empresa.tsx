@@ -48,7 +48,7 @@ const Empresa = () => {
 
   return (
     <Page className="empresa">
-      <PageHeader title="Dados da empresa" />
+      <PageHeader />
       {status && <p className="form__status">{status}</p>}
 
       <div className="empresa__layout">

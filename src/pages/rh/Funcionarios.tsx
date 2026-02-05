@@ -111,6 +111,10 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
   const [accountStatus, setAccountStatus] = useState<string | null>(null)
   const [createAccess, setCreateAccess] = useState(false)
   const [accessStatus, setAccessStatus] = useState<string | null>(null)
+  const employeeFormId = 'funcionario-form'
+  const roleFormId = 'cargo-form'
+  const levelFormId = 'nivel-form'
+  const logFormId = 'apontamento-form'
 
   const roles = useMemo(
     () => [...data.cargos].sort((a, b) => a.name.localeCompare(b.name)),
@@ -820,20 +824,31 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
   return (
     <Page className="funcionarios">
       <PageHeader
-        title="Funcionarios"
         actions={
           <>
             <button className="button button--ghost" type="button" onClick={openRoleModal}>
-              Novo cargo
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                badge
+              </span>
+              <span className="page-header__action-label">Novo cargo</span>
             </button>
             <button className="button button--ghost" type="button" onClick={openLevelModal}>
-              Novo nivel
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                military_tech
+              </span>
+              <span className="page-header__action-label">Novo nivel</span>
             </button>
             <button className="button button--primary" type="button" onClick={openEmployeeModal}>
-              Novo funcionario
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                person_add
+              </span>
+              <span className="page-header__action-label">Novo funcionario</span>
             </button>
             <button className="button button--primary" type="button" onClick={openLogModal}>
-              Registrar producao
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                factory
+              </span>
+              <span className="page-header__action-label">Registrar producao</span>
             </button>
           </>
         }
@@ -1200,8 +1215,18 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         onClose={closeEmployeeModal}
         title={editingEmployeeId ? 'Editar funcionario' : 'Novo funcionario'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={employeeFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingEmployeeId ? 'Atualizar' : 'Salvar funcionario'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleEmployeeSubmit}>
+        <form id={employeeFormId} className="form" onSubmit={handleEmployeeSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="employee-name">
               Nome
@@ -1284,13 +1309,16 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           </div>
 
-          <label className="form__checkbox">
+          <label className="toggle form__checkbox">
             <input
               type="checkbox"
               checked={employeeForm.active}
               onChange={(event) => updateEmployeeForm({ active: event.target.checked })}
             />
-            Funcionario ativo
+            <span className="toggle__track" aria-hidden="true">
+              <span className="toggle__thumb" />
+            </span>
+            <span className="toggle__label">Funcionario ativo</span>
           </label>
 
           {isAdmin && (
@@ -1304,7 +1332,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 ) : hasEmployeeAccess ? (
                   <p className="form__help">Este funcionario ja possui acesso.</p>
                 ) : (
-                  <label className="form__checkbox">
+                  <label className="toggle form__checkbox">
                     <input
                       type="checkbox"
                       checked={createAccess}
@@ -1322,7 +1350,10 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                         }))
                       }}
                     />
-                    Criar acesso para este funcionario
+                    <span className="toggle__track" aria-hidden="true">
+                      <span className="toggle__thumb" />
+                    </span>
+                    <span className="toggle__label">Criar acesso para este funcionario</span>
                   </label>
                 )}
               </div>
@@ -1410,14 +1441,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           )}
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingEmployeeId ? 'Atualizar' : 'Salvar funcionario'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeEmployeeModal}>
-              Cancelar
-            </button>
-          </div>
           {employeeStatus && <p className="form__status">{employeeStatus}</p>}
         </form>
       </Modal>
@@ -1427,8 +1450,18 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         onClose={closeRoleModal}
         title={editingRoleId ? 'Editar cargo' : 'Novo cargo'}
         size="sm"
+        actions={
+          <button className="button button--primary" type="submit" form={roleFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingRoleId ? 'Atualizar' : 'Salvar cargo'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleRoleSubmit}>
+        <form id={roleFormId} className="form" onSubmit={handleRoleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="role-name">
               Cargo
@@ -1455,14 +1488,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               onChange={(event) => updateRoleForm({ multiplier: Number(event.target.value) })}
             />
           </div>
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingRoleId ? 'Atualizar' : 'Salvar cargo'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeRoleModal}>
-              Cancelar
-            </button>
-          </div>
           {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>
@@ -1472,8 +1497,18 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         onClose={closeLevelModal}
         title={editingLevelId ? 'Editar nivel' : 'Novo nivel'}
         size="sm"
+        actions={
+          <button className="button button--primary" type="submit" form={levelFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingLevelId ? 'Atualizar' : 'Salvar nivel'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleLevelSubmit}>
+        <form id={levelFormId} className="form" onSubmit={handleLevelSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="level-name">
               Nivel
@@ -1500,14 +1535,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               onChange={(event) => updateLevelForm({ multiplier: Number(event.target.value) })}
             />
           </div>
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingLevelId ? 'Atualizar' : 'Salvar nivel'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeLevelModal}>
-              Cancelar
-            </button>
-          </div>
           {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>
@@ -1517,8 +1544,18 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         onClose={closeLogModal}
         title={editingLogId ? 'Editar apontamento' : 'Registrar producao'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={logFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingLogId ? 'Atualizar apontamento' : 'Registrar producao'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleLogSubmit}>
+        <form id={logFormId} className="form" onSubmit={handleLogSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="log-employee">
               Funcionario
@@ -1624,14 +1661,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           </div>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingLogId ? 'Atualizar apontamento' : 'Registrar producao'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeLogModal}>
-              Cancelar
-            </button>
-          </div>
           {logStatus && <p className="form__status">{logStatus}</p>}
         </form>
       </Modal>

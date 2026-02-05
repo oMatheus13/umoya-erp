@@ -75,7 +75,7 @@ const RelatoriosProducao = () => {
 
   return (
     <Page className="relatorios">
-      <PageHeader title="Producao por periodo" />
+      <PageHeader />
 
       <div className="card-grid summary-card">
         <article className="card">

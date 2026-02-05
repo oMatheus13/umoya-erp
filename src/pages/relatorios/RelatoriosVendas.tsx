@@ -46,7 +46,7 @@ const RelatoriosVendas = () => {
 
   return (
     <Page className="relatorios">
-      <PageHeader title="Vendas por cliente e obra" />
+      <PageHeader />
 
       <div className="card-grid summary-card">
         <article className="card">

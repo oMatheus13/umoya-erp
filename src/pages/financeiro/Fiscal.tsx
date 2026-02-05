@@ -49,6 +49,7 @@ const Fiscal = () => {
     xmlStored: false,
     notes: '',
   })
+  const fiscalFormId = 'fiscal-form'
 
   const clients = useMemo(
     () => [...data.clientes].sort((a, b) => a.name.localeCompare(b.name)),
@@ -207,10 +208,12 @@ const Fiscal = () => {
   return (
     <Page className="fiscal">
       <PageHeader
-        title="Notas fiscais"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Nova nota
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              receipt
+            </span>
+            <span className="page-header__action-label">Nova nota</span>
           </button>
         }
       />
@@ -288,8 +291,22 @@ const Fiscal = () => {
         </table>
       </div>
 
-      <Modal open={isModalOpen} title={editingId ? 'Editar nota' : 'Nova nota'} onClose={closeModal}>
-        <form className="form" onSubmit={handleSubmit}>
+      <Modal
+        open={isModalOpen}
+        title={editingId ? 'Editar nota' : 'Nova nota'}
+        onClose={closeModal}
+        actions={
+          <button className="button button--primary" type="submit" form={fiscalFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Salvar' : 'Registrar'}
+            </span>
+          </button>
+        }
+      >
+        <form id={fiscalFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="fiscal-type">
@@ -412,13 +429,16 @@ const Fiscal = () => {
                 onChange={(event) => updateForm({ issueDate: event.target.value })}
               />
             </div>
-            <label className="form__checkbox">
+            <label className="toggle form__checkbox">
               <input
                 type="checkbox"
                 checked={form.xmlStored}
                 onChange={(event) => updateForm({ xmlStored: event.target.checked })}
               />
-              XML armazenado
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">XML armazenado</span>
             </label>
           </div>
 
@@ -435,15 +455,6 @@ const Fiscal = () => {
           </div>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingId ? 'Salvar' : 'Registrar'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 

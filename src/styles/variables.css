@@ -9,7 +9,7 @@
   --color-true-black: #000000;
   --color-lime: #aaff00;
   --color-lime-soft: rgba(170, 255, 0, 0.18);
-  --color-line: rgba(15, 17, 22, 0.12);
+  --color-line: rgba(15, 17, 22, 0.05);
   --color-line-strong: rgba(15, 17, 22, 0.2);
   --color-surface: #fbfaf7;
   --color-surface-strong: #ffffff;
@@ -119,10 +119,10 @@
   --z-index-sticky: 1020;
   --z-index-fixed: 1030;
   --z-index-modal-backdrop: 1040;
-  --z-index-modal: 1050;
   --z-index-popover: 1060;
   --z-index-tooltip: 1070;
   --z-index-header: 1080;
+  --z-index-modal: 1090;
 
   /* Textures */
   --texture-noise: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><defs><filter id="noise"><feTurbulence baseFrequency="0.8" numOctaves="3" stitchTiles="stitch"/></filter></defs><rect width="100%" height="100%" filter="url(%23noise)" opacity="0.05"/></svg>');

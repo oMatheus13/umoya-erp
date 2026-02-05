@@ -56,7 +56,7 @@ const RelatoriosConsumo = () => {
 
   return (
     <Page className="relatorios">
-      <PageHeader title="Consumo de material" />
+      <PageHeader />
 
       <div className="card-grid summary-card">
         <article className="card">

@@ -92,6 +92,8 @@ const Qualidade = () => {
     cost: 0,
     notes: '',
   })
+  const qualityFormId = 'qualidade-form'
+  const maintenanceFormId = 'manutencao-form'
 
   const products = useMemo(
     () => [...data.produtos].filter((item) => item.active !== false),
@@ -348,18 +350,23 @@ const Qualidade = () => {
   return (
     <Page className="qualidade">
       <PageHeader
-        title="Qualidade e manutencao"
         actions={
           <>
             <button className="button button--ghost" type="button" onClick={openQualityModal}>
-              Novo checklist/falha
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                fact_check
+              </span>
+              <span className="page-header__action-label">Novo checklist/falha</span>
             </button>
             <button
               className="button button--primary"
               type="button"
               onClick={openMaintenanceModal}
             >
-              Nova manutencao
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                build
+              </span>
+              <span className="page-header__action-label">Nova manutencao</span>
             </button>
           </>
         }
@@ -502,8 +509,22 @@ const Qualidade = () => {
         </section>
       </div>
 
-      <Modal open={qualityModalOpen} title="Checklist ou falha" onClose={closeQualityModal}>
-        <form className="form" onSubmit={handleQualitySubmit}>
+      <Modal
+        open={qualityModalOpen}
+        title="Checklist ou falha"
+        onClose={closeQualityModal}
+        actions={
+          <button className="button button--primary" type="submit" form={qualityFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {qualityEditingId ? 'Salvar' : 'Registrar'}
+            </span>
+          </button>
+        }
+      >
+        <form id={qualityFormId} className="form" onSubmit={handleQualitySubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="quality-type">
@@ -673,20 +694,25 @@ const Qualidade = () => {
           </div>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {qualityEditingId ? 'Salvar' : 'Registrar'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeQualityModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 
-      <Modal open={maintenanceModalOpen} title="Manutencao" onClose={closeMaintenanceModal}>
-        <form className="form" onSubmit={handleMaintenanceSubmit}>
+      <Modal
+        open={maintenanceModalOpen}
+        title="Manutencao"
+        onClose={closeMaintenanceModal}
+        actions={
+          <button className="button button--primary" type="submit" form={maintenanceFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {maintenanceEditingId ? 'Salvar' : 'Registrar'}
+            </span>
+          </button>
+        }
+      >
+        <form id={maintenanceFormId} className="form" onSubmit={handleMaintenanceSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="maint-equipment">
               Equipamento
@@ -818,15 +844,6 @@ const Qualidade = () => {
           </div>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {maintenanceEditingId ? 'Salvar' : 'Registrar'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeMaintenanceModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 

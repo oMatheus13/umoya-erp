@@ -11,7 +11,6 @@ import { createId } from '../../utils/ids'
 
 type AuditoriaPageProps = {
   category: AuditCategory
-  title: string
 }
 
 type AuditForm = {
@@ -21,7 +20,7 @@ type AuditForm = {
   metadata: string
 }
 
-const AuditoriaPage = ({ category, title }: AuditoriaPageProps) => {
+const AuditoriaPage = ({ category }: AuditoriaPageProps) => {
   const { data, refresh } = useERPData()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editingCreatedAt, setEditingCreatedAt] = useState<string | null>(null)
@@ -34,6 +33,7 @@ const AuditoriaPage = ({ category, title }: AuditoriaPageProps) => {
     actorName: '',
     metadata: '',
   })
+  const auditFormId = 'auditoria-form'
 
   const entries = useMemo(
     () =>
@@ -137,10 +137,12 @@ const AuditoriaPage = ({ category, title }: AuditoriaPageProps) => {
   return (
     <Page className="auditoria">
       <PageHeader
-        title={title}
         actions={
           <button className="button button--primary" type="button" onClick={() => openModal()}>
-            Novo registro
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              note_add
+            </span>
+            <span className="page-header__action-label">Novo registro</span>
           </button>
         }
       />
@@ -206,8 +208,18 @@ const AuditoriaPage = ({ category, title }: AuditoriaPageProps) => {
         open={isModalOpen}
         title={editingId ? 'Editar registro' : 'Novo registro'}
         onClose={closeModal}
+        actions={
+          <button className="button button--primary" type="submit" form={auditFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Salvar' : 'Registrar'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={auditFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="audit-title">
               Titulo
@@ -260,15 +272,6 @@ const AuditoriaPage = ({ category, title }: AuditoriaPageProps) => {
           </div>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingId ? 'Salvar' : 'Registrar'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 

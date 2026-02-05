@@ -46,6 +46,7 @@ const Materiais = () => {
     notes: '',
     active: true,
   })
+  const materialFormId = 'material-form'
 
   const updateForm = (patch: Partial<MaterialForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
@@ -214,10 +215,12 @@ const Materiais = () => {
   return (
     <Page className="materiais">
       <PageHeader
-        title='Matéria-prima'
         actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
-            Novo material
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              science
+            </span>
+            <span className="page-header__action-label">Novo material</span>
           </button>
         }
       />
@@ -247,8 +250,18 @@ const Materiais = () => {
         onClose={closeModal}
         title={editingId ? 'Editar material' : 'Novo material'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={materialFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Atualizar' : 'Salvar material'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={materialFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="material-name">
               Nome
@@ -446,25 +459,18 @@ const Materiais = () => {
             />
           </div>
 
-          <label className="form__checkbox">
+          <label className="toggle form__checkbox">
             <input
               type="checkbox"
               checked={form.active}
               onChange={(event) => updateForm({ active: event.target.checked })}
             />
-            Material ativo
+            <span className="toggle__track" aria-hidden="true">
+              <span className="toggle__thumb" />
+            </span>
+            <span className="toggle__label">Material ativo</span>
           </label>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingId ? 'Atualizar' : 'Salvar material'}
-            </button>
-            {editingId && (
-              <button className="button button--ghost" type="button" onClick={closeModal}>
-                Cancelar
-              </button>
-            )}
-          </div>
           {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>

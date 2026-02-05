@@ -1,7 +1,7 @@
 import AuditoriaPage from './AuditoriaPage'
 
 const AuditoriaHistorico = () => (
-  <AuditoriaPage category="alteracao" title="Historico de alteracoes" />
+  <AuditoriaPage category="alteracao" />
 )
 
 export default AuditoriaHistorico

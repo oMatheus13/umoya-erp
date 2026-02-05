@@ -33,6 +33,7 @@ const EstoqueFormas = () => {
     stock: 0,
     notes: '',
   })
+  const moldFormId = 'forma-form'
 
   const molds = useMemo(
     () => [...data.moldes].sort((a, b) => a.name.localeCompare(b.name)),
@@ -167,10 +168,12 @@ const EstoqueFormas = () => {
   return (
     <Page className="moldes">
       <PageHeader
-        title="Formas e moldes"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Nova forma
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              view_module
+            </span>
+            <span className="page-header__action-label">Nova forma</span>
           </button>
         }
       />
@@ -254,8 +257,18 @@ const EstoqueFormas = () => {
         onClose={closeModal}
         title={editingId ? 'Editar forma' : 'Nova forma'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={moldFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Atualizar' : 'Salvar forma'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={moldFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="mold-name">
               Nome
@@ -358,16 +371,6 @@ const EstoqueFormas = () => {
             />
           </div>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingId ? 'Atualizar' : 'Salvar forma'}
-            </button>
-            {editingId && (
-              <button className="button button--ghost" type="button" onClick={closeModal}>
-                Cancelar
-              </button>
-            )}
-          </div>
           {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>

@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { MaterialConsumption, ProductionOrder, ProductMaterialUsage } from '../../types/erp'
+import type { PageIntentAction } from '../../types/ui'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { getUnitFactor } from '../../utils/pricing'
@@ -22,7 +23,12 @@ const toMeters = (value: number) =>
 const toCentimeters = (value: number) =>
   Number.isFinite(value) ? Math.max(0, value * 100) : 0
 
-const Producao = () => {
+type ProducaoProps = {
+  pageIntent?: PageIntentAction
+  onConsumeIntent?: () => void
+}
+
+const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [isManualOpen, setIsManualOpen] = useState(false)
@@ -398,6 +404,14 @@ const Producao = () => {
     setIsManualOpen(true)
   }
 
+  useEffect(() => {
+    if (pageIntent !== 'new') {
+      return
+    }
+    handleManualOrder()
+    onConsumeIntent?.()
+  }, [pageIntent, onConsumeIntent])
+
   const handleManualSubmit = () => {
     if (!manualForm.productId) {
       setStatus('Selecione um produto.')
@@ -515,10 +529,12 @@ const Producao = () => {
   return (
     <Page className="producao">
       <PageHeader
-        title="Producao"
         actions={
           <button className="button button--ghost" type="button" onClick={handleManualOrder}>
-            Criar ordem manual
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              playlist_add
+            </span>
+            <span className="page-header__action-label">Criar ordem manual</span>
           </button>
         }
       />
@@ -640,6 +656,14 @@ const Producao = () => {
         onClose={() => setIsManualOpen(false)}
         title="Nova ordem para estoque"
         size="lg"
+        actions={
+          <button className="button button--primary" type="button" onClick={handleManualSubmit}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Criar ordem</span>
+          </button>
+        }
       >
         <div className="form">
           <div className="form__group">
@@ -734,18 +758,6 @@ const Producao = () => {
                 }
               />
             </div>
-          </div>
-          <div className="form__actions">
-            <button className="button button--primary" type="button" onClick={handleManualSubmit}>
-              Criar ordem
-            </button>
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => setIsManualOpen(false)}
-            >
-              Cancelar
-            </button>
           </div>
         </div>
       </Modal>

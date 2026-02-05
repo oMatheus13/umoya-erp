@@ -105,7 +105,6 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
   return (
     <Page className="usuarios-permissoes">
       <PageHeader
-        title="Usuarios e permissoes"
         actions={
           <>
             <button
@@ -113,21 +112,30 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
               type="button"
               onClick={() => applyPreset('view')}
             >
-              Somente leitura
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                visibility
+              </span>
+              <span className="page-header__action-label">Somente leitura</span>
             </button>
             <button
               className="button button--ghost"
               type="button"
               onClick={() => applyPreset('none')}
             >
-              Sem acesso
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                block
+              </span>
+              <span className="page-header__action-label">Sem acesso</span>
             </button>
             <button
               className="button button--primary"
               type="button"
               onClick={() => applyPreset('edit')}
             >
-              Liberar tudo
+              <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+                lock_open
+              </span>
+              <span className="page-header__action-label">Liberar tudo</span>
             </button>
           </>
         }

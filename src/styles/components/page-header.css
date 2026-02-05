@@ -1,10 +1,10 @@
 .page-header {
-  height: 80px;
+  min-height: 64px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
 }
 
 .page-header__headline {
@@ -14,10 +14,23 @@
   min-width: 0;
 }
 
+.page-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  min-width: 0;
+}
+
+.page-header__title-icon {
+  font-size: 1.6rem;
+  color: var(--color-ink-muted);
+}
+
 .page-header__title {
   margin: 0;
-  font-size: var(--font-size-h1);
+  font-size: var(--font-size-h2);
   font-weight: var(--font-weight-medium);
+  min-width: 0;
 }
 
 .page-header__subtitle {
@@ -28,6 +41,7 @@
 
 .page-header__aside {
   display: flex;
+  height: 100%;
   align-items: center;
   gap: var(--spacing-md);
   flex-wrap: wrap;
@@ -46,16 +60,76 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.page-header__action-icon {
+  font-size: 1.1rem;
+}
+
+.page-header__action-label {
+  display: inline-flex;
+}
+
+@media (max-width: 1110px) {
+  .page-header__actions .button {
+    --btn-padding-y: 0.5rem;
+    --btn-padding-x: 0.55rem;
+    min-width: 40px;
+    position: relative;
+  }
+
+  .page-header__action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 @media (max-width: 720px) {
   .page-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
+    min-height: 64px;
   }
 
   .page-header__aside {
-    width: 100%;
-    justify-content: flex-start;
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .page-header__title {
+    font-size: var(--font-size-h4);
+  }
+
+  .page-header__title-icon {
+    font-size: 1.25rem;
+  }
+
+  .page-header__actions .button {
+    --btn-padding-y: 0.5rem;
+    --btn-padding-x: 0.55rem;
+    min-width: 40px;
+    position: relative;
+  }
+
+  .page-header__action-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }

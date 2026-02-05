@@ -12,6 +12,7 @@ import {
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Client, FulfillmentMode, ProductVariant, Quote } from '../../types/erp'
+import type { PageIntentAction } from '../../types/ui'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { getBasePrice, getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
@@ -70,7 +71,12 @@ const toMeters = (value: number) =>
 const toCentimeters = (value: number) =>
   Number.isFinite(value) ? Math.max(0, value * 100) : 0
 
-const Orcamentos = () => {
+type OrcamentosProps = {
+  pageIntent?: PageIntentAction
+  onConsumeIntent?: () => void
+}
+
+const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -90,6 +96,7 @@ const Orcamentos = () => {
     discountValue: '',
     discountPercent: '',
   })
+  const quoteFormId = 'orcamento-form'
 
   const paymentOptions = useMemo(
     () => getPaymentMethodOptions(data.tabelas?.paymentMethods),
@@ -221,6 +228,14 @@ const Orcamentos = () => {
     resetForm()
     setIsModalOpen(true)
   }
+
+  useEffect(() => {
+    if (pageIntent !== 'new') {
+      return
+    }
+    openNewModal()
+    onConsumeIntent?.()
+  }, [pageIntent, onConsumeIntent])
 
   const normalize = (value: string) => value.trim().toLowerCase()
 
@@ -825,15 +840,18 @@ const Orcamentos = () => {
   return (
     <Page className="orcamentos">
       <PageHeader
-        title="Orcamentos"
         actions={
           <button
             className="button button--primary"
             type="button"
             onClick={openNewModal}
             disabled={!hasProducts}
+            aria-label="Novo orcamento"
           >
-            Novo orcamento
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              request_quote
+            </span>
+            <span className="page-header__action-label">Novo orcamento</span>
           </button>
         }
       />
@@ -865,8 +883,23 @@ const Orcamentos = () => {
         onClose={closeModal}
         title={editingId ? 'Editar orcamento' : 'Novo orcamento'}
         size="lg"
+        actions={
+          <button
+            className="button button--primary"
+            type="submit"
+            form={quoteFormId}
+            disabled={!hasProducts}
+          >
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Atualizar orcamento' : 'Salvar orcamento'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={quoteFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="quote-client-select">
               Cliente cadastrado
@@ -1301,16 +1334,6 @@ const Orcamentos = () => {
             <strong>{formatCurrency(total)}</strong>
           </div>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit" disabled={!hasProducts}>
-              {editingId ? 'Atualizar orcamento' : 'Salvar orcamento'}
-            </button>
-            {editingId && (
-              <button className="button button--ghost" type="button" onClick={closeModal}>
-                Cancelar
-              </button>
-            )}
-          </div>
           {status && <p className="form__status">{status}</p>}
           {!hasProducts && (
             <p className="form__help">Cadastre produtos para liberar orcamentos.</p>

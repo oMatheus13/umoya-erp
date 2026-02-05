@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
+import { PageProvider } from '../components/ui/PageContext'
 import type { SidebarMode } from '../types/ui'
 
 type AppShellProps = {
@@ -16,6 +17,7 @@ type AppShellProps = {
   onLogout?: () => void
   canView?: (pageId: string) => boolean
   canEdit?: boolean
+  isPageTransitioning?: boolean
 }
 
 const AppShell = ({
@@ -31,6 +33,7 @@ const AppShell = ({
   onLogout,
   canView,
   canEdit,
+  isPageTransitioning,
 }: AppShellProps) => {
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -165,9 +168,15 @@ const AppShell = ({
           onNavigate={handleNavigate}
           canView={canView}
         />
-        <div className="app__content" data-readonly={isReadOnly ? 'true' : undefined}>
-          {children}
-        </div>
+        <PageProvider pageId={activePage}>
+          <div
+            className="app__content"
+            data-readonly={isReadOnly ? 'true' : undefined}
+            data-page-transition={isPageTransitioning ? 'out' : undefined}
+          >
+            {children}
+          </div>
+        </PageProvider>
       </main>
     </div>
   )

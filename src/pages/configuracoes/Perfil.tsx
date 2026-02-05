@@ -161,7 +161,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
 
   return (
     <Page className="perfil">
-      <PageHeader title="Meu perfil" />
+      <PageHeader />
 
       {status && <p className="form__status">{status}</p>}
 

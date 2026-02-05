@@ -30,6 +30,7 @@ const Integracoes = () => {
     status: 'inativo',
     notes: '',
   })
+  const integrationFormId = 'integracao-form'
 
   const integrations = useMemo(
     () => [...data.integracoes].sort((a, b) => a.name.localeCompare(b.name)),
@@ -120,7 +121,7 @@ const Integracoes = () => {
 
   return (
     <Page className="integracoes">
-      <PageHeader title="Integracoes" />
+      <PageHeader />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -164,8 +165,20 @@ const Integracoes = () => {
         ))}
       </div>
 
-      <Modal open={isModalOpen} title="Configurar integracao" onClose={closeModal}>
-        <form className="form" onSubmit={handleSubmit}>
+      <Modal
+        open={isModalOpen}
+        title="Configurar integracao"
+        onClose={closeModal}
+        actions={
+          <button className="button button--primary" type="submit" form={integrationFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar</span>
+          </button>
+        }
+      >
+        <form id={integrationFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="integration-name">
               Integracao
@@ -226,15 +239,6 @@ const Integracoes = () => {
           </div>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              Salvar
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
     </Page>

@@ -42,6 +42,7 @@ const Tabelas = () => {
     description: '',
     active: true,
   })
+  const tableFormId = 'tabela-form'
 
   const tables = data.tabelas
   const cashboxes = useMemo(
@@ -208,7 +209,7 @@ const Tabelas = () => {
 
   return (
     <Page className="tabelas">
-      <PageHeader title="Tabelas" />
+      <PageHeader />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -265,8 +266,16 @@ const Tabelas = () => {
         open={isModalOpen}
         title={editingId ? `Editar ${tableLabels[activeTable]}` : `Nova ${tableLabels[activeTable]}`}
         onClose={closeModal}
+        actions={
+          <button className="button button--primary" type="submit" form={tableFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">{editingId ? 'Salvar' : 'Criar'}</span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={tableFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="tabela-label">
               Nome
@@ -329,25 +338,19 @@ const Tabelas = () => {
             />
           </div>
 
-          <label className="form__checkbox">
+          <label className="toggle form__checkbox">
             <input
               type="checkbox"
               checked={form.active}
               onChange={(event) => updateForm({ active: event.target.checked })}
             />
-            Item ativo
+            <span className="toggle__track" aria-hidden="true">
+              <span className="toggle__thumb" />
+            </span>
+            <span className="toggle__label">Item ativo</span>
           </label>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingId ? 'Salvar' : 'Criar'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
     </Page>

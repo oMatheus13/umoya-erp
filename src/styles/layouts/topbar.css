@@ -2,11 +2,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--spacing-md) var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-lg);
   background: rgba(240, 238, 233, 0.22);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   position: sticky;
+  border-bottom: 1px solid var(--color-line);
   top: 0;
   z-index: var(--z-index-header);
 }
@@ -75,24 +76,12 @@
 }
 
 .topbar__icon:hover {
-  box-shadow: none;
+  background: rgba(15, 17, 22, 0.02);
+  color: rgba(15, 17, 22, 0.9);
 }
 
 .topbar__notifications {
   position: relative;
-}
-
-.topbar__notification-dot {
-  position: absolute;
-  top: 7px;
-  right: 7px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--color-lime);
-  border: 2px solid var(--color-cloud);
-  box-shadow: 0 0 0 1px rgba(15, 17, 22, 0.18);
-  pointer-events: none;
 }
 
 .topbar__mini-modal {
@@ -175,10 +164,6 @@
   cursor: pointer;
 }
 
-.topbar__logout-icon:hover {
-  color: rgba(15, 17, 22, 0.9);
-}
-
 .topbar__search {
   display: flex;
   align-items: center;
@@ -198,6 +183,8 @@
   background: transparent;
   outline: none;
   width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .topbar__search-toggle {
@@ -243,6 +230,7 @@
   align-items: center;
   gap: 10px;
   padding: 12px 14px;
+  color: var(--color-ink);
 }
 
 .topbar__search-surface input {
@@ -251,6 +239,28 @@
   outline: none;
   width: 100%;
   font-size: var(--font-size-base);
+  flex: 1;
+  min-width: 0;
+}
+
+.topbar__search-clear {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  color: rgba(15, 17, 22, 0.6);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.topbar__search input[type='search']::-webkit-search-cancel-button,
+.topbar__search input[type='search']::-webkit-search-decoration,
+.topbar__search input[type='search']::-webkit-search-results-button,
+.topbar__search input[type='search']::-webkit-search-results-decoration,
+.topbar__search-surface input[type='search']::-webkit-search-cancel-button,
+.topbar__search-surface input[type='search']::-webkit-search-decoration,
+.topbar__search-surface input[type='search']::-webkit-search-results-button,
+.topbar__search-surface input[type='search']::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .topbar__search-close {

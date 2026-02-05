@@ -35,6 +35,7 @@ const Fornecedores = () => {
     notes: '',
     active: true,
   })
+  const supplierFormId = 'fornecedor-form'
 
   const updateForm = (patch: Partial<SupplierForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
@@ -141,10 +142,12 @@ const Fornecedores = () => {
   return (
     <Page className="fornecedores">
       <PageHeader
-        title="Fornecedores"
         actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
-            Novo fornecedor
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              storefront
+            </span>
+            <span className="page-header__action-label">Novo fornecedor</span>
           </button>
         }
       />
@@ -155,8 +158,18 @@ const Fornecedores = () => {
         onClose={closeModal}
         title={editingId ? 'Editar fornecedor' : 'Novo fornecedor'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={supplierFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Atualizar' : 'Salvar fornecedor'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={supplierFormId} className="form" onSubmit={handleSubmit}>
             <div className="form__group">
               <label className="form__label" htmlFor="supplier-name">
                 Nome
@@ -258,25 +271,18 @@ const Fornecedores = () => {
               />
             </div>
 
-            <label className="form__checkbox">
+            <label className="toggle form__checkbox">
               <input
                 type="checkbox"
                 checked={form.active}
                 onChange={(event) => updateForm({ active: event.target.checked })}
               />
-              Fornecedor ativo
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">Fornecedor ativo</span>
             </label>
 
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                {editingId ? 'Atualizar' : 'Salvar fornecedor'}
-              </button>
-              {editingId && (
-                <button className="button button--ghost" type="button" onClick={closeModal}>
-                  Cancelar
-                </button>
-              )}
-            </div>
             {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>

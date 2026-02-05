@@ -56,7 +56,7 @@ const Indicadores = () => {
 
   return (
     <Page className="indicadores">
-      <PageHeader title="Indicadores" />
+      <PageHeader />
 
       <div className="card-grid summary-card">
         <article className="card">

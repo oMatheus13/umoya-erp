@@ -51,6 +51,7 @@ const Entregas = () => {
   const [status, setStatus] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form, setForm] = useState<DeliveryForm>(defaultForm)
+  const deliveryFormId = 'entrega-form'
 
   const deliveries = useMemo(
     () =>
@@ -207,7 +208,7 @@ const Entregas = () => {
 
   return (
     <Page className="entregas">
-      <PageHeader title="Logistica e entregas" />
+      <PageHeader />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -394,8 +395,21 @@ const Entregas = () => {
         </div>
       </section>
 
-      <Modal open={isModalOpen} onClose={closeModal} title="Atualizar entrega" size="lg">
-        <form className="form" onSubmit={handleSubmit}>
+      <Modal
+        open={isModalOpen}
+        onClose={closeModal}
+        title="Atualizar entrega"
+        size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={deliveryFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar ajustes</span>
+          </button>
+        }
+      >
+        <form id={deliveryFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="delivery-date">
@@ -471,13 +485,16 @@ const Entregas = () => {
             </div>
           </div>
 
-          <label className="form__checkbox">
+          <label className="toggle form__checkbox">
             <input
               type="checkbox"
               checked={form.isPartial}
               onChange={(event) => updateForm({ isPartial: event.target.checked })}
             />
-            Entrega parcial
+            <span className="toggle__track" aria-hidden="true">
+              <span className="toggle__thumb" />
+            </span>
+            <span className="toggle__label">Entrega parcial</span>
           </label>
 
           <div className="form__row">
@@ -524,14 +541,6 @@ const Entregas = () => {
             />
           </div>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              Salvar ajustes
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
           {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>

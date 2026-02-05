@@ -1,0 +1,33 @@
+.ui-page {
+  animation: page-enter 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: opacity;
+  min-height: 100%;
+}
+
+.app__content[data-page-transition='out'] .ui-page {
+  animation: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.09s ease, transform 0.09s ease;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-page {
+    animation: none;
+  }
+
+  .app__content[data-page-transition='out'] .ui-page {
+    transition: none;
+  }
+}

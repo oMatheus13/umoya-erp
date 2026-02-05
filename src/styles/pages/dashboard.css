@@ -1,0 +1,199 @@
+/* Layout principal em colunas para evitar espacos em branco. */
+.dashboard {
+  column-count: 3;
+  column-gap: var(--spacing-sm);
+}
+
+/* Cada bloco ocupa a largura da coluna e evita quebra no meio. */
+.dashboard__section {
+  display: inline-flex;
+  width: 100%;
+  break-inside: avoid;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-sm);
+  background: var(--color-true-white);
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Cabecalho discreto do bloco. */
+.dashboard__section-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+
+/* Titulo do bloco em estilo quase imperceptivel. */
+.dashboard__section-title {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Subtitulo opcional do bloco. */
+.dashboard__section-subtitle {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+/* Lista de indicadores sem caixas internas, so separadores. */
+.dashboard__metrics {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Duas colunas quando for necessario alinhar metricas lado a lado. */
+.dashboard__metrics--pairs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--spacing-sm);
+}
+
+/* Linha individual de indicador com separador fino. */
+.dashboard__metric {
+  margin: 0;
+  padding: var(--spacing-xs) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  border-top: var(--border-thin);
+}
+
+/* Item ocupando as duas colunas. */
+.dashboard__metric--full {
+  grid-column: 1 / -1;
+}
+
+/* Remove o separador quando a linha esta no topo. */
+.dashboard__metric--no-divider {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Remove a linha do primeiro item. */
+.dashboard__metric:first-child {
+  border-top: none;
+}
+
+/* Texto pequeno do indicador. */
+.dashboard__metric-label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* Valor do indicador com tamanho compacto. */
+.dashboard__metric-value {
+  margin: 0;
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-light);
+  font-size: var(--font-size-xl);
+}
+
+/* Valor negativo ou com alerta. */
+.dashboard__metric-value--negative {
+  color: var(--color-danger);
+}
+
+/* Valor positivo (bom desempenho). */
+.dashboard__metric-value--positive {
+  color: var(--color-success);
+}
+
+/* Linha de comparacao com periodo anterior. */
+.dashboard__comparison {
+  margin: 0;
+  padding-top: var(--spacing-xs);
+  border-top: var(--border-thin);
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+/* Comparacao positiva/negativa. */
+.dashboard__comparison--up {
+  color: var(--color-success);
+}
+
+.dashboard__comparison--down {
+  color: var(--color-danger);
+}
+
+/* Lista simples para estoque/alertas com separadores finos. */
+.dashboard__list,
+.dashboard__alerts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Linha individual da lista. */
+.dashboard__list-item,
+.dashboard__alert {
+  margin: 0;
+  padding: var(--spacing-xs) 0;
+  border-top: var(--border-thin);
+}
+
+/* Linha de lista com alerta ativo. */
+.dashboard__list-item--alert {
+  color: var(--color-danger);
+}
+
+/* Remove a linha do primeiro item. */
+.dashboard__list-item:first-child,
+.dashboard__alert:first-child {
+  border-top: none;
+}
+
+/* Botao de alerta com largura total e sem destaque extra. */
+.dashboard__alert-button {
+  width: 100%;
+  justify-content: space-between;
+  box-shadow: none;
+}
+
+/* Alerta critico. */
+.dashboard__alert--danger .dashboard__alert-button {
+  --btn-fg: var(--color-danger);
+  --btn-border: rgba(255, 92, 92, 0.35);
+}
+
+/* Alerta de atencao. */
+.dashboard__alert--warning .dashboard__alert-button {
+  --btn-fg: var(--color-warning);
+  --btn-border: rgba(255, 179, 71, 0.4);
+}
+
+/* Mensagem quando nao ha alertas. */
+.dashboard__empty {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+/* Botao de atalho rapido no PageHeader. */
+.dashboard__quick-action {
+  min-width: 160px;
+}
+
+/* Ajuste para telas medias: duas colunas. */
+@media (max-width: 1220px) {
+  .dashboard {
+    column-count: 2;
+  }
+}
+
+/* Ajuste para telas pequenas: uma coluna. */
+@media (max-width: 720px) {
+  .dashboard {
+    column-count: 1;
+  }
+}

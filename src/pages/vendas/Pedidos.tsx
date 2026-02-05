@@ -80,6 +80,7 @@ const Pedidos = () => {
     status: 'aguardando_pagamento',
     fulfillment: 'producao',
   })
+  const orderFormId = 'pedido-form'
 
   const paymentOptions = useMemo(
     () => getPaymentMethodOptions(data.tabelas?.paymentMethods),
@@ -995,15 +996,18 @@ const Pedidos = () => {
   return (
     <Page className="pedidos">
       <PageHeader
-        title="Pedidos"
         actions={
           <button
             className="button button--primary"
             type="button"
             onClick={openNewModal}
             disabled={!hasProducts}
+            aria-label="Novo pedido"
           >
-            Novo pedido
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              shopping_bag
+            </span>
+            <span className="page-header__action-label">Novo pedido</span>
           </button>
         }
       />
@@ -1035,8 +1039,23 @@ const Pedidos = () => {
         onClose={closeModal}
         title={editingId ? 'Editar pedido' : 'Novo pedido'}
         size="lg"
+        actions={
+          <button
+            className="button button--primary"
+            type="submit"
+            form={orderFormId}
+            disabled={!hasProducts}
+          >
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Atualizar pedido' : 'Salvar pedido'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={orderFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__group">
             <label className="form__label" htmlFor="order-client-select">
               Cliente cadastrado
@@ -1475,16 +1494,6 @@ const Pedidos = () => {
             <strong>{formatCurrency(total)}</strong>
           </div>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit" disabled={!hasProducts}>
-              {editingId ? 'Atualizar pedido' : 'Salvar pedido'}
-            </button>
-            {editingId && (
-              <button className="button button--ghost" type="button" onClick={closeModal}>
-                Cancelar
-              </button>
-            )}
-          </div>
           {status && <p className="form__status">{status}</p>}
           {!hasProducts && <p className="form__help">Cadastre produtos para liberar pedidos.</p>}
         </form>

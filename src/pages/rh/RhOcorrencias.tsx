@@ -32,6 +32,7 @@ const RhOcorrencias = () => {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [form, setForm] = useState<OccurrenceForm>(createEmptyForm())
+  const occurrenceFormId = 'ocorrencia-form'
 
   const employees = useMemo(
     () => [...data.funcionarios].sort((a, b) => a.name.localeCompare(b.name)),
@@ -126,10 +127,12 @@ const RhOcorrencias = () => {
   return (
     <Page className="rh-page">
       <PageHeader
-        title="Ocorrencias"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Registrar ocorrencia
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              report
+            </span>
+            <span className="page-header__action-label">Registrar ocorrencia</span>
           </button>
         }
       />
@@ -195,8 +198,16 @@ const RhOcorrencias = () => {
         onClose={closeModal}
         title={editingId ? 'Editar ocorrencia' : 'Registrar ocorrencia'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={occurrenceFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar</span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={occurrenceFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="occ-employee">
@@ -262,23 +273,18 @@ const RhOcorrencias = () => {
             />
           </div>
 
-          <label className="form__checkbox">
+          <label className="toggle form__checkbox">
             <input
               type="checkbox"
               checked={form.resolved}
               onChange={(event) => setForm((prev) => ({ ...prev, resolved: event.target.checked }))}
             />
-            Ocorrencia resolvida
+            <span className="toggle__track" aria-hidden="true">
+              <span className="toggle__thumb" />
+            </span>
+            <span className="toggle__label">Ocorrencia resolvida</span>
           </label>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              Salvar
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 

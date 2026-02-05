@@ -31,7 +31,7 @@ const Configuracoes = ({ sidebarMode, onSidebarModeChange }: ConfiguracoesProps)
 
   return (
     <Page className="configuracoes">
-      <PageHeader title="Configuracoes" />
+      <PageHeader />
 
       <div className="configuracoes__grid">
         <div className="panel configuracoes__panel">

@@ -48,18 +48,24 @@ import { erpRemote } from './services/erpRemote'
 import { dataService, ensureStorageSeed, setRemoteSync } from './services/dataService'
 import { supabase } from './services/supabaseClient'
 import { createDevSeed, DEV_BACKUP_KEY, DEV_MODE_KEY, DEV_SEEDED_KEY } from './services/devSeed'
-import type { SidebarMode } from './types/ui'
+import type { PageIntent, PageIntentAction, SidebarMode } from './types/ui'
 import { createPermissionCheck } from './utils/permissions'
+import { PAGE_META } from './data/navigation'
 import { isPermissionKey } from './data/permissions'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null)
   const [activePage, setActivePage] = useState('dashboard')
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false)
+  const [pageIntent, setPageIntent] = useState<PageIntent | null>(null)
   const [permissionsVersion, setPermissionsVersion] = useState(0)
   const allowDevMode =
     (import.meta.env && import.meta.env.DEV) || import.meta.env.VITE_DEV_ACCESS === 'true'
   const syncHandlerRef = useRef<((data: ERPData) => void) | null>(null)
+  const pendingPageRef = useRef<string | null>(null)
+  const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const PAGE_TRANSITION_MS = 90
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
     if (typeof window === 'undefined') {
       return 'expanded'
@@ -71,93 +77,8 @@ function App() {
     return 'expanded'
   })
 
-  const pageTitles: Record<string, string> = {
-    dashboard: 'Painel',
-    clientes: 'Clientes e obras',
-    produtos: 'Produtos e pecas',
-    'cadastros-materiais': 'Materia-prima',
-    fornecedores: 'Fornecedores',
-    'cadastros-tabelas': 'Tabelas',
-    orcamentos: 'Orcamentos',
-    pedidos: 'Pedido de venda',
-    producao: 'Ordens de producao',
-    'producao-lotes': 'Lotes',
-    'producao-refugo': 'Refugo e retrabalho',
-    'producao-consumo': 'Consumo por produto',
-    estoque: 'Estoque consolidado',
-    'estoque-formas': 'Formas e moldes',
-    'estoque-materiais': 'Materia-prima',
-    compras: 'Compras',
-    entregas: 'Logistica e entregas',
-    financeiro: 'Financeiro',
-    fiscal: 'Fiscal',
-    funcionarios: 'Funcionarios',
-    'rh-presenca': 'Presenca',
-    'rh-pagamentos': 'Pagamentos',
-    'rh-historico': 'Historico',
-    'rh-ocorrencias': 'Ocorrencias',
-    qualidade: 'Qualidade e manutencao',
-    indicadores: 'Indicadores',
-    bi: 'BI',
-    'relatorios-producao': 'Producao por periodo',
-    'relatorios-vendas': 'Vendas por cliente e obra',
-    'relatorios-consumo': 'Consumo de material',
-    'config-usuarios': 'Usuarios e permissoes',
-    perfil: 'Meu perfil',
-    'config-empresa': 'Empresa',
-    configuracoes: 'Parametros',
-    'config-integracoes': 'Integracoes',
-    dados: 'Backup e exportacao',
-    'auditoria-log': 'Log de acoes',
-    'auditoria-historico': 'Historico de alteracoes',
-    'auditoria-backup': 'Backup automatico',
-    'auditoria-acesso': 'Controle de acesso',
-  }
-
-  const breadcrumbMap: Record<string, string[]> = {
-    dashboard: ['Painel'],
-    clientes: ['Cadastros', 'Clientes e obras'],
-    produtos: ['Cadastros', 'Produtos e pecas'],
-    'cadastros-materiais': ['Cadastros', 'Materia-prima'],
-    fornecedores: ['Cadastros', 'Fornecedores'],
-    'cadastros-tabelas': ['Cadastros', 'Tabelas'],
-    orcamentos: ['Vendas', 'Orcamentos'],
-    pedidos: ['Vendas', 'Pedido de venda'],
-    producao: ['Producao', 'Ordens de producao'],
-    'producao-lotes': ['Producao', 'Lotes'],
-    'producao-refugo': ['Producao', 'Refugo e retrabalho'],
-    'producao-consumo': ['Producao', 'Consumo por produto'],
-    estoque: ['Estoque', 'Consolidado'],
-    'estoque-formas': ['Estoque', 'Formas e moldes'],
-    'estoque-materiais': ['Estoque', 'Materia-prima'],
-    compras: ['Compras'],
-    entregas: ['Logistica e entregas'],
-    financeiro: ['Financeiro'],
-    fiscal: ['Fiscal'],
-    funcionarios: ['RH', 'Funcionarios'],
-    'rh-presenca': ['RH', 'Presenca'],
-    'rh-pagamentos': ['RH', 'Pagamentos'],
-    'rh-historico': ['RH', 'Historico'],
-    'rh-ocorrencias': ['RH', 'Ocorrencias'],
-    qualidade: ['Qualidade e manutencao'],
-    indicadores: ['Relatorios', 'Indicadores'],
-    bi: ['Relatorios', 'BI'],
-    'relatorios-producao': ['Relatorios', 'Producao por periodo'],
-    'relatorios-vendas': ['Relatorios', 'Vendas por cliente e obra'],
-    'relatorios-consumo': ['Relatorios', 'Consumo de material'],
-    'config-usuarios': ['Configuracoes', 'Usuarios e permissoes'],
-    perfil: ['Configuracoes', 'Meu perfil'],
-    'config-empresa': ['Configuracoes', 'Empresa'],
-    configuracoes: ['Configuracoes', 'Parametros'],
-    'config-integracoes': ['Configuracoes', 'Integracoes'],
-    dados: ['Configuracoes', 'Backup e exportacao'],
-    'auditoria-log': ['Auditoria', 'Log de acoes'],
-    'auditoria-historico': ['Auditoria', 'Historico de alteracoes'],
-    'auditoria-backup': ['Auditoria', 'Backup automatico'],
-    'auditoria-acesso': ['Auditoria', 'Controle de acesso'],
-  }
-
-  const breadcrumbs = breadcrumbMap[activePage] ?? ['Inicio', pageTitles[activePage] ?? 'Modulo']
+  const pageTitle = PAGE_META[activePage]?.title
+  const breadcrumbs = PAGE_META[activePage]?.breadcrumbs ?? ['Início', pageTitle ?? 'Módulo']
   const [dataSnapshot, setDataSnapshot] = useState(() => dataService.getAll())
   useEffect(() => {
     const handleSync = () => {
@@ -193,7 +114,7 @@ function App() {
         return dataSnapshot.cargos.find((role) => role.id === employee.roleId)?.name
       }
     }
-    return currentUser.role === 'admin' ? 'Administrador' : 'Funcionario'
+    return currentUser.role === 'admin' ? 'Administrador' : 'Funcionário'
   })()
 
   const hasMeaningfulData = (payload: ERPData) =>
@@ -233,6 +154,53 @@ function App() {
       await erpRemote.backupState(userId, payload)
     }
   }
+
+  const clearPageTransition = () => {
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current)
+      transitionTimeoutRef.current = null
+    }
+    pendingPageRef.current = null
+    setPageIntent(null)
+    setIsPageTransitioning(false)
+  }
+
+  const handleNavigate = (page: string, intentAction?: PageIntentAction) => {
+    if (page === activePage) {
+      return
+    }
+    if (intentAction) {
+      setPageIntent({ page, action: intentAction })
+    } else {
+      setPageIntent(null)
+    }
+    pendingPageRef.current = page
+    if (isPageTransitioning) {
+      return
+    }
+    setIsPageTransitioning(true)
+    if (transitionTimeoutRef.current) {
+      clearTimeout(transitionTimeoutRef.current)
+    }
+    transitionTimeoutRef.current = setTimeout(() => {
+      const nextPage = pendingPageRef.current ?? page
+      pendingPageRef.current = null
+      setActivePage(nextPage)
+      setIsPageTransitioning(false)
+    }, PAGE_TRANSITION_MS)
+  }
+
+  const consumePageIntent = () => {
+    setPageIntent(null)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (transitionTimeoutRef.current) {
+        clearTimeout(transitionTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const createRemoteSync = (userId: string) => {
     let pending: ERPData | null = null
@@ -490,6 +458,7 @@ function App() {
       setCurrentUser(null)
       setIsAuthenticated(false)
       setActivePage('dashboard')
+      clearPageTransition()
       return
       }
     }
@@ -501,14 +470,20 @@ function App() {
     setCurrentUser(null)
     setIsAuthenticated(false)
     setActivePage('dashboard')
+    clearPageTransition()
   }
 
   const renderPage = () => {
     if (activePage === 'dashboard') {
-      return <Dashboard onNavigate={setActivePage} />
+      return <Dashboard onNavigate={handleNavigate} />
     }
     if (activePage === 'orcamentos') {
-      return <Orcamentos />
+      return (
+        <Orcamentos
+          pageIntent={pageIntent?.page === 'orcamentos' ? pageIntent.action : undefined}
+          onConsumeIntent={consumePageIntent}
+        />
+      )
     }
     if (activePage === 'pedidos') {
       return <Pedidos />
@@ -517,7 +492,12 @@ function App() {
       return <Produtos />
     }
     if (activePage === 'producao') {
-      return <Producao />
+      return (
+        <Producao
+          pageIntent={pageIntent?.page === 'producao' ? pageIntent.action : undefined}
+          onConsumeIntent={consumePageIntent}
+        />
+      )
     }
     if (activePage === 'producao-lotes') {
       return <ProducaoLotes />
@@ -538,7 +518,12 @@ function App() {
       return <EstoqueMateriais />
     }
     if (activePage === 'compras') {
-      return <Compras />
+      return (
+        <Compras
+          pageIntent={pageIntent?.page === 'compras' ? pageIntent.action : undefined}
+          onConsumeIntent={consumePageIntent}
+        />
+      )
     }
     if (activePage === 'entregas') {
       return <Entregas />
@@ -639,22 +624,22 @@ function App() {
         />
       )
     }
-    return <Placeholder title={pageTitles[activePage] ?? 'Modulo'} />
+    return <Placeholder title={pageTitle ?? 'Módulo'} />
   }
 
   const content = canView(activePage) ? (
     renderPage()
   ) : (
     <Placeholder
-      title="Sem permissao"
-      description="Seu perfil nao possui acesso a esta area."
+      title="Sem permissão"
+      description="Seu perfil não possui acesso a esta área."
     />
   )
 
   return (
     <AppShell
       activePage={activePage}
-      onNavigate={setActivePage}
+      onNavigate={handleNavigate}
       breadcrumbs={breadcrumbs}
       sidebarMode={sidebarMode}
       userName={currentUser?.displayName ?? currentUser?.name}
@@ -664,6 +649,7 @@ function App() {
       onLogout={handleLogout}
       canView={canView}
       canEdit={canEdit(activePage)}
+      isPageTransitioning={isPageTransitioning}
     >
       {content}
     </AppShell>

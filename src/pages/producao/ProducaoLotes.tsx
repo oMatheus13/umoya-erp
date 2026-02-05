@@ -46,6 +46,7 @@ const ProducaoLotes = () => {
     status: 'aguardando',
     notes: '',
   })
+  const lotFormId = 'lote-form'
 
   const products = useMemo(
     () => [...data.produtos].filter((item) => item.active !== false),
@@ -237,10 +238,12 @@ const ProducaoLotes = () => {
   return (
     <Page className="lotes">
       <PageHeader
-        title="Lotes"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Novo lote
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              layers
+            </span>
+            <span className="page-header__action-label">Novo lote</span>
           </button>
         }
       />
@@ -375,8 +378,18 @@ const ProducaoLotes = () => {
         open={isModalOpen}
         title={editingId ? 'Editar lote' : 'Novo lote'}
         onClose={closeModal}
+        actions={
+          <button className="button button--primary" type="submit" form={lotFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Salvar lote' : 'Registrar lote'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={lotFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="lote-product">
@@ -517,15 +530,6 @@ const ProducaoLotes = () => {
           </div>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingId ? 'Salvar lote' : 'Registrar lote'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 

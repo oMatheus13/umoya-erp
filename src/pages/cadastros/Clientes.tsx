@@ -44,6 +44,7 @@ const Clientes = () => {
     active: true,
     obras: [],
   })
+  const clientFormId = 'cliente-form'
 
   const createEmptyObra = (): ClientObraForm => ({
     id: createId(),
@@ -202,10 +203,12 @@ const Clientes = () => {
   return (
     <Page className="clientes">
       <PageHeader
-        title="Clientes"
         actions={
           <button className="button button--primary" type="button" onClick={openNewModal}>
-            Novo cliente
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              person_add
+            </span>
+            <span className="page-header__action-label">Novo cliente</span>
           </button>
         }
       />
@@ -216,8 +219,18 @@ const Clientes = () => {
         onClose={closeModal}
         title={editingId ? 'Editar cliente' : 'Novo cliente'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={clientFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Atualizar' : 'Salvar cliente'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={clientFormId} className="form" onSubmit={handleSubmit}>
             <div className="form__group">
               <label className="form__label" htmlFor="client-name">
                 Nome
@@ -360,13 +373,16 @@ const Clientes = () => {
                   />
                 </div>
 
-                <label className="form__checkbox">
+                <label className="toggle form__checkbox">
                   <input
                     type="checkbox"
                     checked={obra.active}
                     onChange={(event) => updateObra(index, { active: event.target.checked })}
                   />
-                  Obra ativa
+                  <span className="toggle__track" aria-hidden="true">
+                    <span className="toggle__thumb" />
+                  </span>
+                  <span className="toggle__label">Obra ativa</span>
                 </label>
 
                 <div className="form__actions">
@@ -394,25 +410,18 @@ const Clientes = () => {
               />
             </div>
 
-            <label className="form__checkbox">
+            <label className="toggle form__checkbox">
               <input
                 type="checkbox"
                 checked={form.active}
                 onChange={(event) => updateForm({ active: event.target.checked })}
               />
-              Cliente ativo
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">Cliente ativo</span>
             </label>
 
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                {editingId ? 'Atualizar' : 'Salvar cliente'}
-              </button>
-              {editingId && (
-                <button className="button button--ghost" type="button" onClick={closeModal}>
-                  Cancelar
-                </button>
-              )}
-            </div>
             {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>

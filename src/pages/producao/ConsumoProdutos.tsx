@@ -484,7 +484,7 @@ const ConsumoProdutos = () => {
 
   return (
     <Page className="consumo-produtos">
-      <PageHeader title="Consumo por produto" />
+      <PageHeader />
 
       {status && <p className="form__status">{status}</p>}
 
@@ -697,6 +697,14 @@ const ConsumoProdutos = () => {
             : 'Consumo do produto'
         }
         size="lg"
+        actions={
+          <button className="button button--primary" type="button" onClick={handleSave}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar consumo</span>
+          </button>
+        }
       >
         <div className="form">
           <div className="form__section">
@@ -828,9 +836,6 @@ const ConsumoProdutos = () => {
             <button className="button button--ghost" type="button" onClick={addUsage}>
               Adicionar material
             </button>
-            <button className="button button--primary" type="button" onClick={handleSave}>
-              Salvar consumo
-            </button>
           </div>
         </div>
       </Modal>
@@ -840,6 +845,14 @@ const ConsumoProdutos = () => {
         onClose={closeBatchModal}
         title={batchProduct ? `Batelada: ${batchProduct.name}` : 'Nova batelada'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="button" onClick={handleSaveBatch}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Salvar batelada</span>
+          </button>
+        }
       >
         <div className="form">
           {batchStatus && <p className="form__status">{batchStatus}</p>}
@@ -1024,9 +1037,6 @@ const ConsumoProdutos = () => {
           <div className="form__actions">
             <button className="button button--ghost" type="button" onClick={addBatchItem}>
               Adicionar material
-            </button>
-            <button className="button button--primary" type="button" onClick={handleSaveBatch}>
-              Salvar batelada
             </button>
           </div>
         </div>

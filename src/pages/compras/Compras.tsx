@@ -1,9 +1,10 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Material, PurchaseRecord } from '../../types/erp'
+import type { PageIntentAction } from '../../types/ui'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { getMaterialUnitLabel } from '../../utils/units'
@@ -48,7 +49,12 @@ const createExtraItem = (): PurchaseItemForm => ({
   total: 0,
 })
 
-const Compras = () => {
+type ComprasProps = {
+  pageIntent?: PageIntentAction
+  onConsumeIntent?: () => void
+}
+
+const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
   const { data, refresh } = useERPData()
   const now = new Date()
   const [status, setStatus] = useState<string | null>(null)
@@ -59,6 +65,7 @@ const Compras = () => {
     notes: '',
     items: [createMaterialItem()],
   })
+  const purchaseFormId = 'compra-form'
   const [filterSupplierId, setFilterSupplierId] = useState('')
   const [filterMaterialId, setFilterMaterialId] = useState('')
 
@@ -117,6 +124,14 @@ const Compras = () => {
     })
     setIsModalOpen(true)
   }
+
+  useEffect(() => {
+    if (pageIntent !== 'new') {
+      return
+    }
+    openModal()
+    onConsumeIntent?.()
+  }, [pageIntent, onConsumeIntent])
 
   const closeModal = () => {
     setIsModalOpen(false)
@@ -360,10 +375,12 @@ const Compras = () => {
   return (
     <Page className="compras">
       <PageHeader
-        title="Controle de compras"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Registrar compra
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              shopping_cart
+            </span>
+            <span className="page-header__action-label">Registrar compra</span>
           </button>
         }
       />
@@ -535,8 +552,21 @@ const Compras = () => {
         </div>
       </section>
 
-      <Modal open={isModalOpen} onClose={closeModal} title="Registrar compra" size="lg">
-        <form className="form" onSubmit={handleSubmit}>
+      <Modal
+        open={isModalOpen}
+        onClose={closeModal}
+        title="Registrar compra"
+        size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={purchaseFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Registrar compra</span>
+          </button>
+        }
+      >
+        <form id={purchaseFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="purchase-date">
@@ -742,14 +772,6 @@ const Compras = () => {
             <strong>{formatCurrency(totalAmount)}</strong>
           </div>
 
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              Registrar compra
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
           {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>

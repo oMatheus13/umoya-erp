@@ -51,6 +51,7 @@ const ProducaoRefugo = () => {
     status: 'aberto',
     notes: '',
   })
+  const scrapFormId = 'refugo-form'
 
   const products = useMemo(
     () => [...data.produtos].filter((item) => item.active !== false),
@@ -246,10 +247,12 @@ const ProducaoRefugo = () => {
   return (
     <Page className="refugo">
       <PageHeader
-        title="Refugo e retrabalho"
         actions={
           <button className="button button--primary" type="button" onClick={openModal}>
-            Novo registro
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              report_problem
+            </span>
+            <span className="page-header__action-label">Novo registro</span>
           </button>
         }
       />
@@ -380,8 +383,18 @@ const ProducaoRefugo = () => {
         open={isModalOpen}
         title={editingId ? 'Editar registro' : 'Novo registro'}
         onClose={closeModal}
+        actions={
+          <button className="button button--primary" type="submit" form={scrapFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Salvar' : 'Registrar'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={scrapFormId} className="form" onSubmit={handleSubmit}>
           <div className="form__row">
             <div className="form__group">
               <label className="form__label" htmlFor="refugo-product">
@@ -547,15 +560,6 @@ const ProducaoRefugo = () => {
           </div>
 
           {status && <p className="form__status">{status}</p>}
-
-          <div className="form__actions">
-            <button className="button button--primary" type="submit">
-              {editingId ? 'Salvar' : 'Registrar'}
-            </button>
-            <button className="button button--ghost" type="button" onClick={closeModal}>
-              Cancelar
-            </button>
-          </div>
         </form>
       </Modal>
 

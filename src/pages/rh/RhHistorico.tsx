@@ -74,7 +74,7 @@ const RhHistorico = () => {
 
   return (
     <Page className="rh-page">
-      <PageHeader title="Historico" />
+      <PageHeader />
 
       <section className="rh-page__panel">
         <div className="rh-page__panel-header">

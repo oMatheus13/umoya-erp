@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import isotipo from '../assets/brand/isotipo.svg'
 import logotipo from '../assets/brand/logotipo.svg'
+import { NAVIGATION_GROUPS } from '../data/navigation'
 
 type SidebarProps = {
   activePage: string
@@ -9,164 +10,8 @@ type SidebarProps = {
   canView?: (pageId: string) => boolean
 }
 
-type SidebarItem = {
-  id: string
-  label: string
-  icon: string
-}
-
-type SidebarGroup =
-  | {
-      type: 'section'
-      id: string
-      label: string
-      icon: string
-    }
-  | {
-      type: 'group'
-      id: string
-      label: string
-      icon: string
-      items: SidebarItem[]
-    }
-
 const Sidebar = ({ activePage, onNavigate, onHoverChange, canView }: SidebarProps) => {
-  const sidebarGroups: SidebarGroup[] = [
-    {
-      type: 'section',
-      id: 'dashboard',
-      label: 'Painel',
-      icon: 'space_dashboard',
-    },
-    {
-      type: 'group',
-      id: 'cadastros',
-      label: 'Cadastros',
-      icon: 'library_books',
-      items: [
-        { id: 'clientes', label: 'Clientes e obras', icon: 'groups' },
-        { id: 'produtos', label: 'Produtos e pecas', icon: 'qr_code_2' },
-        { id: 'cadastros-materiais', label: 'Materia-prima', icon: 'inventory_2' },
-        { id: 'fornecedores', label: 'Fornecedores', icon: 'inventory' },
-        { id: 'cadastros-tabelas', label: 'Tabelas', icon: 'table_chart' },
-      ],
-    },
-    {
-      type: 'group',
-      id: 'vendas',
-      label: 'Vendas',
-      icon: 'sell',
-      items: [
-        { id: 'orcamentos', label: 'Orcamentos', icon: 'description' },
-        { id: 'pedidos', label: 'Pedido de venda', icon: 'shopping_bag' },
-      ],
-    },
-    {
-      type: 'group',
-      id: 'producao-group',
-      label: 'Producao',
-      icon: 'factory',
-      items: [
-        { id: 'producao', label: 'Ordens de producao', icon: 'factory' },
-        { id: 'producao-lotes', label: 'Lotes', icon: 'view_module' },
-        { id: 'producao-refugo', label: 'Refugo e retrabalho', icon: 'report_problem' },
-        { id: 'producao-consumo', label: 'Consumo por produto', icon: 'science' },
-      ],
-    },
-    {
-      type: 'group',
-      id: 'estoque-group',
-      label: 'Estoque',
-      icon: 'warehouse',
-      items: [
-        { id: 'estoque', label: 'Estoque consolidado', icon: 'warehouse' },
-        { id: 'estoque-formas', label: 'Formas e moldes', icon: 'view_module' },
-        { id: 'estoque-materiais', label: 'Materia-prima', icon: 'inventory_2' },
-      ],
-    },
-    {
-      type: 'section',
-      id: 'compras',
-      label: 'Compras',
-      icon: 'shopping_cart',
-    },
-    {
-      type: 'section',
-      id: 'entregas',
-      label: 'Logistica e entregas',
-      icon: 'local_shipping',
-    },
-    {
-      type: 'section',
-      id: 'financeiro',
-      label: 'Financeiro',
-      icon: 'payments',
-    },
-    {
-      type: 'section',
-      id: 'fiscal',
-      label: 'Fiscal',
-      icon: 'receipt',
-    },
-    {
-      type: 'group',
-      id: 'rh',
-      label: 'RH',
-      icon: 'badge',
-      items: [
-        { id: 'funcionarios', label: 'Funcionarios', icon: 'badge' },
-        { id: 'rh-presenca', label: 'Presenca', icon: 'how_to_reg' },
-        { id: 'rh-pagamentos', label: 'Pagamentos', icon: 'payments' },
-        { id: 'rh-historico', label: 'Historico', icon: 'history' },
-        { id: 'rh-ocorrencias', label: 'Ocorrencias', icon: 'report' },
-      ],
-    },
-    {
-      type: 'section',
-      id: 'qualidade',
-      label: 'Qualidade e manutencao',
-      icon: 'verified',
-    },
-    {
-      type: 'group',
-      id: 'relatorios',
-      label: 'Relatorios',
-      icon: 'insights',
-      items: [
-        { id: 'indicadores', label: 'Indicadores', icon: 'bar_chart' },
-        { id: 'bi', label: 'BI', icon: 'query_stats' },
-        { id: 'relatorios-producao', label: 'Producao por periodo', icon: 'factory' },
-        { id: 'relatorios-vendas', label: 'Vendas por cliente e obra', icon: 'trending_up' },
-        { id: 'relatorios-consumo', label: 'Consumo de material', icon: 'science' },
-      ],
-    },
-    {
-      type: 'group',
-      id: 'configuracoes-group',
-      label: 'Configuracoes',
-      icon: 'settings',
-      items: [
-        { id: 'perfil', label: 'Meu perfil', icon: 'account_circle' },
-        { id: 'config-usuarios', label: 'Usuarios e permissoes', icon: 'admin_panel_settings' },
-        { id: 'config-empresa', label: 'Empresa', icon: 'apartment' },
-        { id: 'configuracoes', label: 'Parametros', icon: 'tune' },
-        { id: 'config-integracoes', label: 'Integracoes', icon: 'hub' },
-        { id: 'dados', label: 'Backup e exportacao', icon: 'cloud_upload' },
-      ],
-    },
-    {
-      type: 'group',
-      id: 'auditoria',
-      label: 'Auditoria e seguranca',
-      icon: 'security',
-      items: [
-        { id: 'auditoria-log', label: 'Log de acoes', icon: 'history' },
-        { id: 'auditoria-historico', label: 'Historico de alteracoes', icon: 'manage_search' },
-        { id: 'auditoria-backup', label: 'Backup automatico', icon: 'backup' },
-        { id: 'auditoria-acesso', label: 'Controle de acesso', icon: 'shield' },
-      ],
-    },
-  ]
+  const sidebarGroups = NAVIGATION_GROUPS
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
@@ -191,7 +36,7 @@ const Sidebar = ({ activePage, onNavigate, onHoverChange, canView }: SidebarProp
         <img className="sidebar__logo sidebar__logo--mark" src={isotipo} alt="Umoya" />
       </div>
 
-      <nav className="sidebar__nav" aria-label="Navegacao principal">
+      <nav className="sidebar__nav" aria-label="Navegação principal">
         {sidebarGroups.flatMap((group) => {
           if (group.type === 'section') {
             if (canView && !canView(group.id)) {

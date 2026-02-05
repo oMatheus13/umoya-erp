@@ -32,7 +32,7 @@
   position: relative;
   margin-top: calc(-1 * var(--topbar-height));
   padding: var(--spacing-xl);
-  padding-top: calc(var(--topbar-height) * 1 + var(--spacing-xl));
+  padding-top: calc(var(--topbar-height) * 1.25);
 }
 
 .app__content::-webkit-scrollbar {

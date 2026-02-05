@@ -82,6 +82,8 @@ const Produtos = () => {
     hasVariants: false,
   })
   const [variantForm, setVariantForm] = useState<VariantForm>(createEmptyVariantForm())
+  const productFormId = 'produto-form'
+  const variantFormId = 'produto-variacao-form'
 
   useEffect(() => {
     if (!selectedProductId && data.produtos.length > 0) {
@@ -550,10 +552,12 @@ const Produtos = () => {
   return (
     <Page className="produtos">
       <PageHeader
-        title="Produtos"
         actions={
           <button className="button button--primary" type="button" onClick={openProductModal}>
-            Novo produto
+            <span className="material-symbols-outlined page-header__action-icon" aria-hidden="true">
+              inventory_2
+            </span>
+            <span className="page-header__action-label">Novo produto</span>
           </button>
         }
       />
@@ -583,8 +587,18 @@ const Produtos = () => {
         onClose={closeProductModal}
         title={editingId ? 'Editar produto' : 'Novo produto'}
         size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={productFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingId ? 'Atualizar' : 'Salvar produto'}
+            </span>
+          </button>
+        }
       >
-        <form className="form" onSubmit={handleSubmit}>
+        <form id={productFormId} className="form" onSubmit={handleSubmit}>
             <div className="form__group">
               <label className="form__label" htmlFor="product-name">
                 Nome
@@ -635,16 +649,21 @@ const Produtos = () => {
             </div>
             </div>
 
-            <label className="form__checkbox">
+            <label className="toggle form__checkbox">
               <input
                 type="checkbox"
                 checked={form.hasVariants}
                 onChange={(event) => updateForm({ hasVariants: event.target.checked })}
               />
-              Produto com variacoes (precos, medidas e estoque nas variacoes)
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">
+                Produto com variacoes (precos, medidas e estoque nas variacoes)
+              </span>
             </label>
 
-            <label className="form__checkbox">
+            <label className="toggle form__checkbox">
               <input
                 type="checkbox"
                 checked={form.producedInternally}
@@ -652,7 +671,12 @@ const Produtos = () => {
                   updateForm({ producedInternally: event.target.checked })
                 }
               />
-              Produto com linha de producao (aparece no consumo por produto)
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">
+                Produto com linha de producao (aparece no consumo por produto)
+              </span>
             </label>
 
             <div className="form__row">
@@ -821,25 +845,18 @@ const Produtos = () => {
               </div>
             </div>
 
-            <label className="form__checkbox">
+            <label className="toggle form__checkbox">
               <input
                 type="checkbox"
                 checked={form.active}
                 onChange={(event) => updateForm({ active: event.target.checked })}
               />
-              Produto ativo
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">Produto ativo</span>
             </label>
 
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                {editingId ? 'Atualizar' : 'Salvar produto'}
-              </button>
-              {editingId && (
-                <button className="button button--ghost" type="button" onClick={closeProductModal}>
-                  Cancelar
-                </button>
-              )}
-            </div>
             {status && <p className="form__status">{status}</p>}
         </form>
       </Modal>
@@ -958,9 +975,21 @@ const Produtos = () => {
         onClose={closeVariantModal}
         title={editingVariantId ? 'Editar variacao' : 'Nova variacao'}
         size="lg"
+        actions={
+          selectedProduct ? (
+          <button className="button button--primary" type="submit" form={variantFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">
+              {editingVariantId ? 'Atualizar variacao' : 'Salvar variacao'}
+            </span>
+          </button>
+          ) : null
+        }
       >
         {selectedProduct ? (
-          <form className="form" onSubmit={handleVariantSubmit}>
+          <form id={variantFormId} className="form" onSubmit={handleVariantSubmit}>
             <div className="form__group">
               <label className="form__label" htmlFor="variant-name">
                 Nome da variacao
@@ -1091,23 +1120,18 @@ const Produtos = () => {
               </div>
             </div>
 
-            <label className="form__checkbox">
+            <label className="toggle form__checkbox">
               <input
                 type="checkbox"
                 checked={variantForm.active}
                 onChange={(event) => updateVariantForm({ active: event.target.checked })}
               />
-              Variacao ativa
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">Variacao ativa</span>
             </label>
 
-            <div className="form__actions">
-              <button className="button button--primary" type="submit">
-                {editingVariantId ? 'Atualizar variacao' : 'Salvar variacao'}
-              </button>
-              <button className="button button--ghost" type="button" onClick={closeVariantModal}>
-                Cancelar
-              </button>
-            </div>
             {variantStatus && <p className="form__status">{variantStatus}</p>}
           </form>
         ) : (

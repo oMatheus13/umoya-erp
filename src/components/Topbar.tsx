@@ -158,7 +158,7 @@ const Topbar = ({
         title: material.name,
         subtitle: material.unit ? `Unidade ${material.unit}` : undefined,
         page: 'cadastros-materiais',
-        category: 'Materia-prima',
+        category: 'Matéria-prima',
       })
     })
 
@@ -177,10 +177,10 @@ const Topbar = ({
       const client = data.clientes.find((item) => item.id === quote.clientId)
       pushItem({
         id: quote.id,
-        title: `Orcamento #${quote.id.slice(-6)}`,
+        title: `Orçamento #${quote.id.slice(-6)}`,
         subtitle: client?.name ?? 'Cliente',
         page: 'orcamentos',
-        category: 'Orcamentos',
+        category: 'Orçamentos',
         keywords: [quote.status],
       })
     })
@@ -204,7 +204,7 @@ const Topbar = ({
         title: `OP #${order.id.slice(-5)}`,
         subtitle: product?.name ?? 'Produto',
         page: 'producao',
-        category: 'Producao',
+        category: 'Produção',
         keywords: [order.status],
       })
     })
@@ -227,7 +227,7 @@ const Topbar = ({
         title: employee.name,
         subtitle: employee.cpf ? `CPF ${employee.cpf}` : undefined,
         page: 'funcionarios',
-        category: 'Funcionarios',
+        category: 'Funcionários',
       })
     })
 
@@ -246,6 +246,7 @@ const Topbar = ({
   ])
 
   const normalizedQuery = query.trim().toLowerCase()
+  const hasQuery = query.trim().length > 0
   const searchResults = useMemo(
     () =>
       normalizedQuery
@@ -271,7 +272,7 @@ const Topbar = ({
       const suffix = lowStock.length > 3 ? ` +${lowStock.length - 3}` : ''
       items.push({
         id: 'low-stock',
-        title: 'Materia-prima baixa',
+        title: 'Matéria-prima baixa',
         description: `${names}${suffix}`,
         page: 'estoque-materiais',
         tone: 'alert',
@@ -298,8 +299,8 @@ const Topbar = ({
     if (overdueQuotes.length > 0 && allowPage('orcamentos')) {
       items.push({
         id: 'overdue-quotes',
-        title: 'Orcamentos vencidos',
-        description: `${overdueQuotes.length} orcamento(s)`,
+        title: 'Orçamentos vencidos',
+        description: `${overdueQuotes.length} orçamento(s)`,
         page: 'orcamentos',
         tone: 'warning',
       })
@@ -346,7 +347,7 @@ const Topbar = ({
     if (openMaintenance.length > 0 && allowPage('qualidade')) {
       items.push({
         id: 'maintenance-open',
-        title: 'Manutencoes em aberto',
+        title: 'Manutenções em aberto',
         description: `${openMaintenance.length} equipamento(s)`,
         page: 'qualidade',
         tone: 'info',
@@ -364,6 +365,13 @@ const Topbar = ({
     data.qualidadeChecks,
     canView,
   ])
+  const hasUrgentNotifications = notifications.some((item) => item.tone === 'alert')
+  const notificationIcon =
+    hasUrgentNotifications
+      ? 'notification_important'
+      : notifications.length > 0
+        ? 'notifications_active'
+        : 'notifications'
 
   const handleResultSelect = (item: SearchItem) => {
     if (onNavigate) {
@@ -438,7 +446,7 @@ const Topbar = ({
             setIsSearchOpen(true)
             setIsNotificationsOpen(false)
           }}
-          aria-label="Buscar no ERP"
+          aria-label="Pesquisar"
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             search
@@ -450,14 +458,27 @@ const Topbar = ({
           </span>
           <input
             type="search"
-            placeholder="Buscar no ERP"
-            aria-label="Buscar no ERP"
+            placeholder="Pesquisar"
+            aria-label="Pesquisar"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             onKeyDown={handleSearchKeyDown}
           />
+          {hasQuery && (
+            <button
+              className="topbar__icon topbar__search-clear"
+              type="button"
+              aria-label="Limpar busca"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => setQuery('')}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                close
+              </span>
+            </button>
+          )}
           {isSearchFocused && renderSearchResults('dropdown')}
         </div>
       </div>
@@ -467,7 +488,7 @@ const Topbar = ({
           className="topbar__icon"
           type="button"
           onClick={onSensitiveToggle}
-          aria-label={isSensitiveHidden ? 'Mostrar informacoes' : 'Ocultar informacoes'}
+          aria-label={isSensitiveHidden ? 'Mostrar informações' : 'Ocultar informações'}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             {isSensitiveHidden ? 'visibility_off' : 'visibility'}
@@ -479,8 +500,8 @@ const Topbar = ({
             type="button"
             aria-label={
               notifications.length > 0
-                ? `Notificacoes (${notifications.length})`
-                : 'Notificacoes'
+                ? `Notificações (${notifications.length})`
+                : 'Notificações'
             }
             onClick={() => {
               setIsNotificationsOpen((prev) => !prev)
@@ -489,11 +510,8 @@ const Topbar = ({
             ref={notificationsButtonRef}
           >
             <span className="material-symbols-outlined" aria-hidden="true">
-              notifications
+              {notificationIcon}
             </span>
-            {notifications.length > 0 && (
-              <span className="topbar__notification-dot" aria-hidden="true" />
-            )}
           </button>
         </div>
         {isNotificationsOpen && (
@@ -509,12 +527,12 @@ const Topbar = ({
               onClick={(event) => event.stopPropagation()}
             >
               <div className="topbar__notifications-header">
-                <strong>Notificacoes</strong>
+                <strong>Notificações</strong>
                 <button
                   className="topbar__notifications-close topbar__icon"
                   type="button"
                   onClick={() => setIsNotificationsOpen(false)}
-                  aria-label="Fechar notificacoes"
+                  aria-label="Fechar notificações"
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
                     close
@@ -523,7 +541,9 @@ const Topbar = ({
               </div>
               <div className="topbar__notifications-list">
                 {notifications.length === 0 && (
-                  <div className="topbar__notification-empty">Sem notificacoes no momento.</div>
+                  <div className="topbar__notification-empty">
+                    Sem notificações no momento.
+                  </div>
                 )}
                 {notifications.map((item) => (
                   <button
@@ -564,7 +584,7 @@ const Topbar = ({
             </span>
           </button>
           {onLogout && (
-            <button className="topbar__logout-icon" type="button" onClick={onLogout}>
+            <button className="topbar__icon" type="button" onClick={onLogout}>
               <span className="material-symbols-outlined" aria-hidden="true">
                 logout
               </span>
@@ -595,6 +615,19 @@ const Topbar = ({
               onKeyDown={handleSearchKeyDown}
               autoFocus
             />
+            {hasQuery && (
+              <button
+                className="topbar__icon topbar__search-clear"
+                type="button"
+                aria-label="Limpar busca"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setQuery('')}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  close
+                </span>
+              </button>
+            )}
             <button
               className="topbar__icon topbar__search-close"
               type="button"
