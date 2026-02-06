@@ -51,6 +51,7 @@ import { dataService, ensureStorageSeed, setRemoteSync } from './services/dataSe
 import { supabase } from './services/supabaseClient'
 import { createDevSeed, DEV_BACKUP_KEY, DEV_MODE_KEY, DEV_SEEDED_KEY } from './services/devSeed'
 import { createSignedAvatarUrl } from './services/storageFiles'
+import { sanitizeAvatarUrl } from './utils/avatar'
 import type { PageIntent, PageIntentAction, SidebarMode } from './types/ui'
 import { createPermissionCheck } from './utils/permissions'
 import { PAGE_META } from './data/navigation'
@@ -300,7 +301,9 @@ function App() {
     const metadataRole = user.user_metadata?.role as UserAccount['role'] | undefined
     const metadataPhone = user.user_metadata?.phone as string | undefined
     const metadataAvatarColor = user.user_metadata?.avatarColor as string | undefined
-    const metadataAvatarUrl = user.user_metadata?.avatarUrl as string | undefined
+    const metadataAvatarUrl = sanitizeAvatarUrl(
+      user.user_metadata?.avatarUrl as string | undefined,
+    )
     const metadataAvatarPath = (user.user_metadata?.avatarPath ||
       user.user_metadata?.avatar_path) as string | undefined
     const hasAdmin = payload.usuarios.some((item) => item.role === 'admin')
@@ -308,7 +311,7 @@ function App() {
       existing?.role ?? metadataRole ?? (hasAdmin ? 'funcionario' : 'admin')
     const resolvedCpf = existing?.cpf ?? metadataCpf
     const resolvedAvatarPath = existing?.avatarPath ?? metadataAvatarPath
-    let resolvedAvatarUrl = existing?.avatarUrl ?? metadataAvatarUrl
+    let resolvedAvatarUrl = sanitizeAvatarUrl(existing?.avatarUrl) ?? metadataAvatarUrl
     if (resolvedAvatarPath) {
       const signed = await createSignedAvatarUrl(resolvedAvatarPath)
       if (signed.url) {

@@ -25,6 +25,7 @@ import {
   saveStorage,
 } from './storage'
 import { createId } from '../utils/ids'
+import { sanitizeAvatarUrl } from '../utils/avatar'
 
 type RemoteSync = (data: ERPData) => void | Promise<void>
 type SaveOptions = {
@@ -622,7 +623,23 @@ const normalizeData = (data: ERPData) => {
   const presencas = ensureArray(data.presencas, [])
   const pagamentosRH = ensureArray(data.pagamentosRH, [])
   const ocorrenciasRH = ensureArray(data.ocorrenciasRH, [])
-  const usuarios = ensureArray(data.usuarios, [])
+  const usuariosRaw = ensureArray(data.usuarios, [])
+  const usuarios = usuariosRaw.map((user) => {
+    const sanitizedAvatarUrl = sanitizeAvatarUrl(user.avatarUrl)
+    if (!sanitizedAvatarUrl) {
+      if (user.avatarUrl) {
+        const { avatarUrl, ...rest } = user
+        changed = true
+        return rest
+      }
+      return user
+    }
+    if (sanitizedAvatarUrl !== user.avatarUrl) {
+      changed = true
+      return { ...user, avatarUrl: sanitizedAvatarUrl }
+    }
+    return user
+  })
 
   const normalizedProducao = ordensProducao.map((order) => {
     if (

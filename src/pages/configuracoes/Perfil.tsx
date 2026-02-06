@@ -7,6 +7,7 @@ import type { UserAccount } from '../../types/erp'
 import { supabase } from '../../services/supabaseClient'
 import { erpRemote } from '../../services/erpRemote'
 import { createSignedAvatarUrl, uploadAvatar } from '../../services/storageFiles'
+import { sanitizeAvatarUrl } from '../../utils/avatar'
 
 const avatarOptions = [
   { value: 'lime', label: 'Lima', color: 'var(--color-lime)' },
@@ -165,13 +166,14 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     }
 
     const payload = dataService.getAll()
+    const sanitizedAvatarUrl = sanitizeAvatarUrl(form.avatarUrl)
     const nextUser: UserAccount = {
       ...resolvedUser,
       displayName: form.displayName.trim() || undefined,
       name: form.name.trim(),
       phone: form.phone.trim() || undefined,
       avatarColor: form.avatarColor || undefined,
-      avatarUrl: form.avatarUrl || undefined,
+      avatarUrl: sanitizedAvatarUrl,
       avatarPath: form.avatarPath || undefined,
     }
 
