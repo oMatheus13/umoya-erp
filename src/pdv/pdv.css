@@ -1,0 +1,105 @@
+body {
+  overflow: auto;
+}
+
+.pdv {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+}
+
+.pdv__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+.pdv__headline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  min-width: 0;
+}
+
+.pdv__eyebrow {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.pdv__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+}
+
+.pdv__subtitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+  max-width: 520px;
+}
+
+.pdv__user {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.pdv__user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+  text-align: right;
+}
+
+.pdv__user-label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.pdv__user-name {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-ink);
+}
+
+.pdv__user-email {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.pdv__content {
+  display: grid;
+  gap: var(--spacing-md);
+  max-width: 720px;
+}
+
+.pdv__text {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+}
+
+@media (max-width: 720px) {
+  .pdv {
+    padding: var(--spacing-md);
+  }
+
+  .pdv__header {
+    align-items: flex-start;
+  }
+
+  .pdv__user-meta {
+    text-align: left;
+  }
+}

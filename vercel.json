@@ -3,6 +3,16 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "pdv.umoya.omatheus.com" }],
+      "destination": "/pdv/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "erp.umoya.omatheus.com" }],
+      "destination": "/index.html"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
