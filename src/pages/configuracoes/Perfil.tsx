@@ -170,6 +170,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
           phone: nextUser.phone,
           avatarColor: nextUser.avatarColor,
           avatarPath: nextUser.avatarPath,
+          avatarUrl: null,
         },
       })
       if (error) {
