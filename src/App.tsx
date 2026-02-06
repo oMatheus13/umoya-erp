@@ -84,6 +84,8 @@ function App() {
   const pendingPageRef = useRef<string | null>(null)
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const PAGE_TRANSITION_MS = 90
+  const SYNC_DEBOUNCE_MS = 400
+  const SYNC_POLL_MS = 10000
   const [sidebarMode, setSidebarMode] = useState<SidebarMode>(() => {
     if (typeof window === 'undefined') {
       return 'expanded'
@@ -260,7 +262,7 @@ function App() {
       timer = setTimeout(() => {
         timer = null
         void flush()
-      }, 1200)
+      }, SYNC_DEBOUNCE_MS)
     }
   }
 
@@ -525,7 +527,7 @@ function App() {
         await erpRemote.upsertState(syncId, local)
         await runBackup(syncId, local)
       }
-    }, 30000)
+    }, SYNC_POLL_MS)
     return () => clearInterval(interval)
   }, [isAuthenticated, currentUser?.id, syncId])
 
