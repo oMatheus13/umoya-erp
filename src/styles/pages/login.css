@@ -129,22 +129,61 @@
   align-self: baseline;
 }
 
+.login__status--success {
+  color: var(--color-success);
+}
+
 .login__recovery {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
   width: 100%;
+  align-items: center;
+  text-align: center;
 }
 
 .login__recovery-actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: var(--spacing-sm);
   width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
 }
 
 .login__recovery-actions .button {
   flex: 1;
+}
+
+.login__recovery .form__input,
+.login__recovery .login__password {
+  width: 100%;
+  text-align: left;
+}
+
+.login__code {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 2.4rem));
+  gap: var(--spacing-xs);
+  justify-content: center;
+  width: 100%;
+}
+
+.login__code-input {
+  width: 2.4rem;
+  text-align: center;
+  font-size: var(--font-size-lg);
+  padding: var(--spacing-xs) 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid var(--color-line);
+  color: var(--color-ink);
+}
+
+.login__code-input:focus-visible {
+  outline: none;
+  border-bottom-color: var(--color-lime);
 }
 
 .login__actions {
