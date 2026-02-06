@@ -113,7 +113,11 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     if (!currentUser) {
       return null
     }
-    return data.usuarios.find((user) => user.id === currentUser.id) ?? currentUser
+    const stored = data.usuarios.find((user) => user.id === currentUser.id) ?? currentUser
+    if (!stored.avatarUrl && currentUser.avatarUrl) {
+      return { ...stored, avatarUrl: currentUser.avatarUrl }
+    }
+    return stored
   }, [currentUser, data.usuarios])
 
   const roleLabel = useMemo(() => {
@@ -140,10 +144,28 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       name: resolvedUser.name ?? '',
       phone: resolvedUser.phone ?? '',
       avatarColor: resolvedUser.avatarColor ?? avatarOptions[0].value,
-      avatarUrl: resolvedUser.avatarUrl ?? '',
+      avatarUrl: sanitizeAvatarUrl(resolvedUser.avatarUrl) ?? '',
       avatarPath: resolvedUser.avatarPath ?? '',
     })
   }, [resolvedUser])
+
+  useEffect(() => {
+    if (!resolvedUser?.avatarPath || form.avatarUrl) {
+      return
+    }
+    let active = true
+    createSignedAvatarUrl(resolvedUser.avatarPath).then((signed) => {
+      if (!active) {
+        return
+      }
+      if (signed.url) {
+        updateForm({ avatarUrl: signed.url })
+      }
+    })
+    return () => {
+      active = false
+    }
+  }, [form.avatarUrl, resolvedUser?.avatarPath])
 
   if (!resolvedUser) {
     return (
@@ -167,6 +189,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
 
     const payload = dataService.getAll()
     const sanitizedAvatarUrl = sanitizeAvatarUrl(form.avatarUrl)
+    const sanitizedAvatarUrl = sanitizeAvatarUrl(form.avatarUrl)
     const nextUser: UserAccount = {
       ...resolvedUser,
       displayName: form.displayName.trim() || undefined,
@@ -176,13 +199,14 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       avatarUrl: sanitizedAvatarUrl,
       avatarPath: form.avatarPath || undefined,
     }
+    const { avatarUrl: _avatarUrl, ...payloadUser } = nextUser
 
     if (payload.usuarios.some((user) => user.id === resolvedUser.id)) {
       payload.usuarios = payload.usuarios.map((user) =>
-        user.id === resolvedUser.id ? nextUser : user,
+        user.id === resolvedUser.id ? payloadUser : user,
       )
     } else {
-      payload.usuarios = [...payload.usuarios, nextUser]
+      payload.usuarios = [...payload.usuarios, payloadUser]
     }
 
     dataService.replaceAll(payload)
@@ -394,7 +418,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
                 <button
                   className="button button--ghost"
                   type="button"
-                  onClick={() => updateForm({ avatarUrl: '' })}
+                  onClick={() => updateForm({ avatarUrl: '', avatarPath: '' })}
                 >
                   Remover foto
                 </button>

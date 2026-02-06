@@ -332,6 +332,7 @@ function App() {
       active: existing?.active ?? true,
       role: resolvedRole,
     }
+    const { avatarUrl: _avatarUrl, ...payloadUser } = nextUser
 
     const metaChanged = payload.meta?.workspaceId !== resolvedSyncId
     if (metaChanged) {
@@ -352,8 +353,8 @@ function App() {
       metaChanged
     if (shouldUpdate) {
       payload.usuarios = existing
-        ? payload.usuarios.map((item) => (item.id === user.id ? nextUser : item))
-        : [...payload.usuarios, nextUser]
+        ? payload.usuarios.map((item) => (item.id === user.id ? payloadUser : item))
+        : [...payload.usuarios, payloadUser]
       dataService.replaceAll(payload)
     }
     if (!user.user_metadata?.workspace_id && supabase) {

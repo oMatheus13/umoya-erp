@@ -25,7 +25,6 @@ import {
   saveStorage,
 } from './storage'
 import { createId } from '../utils/ids'
-import { sanitizeAvatarUrl } from '../utils/avatar'
 
 type RemoteSync = (data: ERPData) => void | Promise<void>
 type SaveOptions = {
@@ -37,6 +36,22 @@ type SaveOptions = {
 
 let remoteSync: RemoteSync | null = null
 
+const stripAvatarUrls = (data: ERPData) => {
+  if (!Array.isArray(data.usuarios)) {
+    return data
+  }
+  let changed = false
+  const usuarios = data.usuarios.map((user) => {
+    if (typeof user.avatarUrl !== 'undefined') {
+      const { avatarUrl, ...rest } = user
+      changed = true
+      return rest
+    }
+    return user
+  })
+  return changed ? { ...data, usuarios } : data
+}
+
 const dispatchDataEvent = () => {
   if (typeof window === 'undefined') {
     return
@@ -47,15 +62,16 @@ const dispatchDataEvent = () => {
 const saveAndSync = (data: ERPData, options?: SaveOptions) => {
   const shouldTouchMeta = options?.touchMeta !== false
   const shouldEmitEvent = options?.emitEvent !== false
+  const sanitized = stripAvatarUrls(data)
   const next: ERPData = shouldTouchMeta
     ? {
-        ...data,
+        ...sanitized,
         meta: {
-          ...data.meta,
+          ...sanitized.meta,
           updatedAt: new Date().toISOString(),
         },
       }
-    : data
+    : sanitized
   saveStorage(next)
   if (shouldEmitEvent) {
     if (typeof queueMicrotask === 'function') {
@@ -625,18 +641,10 @@ const normalizeData = (data: ERPData) => {
   const ocorrenciasRH = ensureArray(data.ocorrenciasRH, [])
   const usuariosRaw = ensureArray(data.usuarios, [])
   const usuarios = usuariosRaw.map((user) => {
-    const sanitizedAvatarUrl = sanitizeAvatarUrl(user.avatarUrl)
-    if (!sanitizedAvatarUrl) {
-      if (user.avatarUrl) {
-        const { avatarUrl, ...rest } = user
-        changed = true
-        return rest
-      }
-      return user
-    }
-    if (sanitizedAvatarUrl !== user.avatarUrl) {
+    if (typeof user.avatarUrl !== 'undefined') {
+      const { avatarUrl, ...rest } = user
       changed = true
-      return { ...user, avatarUrl: sanitizedAvatarUrl }
+      return rest
     }
     return user
   })
