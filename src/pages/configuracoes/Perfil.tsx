@@ -16,8 +16,9 @@ const avatarOptions = [
 ]
 
 const MAX_AVATAR_BYTES = 240 * 1024
-const MAX_AVATAR_DIMENSION = 512
-const AVATAR_QUALITY = 0.75
+const AVATAR_DIMENSION_STEPS = [512, 384, 256]
+const AVATAR_QUALITY_STEPS = [0.82, 0.72, 0.62, 0.52]
+const AVATAR_MIME_TYPES = ['image/webp', 'image/jpeg']
 
 type PerfilProps = {
   currentUser?: UserAccount | null
@@ -33,33 +34,13 @@ type PerfilForm = {
   avatarPath: string
 }
 
-const estimateDataUrlSize = (dataUrl: string) => {
-  const base64 = dataUrl.split(',')[1] ?? ''
-  return Math.round((base64.length * 3) / 4)
-}
-
-const downscaleImage = (file: File) =>
-  new Promise<string>((resolve, reject) => {
+const loadImageFromFile = (file: File) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image()
     const objectUrl = URL.createObjectURL(file)
     image.onload = () => {
-      const maxSide = Math.max(image.width, image.height)
-      const scale = maxSide > MAX_AVATAR_DIMENSION ? MAX_AVATAR_DIMENSION / maxSide : 1
-      const width = Math.max(1, Math.round(image.width * scale))
-      const height = Math.max(1, Math.round(image.height * scale))
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const context = canvas.getContext('2d')
-      if (!context) {
-        URL.revokeObjectURL(objectUrl)
-        reject(new Error('Falha ao processar a imagem.'))
-        return
-      }
-      context.drawImage(image, 0, 0, width, height)
-      const dataUrl = canvas.toDataURL('image/jpeg', AVATAR_QUALITY)
       URL.revokeObjectURL(objectUrl)
-      resolve(dataUrl)
+      resolve(image)
     }
     image.onerror = () => {
       URL.revokeObjectURL(objectUrl)
@@ -67,6 +48,53 @@ const downscaleImage = (file: File) =>
     }
     image.src = objectUrl
   })
+
+const renderToCanvas = (image: HTMLImageElement, maxDimension: number) => {
+  const maxSide = Math.max(image.width, image.height)
+  const scale = maxSide > maxDimension ? maxDimension / maxSide : 1
+  const width = Math.max(1, Math.round(image.width * scale))
+  const height = Math.max(1, Math.round(image.height * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('Falha ao processar a imagem.')
+  }
+  context.drawImage(image, 0, 0, width, height)
+  return canvas
+}
+
+const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>
+  new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob), type, quality)
+  })
+
+const buildAvatarBlob = async (file: File) => {
+  const image = await loadImageFromFile(file)
+  let lastBlob: Blob | null = null
+
+  for (const maxDimension of AVATAR_DIMENSION_STEPS) {
+    const canvas = renderToCanvas(image, maxDimension)
+    for (const mimeType of AVATAR_MIME_TYPES) {
+      for (const quality of AVATAR_QUALITY_STEPS) {
+        const blob = await canvasToBlob(canvas, mimeType, quality)
+        if (!blob) {
+          continue
+        }
+        lastBlob = blob
+        if (blob.size <= MAX_AVATAR_BYTES) {
+          return blob
+        }
+      }
+    }
+  }
+
+  if (lastBlob && lastBlob.size <= MAX_AVATAR_BYTES) {
+    return lastBlob
+  }
+  throw new Error('Imagem muito grande mesmo apos conversao. Use uma foto menor.')
+}
 
 const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
   const { data, refresh } = useERPData()
@@ -207,12 +235,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       return
     }
     try {
-      const dataUrl = await downscaleImage(file)
-      if (estimateDataUrlSize(dataUrl) > MAX_AVATAR_BYTES) {
-        setStatus('Imagem muito grande para sincronizar. Use uma foto menor.')
-        return
-      }
-      const blob = await (await fetch(dataUrl)).blob()
+      const blob = await buildAvatarBlob(file)
       const uploadResult = await uploadAvatar(resolvedUser.id, blob)
       if (uploadResult.error || !uploadResult.path) {
         setStatus(`Falha ao enviar imagem. ${uploadResult.error ?? ''}`.trim())

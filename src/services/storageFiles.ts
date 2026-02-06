@@ -5,12 +5,23 @@ const AVATAR_FOLDER = 'avatars'
 
 const getBucket = () => import.meta.env.VITE_SUPABASE_BUCKET || DEFAULT_BUCKET
 
+const resolveAvatarExtension = (mimeType?: string) => {
+  if (mimeType === 'image/webp') {
+    return 'webp'
+  }
+  if (mimeType === 'image/png') {
+    return 'png'
+  }
+  return 'jpg'
+}
+
 export const uploadAvatar = async (userId: string, file: Blob) => {
   if (!supabase) {
     return { path: null, error: 'Supabase nao configurado.' }
   }
   const bucket = getBucket()
-  const path = `${AVATAR_FOLDER}/${userId}/avatar.jpg`
+  const extension = resolveAvatarExtension(file.type)
+  const path = `${AVATAR_FOLDER}/${userId}/avatar.${extension}`
   try {
     const { error } = await supabase.storage.from(bucket).upload(path, file, {
       upsert: true,
