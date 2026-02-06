@@ -14,6 +14,9 @@ const DataTools = () => {
     const payload = dataService.getAll()
     const next = createEmptyState()
     next.usuarios = payload.usuarios
+    if (payload.meta?.workspaceId) {
+      next.meta = { ...next.meta, workspaceId: payload.meta.workspaceId }
+    }
     dataService.replaceAll(next)
     refresh()
     setStatus('Dados resetados com sucesso.')

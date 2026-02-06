@@ -131,7 +131,8 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
         message = 'Perfil salvo localmente, mas nao foi possivel atualizar o login.'
       }
     }
-    const remoteResult = await erpRemote.upsertState(resolvedUser.id, dataService.getAll())
+    const syncId = data.meta?.workspaceId ?? resolvedUser.id
+    const remoteResult = await erpRemote.upsertState(syncId, dataService.getAll())
     if (remoteResult.error) {
       message = `${message} Falha ao salvar no servidor.`
     }

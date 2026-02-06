@@ -3,6 +3,7 @@ import AppShell from './layouts/AppShell'
 import Dashboard from './pages/core/Dashboard'
 import DataTools from './pages/configuracoes/DataTools'
 import Login from './pages/core/Login'
+import SetupAdmin from './pages/core/SetupAdmin'
 import Produtos from './pages/cadastros/Produtos'
 import Orcamentos from './pages/vendas/Orcamentos'
 import Pedidos from './pages/vendas/Pedidos'
@@ -56,12 +57,19 @@ import { isPermissionKey } from './data/permissions'
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null)
+  const [syncId, setSyncId] = useState<string | null>(null)
   const [activePage, setActivePage] = useState('dashboard')
   const [isPageTransitioning, setIsPageTransitioning] = useState(false)
   const [pageIntent, setPageIntent] = useState<PageIntent | null>(null)
   const [permissionsVersion, setPermissionsVersion] = useState(0)
   const allowDevMode =
     (import.meta.env && import.meta.env.DEV) || import.meta.env.VITE_DEV_ACCESS === 'true'
+  const setupSecret = import.meta.env.VITE_SETUP_TOKEN as string | undefined
+  const setupToken =
+    typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('setup')
+      : null
+  const allowSetup = !!setupSecret && setupToken === setupSecret
   const syncHandlerRef = useRef<((data: ERPData) => void) | null>(null)
   const pendingPageRef = useRef<string | null>(null)
   const transitionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -131,6 +139,9 @@ function App() {
   const resolveUpdatedAt = (payload: ERPData | null, fallback?: string) =>
     payload?.meta?.updatedAt ?? fallback
 
+  const resolveSyncId = (user: User) =>
+    (user.user_metadata?.workspace_id as string | undefined) ?? user.id
+
   const shouldBackup = () => {
     if (typeof window === 'undefined') {
       return false
@@ -149,9 +160,9 @@ function App() {
     }
   }
 
-  const runBackup = async (userId: string, payload: ERPData) => {
+  const runBackup = async (syncId: string, payload: ERPData) => {
     if (shouldBackup()) {
-      await erpRemote.backupState(userId, payload)
+      await erpRemote.backupState(syncId, payload)
     }
   }
 
@@ -202,7 +213,7 @@ function App() {
     }
   }, [])
 
-  const createRemoteSync = (userId: string) => {
+  const createRemoteSync = (syncId: string) => {
     let pending: ERPData | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
     let inFlight = false
@@ -214,9 +225,9 @@ function App() {
       inFlight = true
       const payload = pending
       pending = null
-      const result = await erpRemote.upsertState(userId, payload)
+      const result = await erpRemote.upsertState(syncId, payload)
       if (!result.error) {
-        await runBackup(userId, payload)
+        await runBackup(syncId, payload)
       }
       if (result.error) {
         pending = payload
@@ -242,20 +253,22 @@ function App() {
     }
   }
 
-  const fetchRemoteState = async (userId: string) => {
+  const fetchRemoteState = async (syncId: string) => {
     type RemoteState = Awaited<ReturnType<typeof erpRemote.fetchState>>
     const timeout = new Promise<RemoteState>((resolve) => {
       setTimeout(() => resolve({ data: null, error: 'timeout' }), 2500)
     })
-    return Promise.race<RemoteState>([erpRemote.fetchState(userId), timeout])
+    return Promise.race<RemoteState>([erpRemote.fetchState(syncId), timeout])
   }
 
   const startSession = async (user: User) => {
     setRemoteSync(null)
     syncHandlerRef.current = null
+    const resolvedSyncId = resolveSyncId(user)
+    setSyncId(resolvedSyncId)
     const localSnapshot = dataService.getAll()
     const localHasData = hasMeaningfulData(localSnapshot)
-    const remote = await fetchRemoteState(user.id)
+    const remote = await fetchRemoteState(resolvedSyncId)
     const remoteError = !!remote.error
     const remotePayload = remote.data
     const remoteUpdatedAt = resolveUpdatedAt(remotePayload, remote.updatedAt)
@@ -293,6 +306,11 @@ function App() {
       role: resolvedRole,
     }
 
+    const metaChanged = payload.meta?.workspaceId !== resolvedSyncId
+    if (metaChanged) {
+      payload.meta = { ...payload.meta, workspaceId: resolvedSyncId }
+    }
+
     const shouldUpdate =
       !existing ||
       existing.name !== nextUser.name ||
@@ -302,12 +320,16 @@ function App() {
       existing.displayName !== nextUser.displayName ||
       existing.phone !== nextUser.phone ||
       existing.avatarColor !== nextUser.avatarColor ||
-      existing.avatarUrl !== nextUser.avatarUrl
+      existing.avatarUrl !== nextUser.avatarUrl ||
+      metaChanged
     if (shouldUpdate) {
       payload.usuarios = existing
         ? payload.usuarios.map((item) => (item.id === user.id ? nextUser : item))
         : [...payload.usuarios, nextUser]
       dataService.replaceAll(payload)
+    }
+    if (!user.user_metadata?.workspace_id && supabase) {
+      void supabase.auth.updateUser({ data: { workspace_id: resolvedSyncId } })
     }
 
     const localIsNewer =
@@ -317,14 +339,14 @@ function App() {
     const shouldSeedRemote = !remoteError && !remotePayload && localHasData
     const shouldPushLocal = !remoteError && (shouldSeedRemote || localIsNewer || shouldUpdate)
     if (!remoteError) {
-      const handler = createRemoteSync(user.id)
+      const handler = createRemoteSync(resolvedSyncId)
       syncHandlerRef.current = handler
       setRemoteSync(handler)
     }
     if (shouldPushLocal) {
       const latest = dataService.getAll()
-      await erpRemote.upsertState(user.id, latest)
-      await runBackup(user.id, latest)
+      await erpRemote.upsertState(resolvedSyncId, latest)
+      await runBackup(resolvedSyncId, latest)
     }
     setCurrentUser(nextUser)
     setIsAuthenticated(true)
@@ -350,6 +372,7 @@ function App() {
     }
     setRemoteSync(null)
     syncHandlerRef.current = null
+    setSyncId(null)
     if (seed) {
       dataService.replaceAll(createDevSeed(devUserId))
       if (typeof window !== 'undefined') {
@@ -387,14 +410,14 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!isAuthenticated || !currentUser || !supabase) {
+    if (!isAuthenticated || !currentUser || !supabase || !syncId) {
       return
     }
     if (currentUser.id === 'dev-user') {
       return
     }
     const interval = setInterval(async () => {
-      const remote = await erpRemote.fetchState(currentUser.id)
+      const remote = await erpRemote.fetchState(syncId)
       if (remote.error) {
         return
       }
@@ -402,7 +425,7 @@ function App() {
       const localHasData = hasMeaningfulData(local)
       const remoteUpdatedAt = resolveUpdatedAt(remote.data, remote.updatedAt)
       const localUpdatedAt = resolveUpdatedAt(local)
-      const handler = syncHandlerRef.current ?? createRemoteSync(currentUser.id)
+      const handler = syncHandlerRef.current ?? createRemoteSync(syncId)
       if (!syncHandlerRef.current) {
         syncHandlerRef.current = handler
         setRemoteSync(handler)
@@ -418,14 +441,23 @@ function App() {
         return
       }
       if (!remote.data && localHasData) {
-        await erpRemote.upsertState(currentUser.id, local)
-        await runBackup(currentUser.id, local)
+        await erpRemote.upsertState(syncId, local)
+        await runBackup(syncId, local)
       }
     }, 30000)
     return () => clearInterval(interval)
-  }, [isAuthenticated, currentUser?.id])
+  }, [isAuthenticated, currentUser?.id, syncId])
 
   if (!isAuthenticated) {
+    if (allowSetup) {
+      return (
+        <SetupAdmin
+          onComplete={(user) => {
+            void startSession(user)
+          }}
+        />
+      )
+    }
     return (
       <Login
         onLogin={(user) => {
@@ -455,6 +487,7 @@ function App() {
       window.localStorage.removeItem(DEV_SEEDED_KEY)
       setRemoteSync(null)
       syncHandlerRef.current = null
+      setSyncId(null)
       setCurrentUser(null)
       setIsAuthenticated(false)
       setActivePage('dashboard')
@@ -467,6 +500,7 @@ function App() {
     }
     setRemoteSync(null)
     syncHandlerRef.current = null
+    setSyncId(null)
     setCurrentUser(null)
     setIsAuthenticated(false)
     setActivePage('dashboard')

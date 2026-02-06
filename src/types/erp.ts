@@ -616,5 +616,6 @@ export type ERPData = {
   auditoria: AuditEvent[]
   meta?: {
     updatedAt?: string
+    workspaceId?: string
   }
 }

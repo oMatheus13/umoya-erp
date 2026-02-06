@@ -22,6 +22,7 @@ const createEmptyLogin = (): LoginForm => ({
 
 const normalizeEmail = (value: string) => value.trim().toLowerCase()
 const normalizeCpf = (value: string) => value.replace(/\D/g, '')
+const buildCpfEmail = (cpf: string) => `${cpf}@umoya.cpf`
 
 const Login = ({ onLogin, onDevLogin }: LoginProps) => {
   const [status, setStatus] = useState<string | null>(null)
@@ -47,6 +48,7 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
     }
     const identifier = loginForm.identifier.trim()
     let normalizedEmail = ''
+    let usedCpfFallback = false
     if (identifier.includes('@')) {
       normalizedEmail = normalizeEmail(identifier)
     } else {
@@ -68,10 +70,11 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
           ? data.usuarios.find((user) => user.employeeId === matchedEmployee.id)
           : undefined)
       if (!matchedUser) {
-        setStatus('CPF nao encontrado neste dispositivo. Use o email de acesso.')
-        return
+        normalizedEmail = normalizeEmail(buildCpfEmail(cpf))
+        usedCpfFallback = true
+      } else {
+        normalizedEmail = normalizeEmail(matchedUser.email)
       }
-      normalizedEmail = normalizeEmail(matchedUser.email)
     }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -79,6 +82,12 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
         password: loginForm.password,
       })
       if (error) {
+        if (usedCpfFallback) {
+          setStatus(
+            'CPF nao encontrado neste dispositivo. Use o email cadastrado para acessar.',
+          )
+          return
+        }
         setStatus(error.message)
         return
       }
