@@ -135,6 +135,8 @@ const Fornecedores = () => {
     payload.fornecedores = payload.fornecedores.filter((supplier) => supplier.id !== deleteId)
     dataService.replaceAll(payload)
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Fornecedor excluido.')
     setDeleteId(null)
   }
@@ -159,24 +161,38 @@ const Fornecedores = () => {
         title={editingId ? 'Editar fornecedor' : 'Novo fornecedor'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={supplierFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Atualizar' : 'Salvar fornecedor'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={supplierFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar' : 'Salvar fornecedor'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={supplierFormId} className="form" onSubmit={handleSubmit}>
-            <div className="form__group">
-              <label className="form__label" htmlFor="supplier-name">
+        <form id={supplierFormId} className="modal__form" onSubmit={handleSubmit}>
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="supplier-name">
                 Nome
               </label>
               <input
                 id="supplier-name"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.name}
                 onChange={(event) => updateForm({ name: event.target.value })}
@@ -184,27 +200,27 @@ const Fornecedores = () => {
               />
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="supplier-contact">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="supplier-contact">
                   Contato
                 </label>
                 <input
                   id="supplier-contact"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.contact}
                   onChange={(event) => updateForm({ contact: event.target.value })}
                   placeholder="Responsavel"
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="supplier-document">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="supplier-document">
                   CPF/CNPJ
                 </label>
                 <input
                   id="supplier-document"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.document}
                   onChange={(event) => updateForm({ document: event.target.value })}
@@ -213,27 +229,27 @@ const Fornecedores = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="supplier-email">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="supplier-email">
                   Email
                 </label>
                 <input
                   id="supplier-email"
-                  className="form__input"
+                  className="modal__input"
                   type="email"
                   value={form.email}
                   onChange={(event) => updateForm({ email: event.target.value })}
                   placeholder="email@fornecedor.com"
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="supplier-phone">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="supplier-phone">
                   Telefone
                 </label>
                 <input
                   id="supplier-phone"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.phone}
                   onChange={(event) => updateForm({ phone: event.target.value })}
@@ -242,14 +258,14 @@ const Fornecedores = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="supplier-city">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="supplier-city">
                   Cidade
                 </label>
                 <input
                   id="supplier-city"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.city}
                   onChange={(event) => updateForm({ city: event.target.value })}
@@ -258,20 +274,20 @@ const Fornecedores = () => {
               </div>
             </div>
 
-            <div className="form__group">
-              <label className="form__label" htmlFor="supplier-notes">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="supplier-notes">
                 Observacoes
               </label>
               <textarea
                 id="supplier-notes"
-                className="form__input form__textarea"
+                className="modal__input modal__textarea"
                 value={form.notes}
                 onChange={(event) => updateForm({ notes: event.target.value })}
                 placeholder="Condicoes comerciais, prazos, etc."
               />
             </div>
 
-            <label className="toggle form__checkbox">
+            <label className="toggle modal__checkbox">
               <input
                 type="checkbox"
                 checked={form.active}
@@ -283,67 +299,70 @@ const Fornecedores = () => {
               <span className="toggle__label">Fornecedor ativo</span>
             </label>
 
-            {status && <p className="form__status">{status}</p>}
+            {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
       <div className="fornecedores__layout">
-        <section className="fornecedores__panel">
-          <div className="fornecedores__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Fornecedores cadastrados</h2>
               <p>Base centralizada de contatos e documentos.</p>
             </div>
-            <span className="fornecedores__panel-meta">{suppliers.length} registros</span>
+            <span className="panel__meta">{suppliers.length} registros</span>
           </div>
-          <div className="table-card fornecedores__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Fornecedor</th>
                   <th>Contato</th>
                   <th>Email</th>
                   <th>Telefone</th>
                   <th>Cidade</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {suppliers.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="table__empty">
+                    <td colSpan={6} className="table__empty">
                       Nenhum fornecedor cadastrado ainda.
                     </td>
                   </tr>
                 )}
                 {suppliers.map((supplier) => (
                   <tr key={supplier.id}>
-                    <td>{supplier.name}</td>
-                    <td>{supplier.contact ?? '-'}</td>
-                    <td>{supplier.email ?? '-'}</td>
-                    <td>{supplier.phone ?? '-'}</td>
-                    <td>{supplier.city ?? '-'}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          supplier.active ? 'badge--aprovado' : 'badge--rascunho'
-                        }`}
-                      >
-                        {supplier.active ? 'Ativo' : 'Inativo'}
-                      </span>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{supplier.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {supplier.phone ?? '-'}
+                        </span>
+                      </div>
                     </td>
-                    <td className="table__actions">
-                      <ActionMenu
-                        items={[
-                          { label: 'Editar', onClick: () => handleEdit(supplier) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteId(supplier.id),
-                            variant: 'danger',
-                          },
-                        ]}
-                      />
+                    <td className="table__cell--mobile-hide">{supplier.contact ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{supplier.email ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{supplier.phone ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{supplier.city ?? '-'}</td>
+                    <td className="table__actions table__actions--end">
+                      <div className="table__end">
+                        <div className="table__status">
+                          <span
+                            className={`badge ${
+                              supplier.active ? 'badge--aprovado' : 'badge--rascunho'
+                            }`}
+                          >
+                            {supplier.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEdit(supplier) },
+                          ]}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

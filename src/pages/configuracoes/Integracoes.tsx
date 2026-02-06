@@ -125,29 +125,29 @@ const Integracoes = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="integracoes__summary summary-card">
-        <article className="integracoes__stat">
-          <span className="integracoes__stat-label">Integracoes</span>
-          <strong className="integracoes__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Integracoes</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="integracoes__stat">
-          <span className="integracoes__stat-label">Ativas</span>
-          <strong className="integracoes__stat-value">{summary.active}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Ativas</span>
+          <strong className="summary__value">{summary.active}</strong>
         </article>
       </div>
 
-      <div className="integracoes__grid">
+      <div className="card-grid">
         {integrations.map((integration) => (
-          <article key={integration.id} className="integracoes__card">
+          <article key={integration.id} className="card">
             <div>
-              <h2>{integration.name}</h2>
-              <p>{integration.provider ?? 'Sem provedor definido.'}</p>
-              <span className="integracoes__meta">
+              <h2 className="card__title">{integration.name}</h2>
+              <p className="card__meta">{integration.provider ?? 'Sem provedor definido.'}</p>
+              <span className="card__meta">
                 Ultima sincronizacao:{' '}
                 {integration.lastSync ? formatDateShort(integration.lastSync) : 'Nao informado'}
               </span>
             </div>
-            <div className="integracoes__card-actions">
+            <div className="card__actions card__actions--end">
               <span className={`badge badge--${integration.status}`}>
                 {statusLabels[integration.status]}
               </span>
@@ -178,27 +178,27 @@ const Integracoes = () => {
           </button>
         }
       >
-        <form id={integrationFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="integration-name">
+        <form id={integrationFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="integration-name">
               Integracao
             </label>
             <input
               id="integration-name"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.name}
               disabled
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="integration-provider">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="integration-provider">
               Provedor
             </label>
             <input
               id="integration-provider"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.provider}
               onChange={(event) => updateForm({ provider: event.target.value })}
@@ -206,13 +206,13 @@ const Integracoes = () => {
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="integration-status">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="integration-status">
               Status
             </label>
             <select
               id="integration-status"
-              className="form__input"
+              className="modal__input"
               value={form.status}
               onChange={(event) =>
                 updateForm({ status: event.target.value as IntegrationStatus })
@@ -226,19 +226,19 @@ const Integracoes = () => {
             </select>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="integration-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="integration-notes">
               Observacoes
             </label>
             <textarea
               id="integration-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.notes}
               onChange={(event) => updateForm({ notes: event.target.value })}
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
     </Page>

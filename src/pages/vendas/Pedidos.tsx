@@ -966,6 +966,8 @@ const Pedidos = () => {
       },
     })
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Pedido excluido.')
     setDeleteId(null)
   }
@@ -1013,22 +1015,22 @@ const Pedidos = () => {
       />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="pedidos__summary summary-card">
-        <article className="pedidos__stat">
-          <span className="pedidos__stat-label">Total</span>
-          <strong className="pedidos__stat-value">{orderSummary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Total</span>
+          <strong className="summary__value">{orderSummary.total}</strong>
         </article>
-        <article className="pedidos__stat">
-          <span className="pedidos__stat-label">Aguardando</span>
-          <strong className="pedidos__stat-value">{orderSummary.awaiting}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Aguardando</span>
+          <strong className="summary__value">{orderSummary.awaiting}</strong>
         </article>
-        <article className="pedidos__stat">
-          <span className="pedidos__stat-label">Em producao</span>
-          <strong className="pedidos__stat-value">{orderSummary.inProduction}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Em producao</span>
+          <strong className="summary__value">{orderSummary.inProduction}</strong>
         </article>
-        <article className="pedidos__stat">
-          <span className="pedidos__stat-label">Receita confirmada</span>
-          <strong className="pedidos__stat-value">
+        <article className="summary__item">
+          <span className="summary__label">Receita confirmada</span>
+          <strong className="summary__value">
             {formatCurrency(orderSummary.confirmedValue)}
           </strong>
         </article>
@@ -1040,29 +1042,43 @@ const Pedidos = () => {
         title={editingId ? 'Editar pedido' : 'Novo pedido'}
         size="lg"
         actions={
-          <button
-            className="button button--primary"
-            type="submit"
-            form={orderFormId}
-            disabled={!hasProducts}
-          >
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Atualizar pedido' : 'Salvar pedido'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button
+              className="button button--primary"
+              type="submit"
+              form={orderFormId}
+              disabled={!hasProducts}
+            >
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar pedido' : 'Salvar pedido'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={orderFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="order-client-select">
+        <form id={orderFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="order-client-select">
               Cliente cadastrado
             </label>
             <select
               id="order-client-select"
-              className="form__input"
+              className="modal__input"
               value={form.clientId}
               onChange={(event) => {
                 const value = event.target.value
@@ -1087,13 +1103,13 @@ const Pedidos = () => {
             </select>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="order-client">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="order-client">
               Novo cliente
             </label>
             <input
               id="order-client"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.clientName}
               onChange={(event) => updateForm({ clientName: event.target.value })}
@@ -1101,17 +1117,17 @@ const Pedidos = () => {
               disabled={!!form.clientId}
             />
             {form.clientId && (
-              <p className="form__help">Limpe o cliente cadastrado para digitar outro.</p>
+              <p className="modal__help">Limpe o cliente cadastrado para digitar outro.</p>
             )}
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="order-obra">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="order-obra">
               Obra do cliente
             </label>
             <select
               id="order-obra"
-              className="form__input"
+              className="modal__input"
               value={form.obraId}
               onChange={(event) => updateForm({ obraId: event.target.value })}
               disabled={!form.clientId || clientObras.length === 0}
@@ -1124,7 +1140,7 @@ const Pedidos = () => {
               ))}
             </select>
             {form.clientId && clientObras.length === 0 && (
-              <p className="form__help">Nenhuma obra cadastrada para este cliente.</p>
+              <p className="modal__help">Nenhuma obra cadastrada para este cliente.</p>
             )}
           </div>
 
@@ -1145,15 +1161,15 @@ const Pedidos = () => {
             })
           : 0
         return (
-          <div key={`item-${index}`} className="form__section">
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor={`order-product-${index}`}>
+          <div key={`item-${index}`} className="modal__section">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor={`order-product-${index}`}>
                   Produto
                 </label>
                 <select
                   id={`order-product-${index}`}
-                  className="form__input"
+                  className="modal__input"
                   value={item.productId}
                   onChange={(event) => handleProductChange(index, event.target.value)}
                   disabled={!hasProducts}
@@ -1167,13 +1183,13 @@ const Pedidos = () => {
                 </select>
               </div>
               {isLinear ? (
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`order-length-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`order-length-${index}`}>
                     Comprimento (cm)
                   </label>
                   <input
                     id={`order-length-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="1"
@@ -1185,13 +1201,13 @@ const Pedidos = () => {
                   />
                 </div>
               ) : usesVariants ? (
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`order-variant-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`order-variant-${index}`}>
                     Variacao
                   </label>
                   <select
                     id={`order-variant-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     value={item.variantId}
                     onChange={(event) => handleVariantChange(index, event.target.value)}
                     disabled={!item.productId}
@@ -1207,10 +1223,10 @@ const Pedidos = () => {
                   </select>
                 </div>
               ) : (
-                <div className="form__group">
-                  <label className="form__label">Variacao</label>
+                <div className="modal__group">
+                  <label className="modal__label">Variacao</label>
                   <input
-                    className="form__input"
+                    className="modal__input"
                     type="text"
                     value="Produto sem variacoes"
                     disabled
@@ -1220,14 +1236,14 @@ const Pedidos = () => {
             </div>
 
             {usesVariants && item.variantId === 'custom' && (
-              <div className="form__row">
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`order-length-${index}`}>
+              <div className="modal__row">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`order-length-${index}`}>
                     Comprimento
                   </label>
                   <input
                     id={`order-length-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -1237,13 +1253,13 @@ const Pedidos = () => {
                     }
                   />
                 </div>
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`order-width-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`order-width-${index}`}>
                     Largura
                   </label>
                   <input
                     id={`order-width-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -1253,13 +1269,13 @@ const Pedidos = () => {
                     }
                   />
                 </div>
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`order-height-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`order-height-${index}`}>
                     Altura
                   </label>
                   <input
                     id={`order-height-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -1272,14 +1288,14 @@ const Pedidos = () => {
               </div>
             )}
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor={`order-quantity-${index}`}>
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor={`order-quantity-${index}`}>
                   Quantidade
                 </label>
                 <input
                   id={`order-quantity-${index}`}
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="1"
                   value={item.quantity}
@@ -1288,13 +1304,13 @@ const Pedidos = () => {
                   }
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor={`order-price-${index}`}>
+              <div className="modal__group">
+                <label className="modal__label" htmlFor={`order-price-${index}`}>
                   Valor unitario
                 </label>
                 <input
                   id={`order-price-${index}`}
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -1305,7 +1321,7 @@ const Pedidos = () => {
                   disabled={isLinear}
                 />
                 {itemProduct && (
-                  <p className="form__help">
+                  <p className="modal__help">
                     Base {formatCurrency(basePrice)} | Min sem prejuizo{' '}
                     {formatCurrency(minPrice)}
                   </p>
@@ -1314,7 +1330,7 @@ const Pedidos = () => {
             </div>
 
                 {form.items.length > 1 && (
-                  <div className="form__actions">
+                  <div className="modal__form-actions">
                     <button
                       className="button button--danger"
                       type="button"
@@ -1332,15 +1348,15 @@ const Pedidos = () => {
             Adicionar item
           </button>
 
-          <div className="form__section">
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="order-discount-type">
+          <div className="modal__section">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="order-discount-type">
                   Desconto
                 </label>
                 <select
                   id="order-discount-type"
-                  className="form__input"
+                  className="modal__input"
                   value={form.discountType}
                   onChange={(event) =>
                     updateForm({ discountType: event.target.value as OrderForm['discountType'] })
@@ -1352,13 +1368,13 @@ const Pedidos = () => {
                 </select>
               </div>
               {form.discountType === 'percent' && (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="order-discount-percent">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor="order-discount-percent">
                     Percentual
                   </label>
                   <input
                     id="order-discount-percent"
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.1"
@@ -1369,13 +1385,13 @@ const Pedidos = () => {
                 </div>
               )}
               {form.discountType === 'value' && (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="order-discount-value">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor="order-discount-value">
                     Valor
                   </label>
                   <input
                     id="order-discount-value"
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -1387,22 +1403,22 @@ const Pedidos = () => {
               )}
             </div>
             {subtotal > 0 ? (
-              <p className="form__help">
+              <p className="modal__help">
                 Desconto maximo sugerido: {formatCurrency(maxDiscountValue)} (
                 {maxDiscountPercent.toFixed(1)}%).
               </p>
             ) : (
-              <p className="form__help">Preencha os itens para calcular o desconto sugerido.</p>
+              <p className="modal__help">Preencha os itens para calcular o desconto sugerido.</p>
             )}
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="order-payment">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="order-payment">
               Forma de pagamento
             </label>
             <select
               id="order-payment"
-              className="form__input"
+              className="modal__input"
               value={form.paymentMethod}
               onChange={(event) => updateForm({ paymentMethod: event.target.value })}
             >
@@ -1418,19 +1434,19 @@ const Pedidos = () => {
                 </option>
               ))}
             </select>
-            <p className="form__help">
+            <p className="modal__help">
               O meio escolhido define o caixa da entrada quando o pedido for pago.
             </p>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="order-fulfillment">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="order-fulfillment">
                 Atendimento
               </label>
               <select
                 id="order-fulfillment"
-                className="form__input"
+                className="modal__input"
                 value={form.fulfillment}
                 onChange={(event) => {
                   const next = event.target.value as FulfillmentMode
@@ -1446,17 +1462,17 @@ const Pedidos = () => {
                 <option value="producao">Enviar para producao</option>
                 <option value="estoque">Retirar do estoque</option>
               </select>
-              <p className="form__help">
+              <p className="modal__help">
                 Retirar do estoque pula a etapa de producao.
               </p>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="order-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="order-status">
                 Status
               </label>
               <select
                 id="order-status"
-                className="form__input"
+                className="modal__input"
                 value={form.status}
                 onChange={(event) =>
                   updateForm({ status: event.target.value as Order['status'] })
@@ -1472,59 +1488,58 @@ const Pedidos = () => {
                     </option>
                   ))}
               </select>
-              <p className="form__help">
+              <p className="modal__help">
                 Status pago gera recibo e entrada automatica no financeiro.
               </p>
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__summary">
+          <div className="modal__row">
+            <div className="summary">
               <span>Subtotal</span>
               <strong>{formatCurrency(subtotal)}</strong>
             </div>
-            <div className="form__summary">
+            <div className="summary">
               <span>Desconto aplicado</span>
               <strong>{formatCurrency(appliedDiscount)}</strong>
             </div>
           </div>
 
-          <div className="form__summary">
+          <div className="summary">
             <span>Total do pedido</span>
             <strong>{formatCurrency(total)}</strong>
           </div>
 
-          {status && <p className="form__status">{status}</p>}
-          {!hasProducts && <p className="form__help">Cadastre produtos para liberar pedidos.</p>}
+          {status && <p className="modal__status">{status}</p>}
+          {!hasProducts && <p className="modal__help">Cadastre produtos para liberar pedidos.</p>}
         </form>
       </Modal>
 
       <div className="pedidos__layout">
-        <section className="pedidos__panel">
-          <div className="pedidos__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Pedidos recentes</h2>
               <p>Atualize status e gere producao sem abrir o pedido.</p>
             </div>
-            <span className="pedidos__panel-meta">{orders.length} registros</span>
+            <span className="panel__meta">{orders.length} registros</span>
           </div>
-          <div className="table-card pedidos__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Cliente</th>
                   <th>Itens</th>
                   <th>Desconto</th>
                   <th>Total</th>
                   <th>Pagamento</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {orders.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="table__empty">
+                    <td colSpan={6} className="table__empty">
                       Nenhum pedido cadastrado ainda.
                     </td>
                   </tr>
@@ -1533,52 +1548,60 @@ const Pedidos = () => {
                   const discountInfo = getOrderDiscountInfo(order)
                   return (
                     <tr key={order.id}>
-                      <td>{getClientName(order.clientId)}</td>
-                      <td>{formatItemsSummary(order.items)}</td>
-                      <td>
+                      <td className="table__cell--truncate">
+                        <div className="table__stack">
+                          <strong>{getClientName(order.clientId)}</strong>
+                          <span className="table__sub table__sub--mobile">
+                            {formatCurrency(order.total)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="table__cell--mobile-hide">
+                        {formatItemsSummary(order.items)}
+                      </td>
+                      <td className="table__cell--mobile-hide">
                         {discountInfo.discountValue > 0
                           ? `${formatCurrency(discountInfo.discountValue)} (${formatPercent(
                               discountInfo.discountPercent,
                             )}%)`
                           : '-'}
                       </td>
-                      <td>{formatCurrency(order.total)}</td>
-                      <td>
+                      <td className="table__cell--mobile-hide">{formatCurrency(order.total)}</td>
+                      <td className="table__cell--mobile-hide">
                         {getPaymentMethodLabel(
                           order.paymentMethod,
                           data.tabelas?.paymentMethods,
                         )}
                       </td>
-                      <td>
-                        <select
-                          className="table__select"
-                          value={order.status}
-                          onChange={(event) =>
-                            handleInlineStatusChange(order, event.target.value as Order['status'])
-                          }
-                        >
-                          {Object.entries(statusLabels)
-                            .filter(([key]) =>
-                              order.fulfillment === 'estoque' ? key !== 'em_producao' : true,
-                            )
-                            .map(([key, label]) => (
-                              <option key={key} value={key}>
-                                {label}
-                              </option>
-                            ))}
-                        </select>
-                      </td>
-                      <td className="table__actions">
-                        <ActionMenu
-                          items={[
-                            { label: 'Editar', onClick: () => handleEdit(order) },
-                            {
-                              label: 'Excluir',
-                              onClick: () => setDeleteId(order.id),
-                              variant: 'danger',
-                            },
-                          ]}
-                        />
+                      <td className="table__actions table__actions--end">
+                        <div className="table__end">
+                          <select
+                            className="table__select"
+                            data-status={order.status}
+                            value={order.status}
+                            onChange={(event) =>
+                              handleInlineStatusChange(
+                                order,
+                                event.target.value as Order['status'],
+                              )
+                            }
+                          >
+                            {Object.entries(statusLabels)
+                              .filter(([key]) =>
+                                order.fulfillment === 'estoque' ? key !== 'em_producao' : true,
+                              )
+                              .map(([key, label]) => (
+                                <option key={key} value={key}>
+                                  {label}
+                                </option>
+                              ))}
+                          </select>
+                          <ActionMenu
+                            items={[
+                              { label: 'Editar', onClick: () => handleEdit(order) },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )

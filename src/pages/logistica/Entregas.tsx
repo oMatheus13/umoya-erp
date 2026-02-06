@@ -212,36 +212,36 @@ const Entregas = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="entregas__summary summary-card">
-        <article className="entregas__stat">
-          <span className="entregas__stat-label">Total de entregas</span>
-          <strong className="entregas__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Total de entregas</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="entregas__stat">
-          <span className="entregas__stat-label">Pendentes</span>
-          <strong className="entregas__stat-value">{summary.pending}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Pendentes</span>
+          <strong className="summary__value">{summary.pending}</strong>
         </article>
-        <article className="entregas__stat">
-          <span className="entregas__stat-label">Em rota</span>
-          <strong className="entregas__stat-value">{summary.inRoute}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Em rota</span>
+          <strong className="summary__value">{summary.inRoute}</strong>
         </article>
-        <article className="entregas__stat">
-          <span className="entregas__stat-label">Entregues</span>
-          <strong className="entregas__stat-value">{summary.delivered}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Entregues</span>
+          <strong className="summary__value">{summary.delivered}</strong>
         </article>
       </div>
 
-      <div className="entregas__grid">
-        <section className="entregas__panel">
-          <div className="entregas__panel-header">
+      <div className="grid grid--two">
+        <section className="panel">
+          <div className="panel__header">
             <div>
-              <h2 className="entregas__panel-title">Agenda de entrega</h2>
-              <p className="entregas__panel-subtitle">Proximas entregas registradas</p>
+              <h2 className="panel__title">Agenda de entrega</h2>
+              <p className="panel__subtitle">Proximas entregas registradas</p>
             </div>
           </div>
-          <div className="entregas__list">
+          <div className="list">
             {agenda.length === 0 && (
-              <div className="entregas__empty">Nenhuma entrega programada.</div>
+              <div className="list__empty">Nenhuma entrega programada.</div>
             )}
             {agenda.map((delivery) => {
               const client = findClient(delivery.clientId)
@@ -250,10 +250,10 @@ const Entregas = () => {
                 ? formatDateShort(delivery.scheduledAt)
                 : 'Sem agenda'
               return (
-                <div key={delivery.id} className="entregas__list-item">
+                <div key={delivery.id} className="list__item">
                   <div>
                     <strong>{client?.name ?? 'Cliente'}</strong>
-                    <span className="entregas__list-meta">
+                    <span className="list__meta">
                       {obra?.name ?? 'Obra'} • {schedule}
                     </span>
                   </div>
@@ -266,25 +266,25 @@ const Entregas = () => {
           </div>
         </section>
 
-        <section className="entregas__panel">
-          <div className="entregas__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
-              <h2 className="entregas__panel-title">Ocorrencias recentes</h2>
-              <p className="entregas__panel-subtitle">Atrasos, quebras e pendencias</p>
+              <h2 className="panel__title">Ocorrencias recentes</h2>
+              <p className="panel__subtitle">Atrasos, quebras e pendencias</p>
             </div>
           </div>
-          <div className="entregas__list">
+          <div className="list">
             {occurrences.length === 0 && (
-              <div className="entregas__empty">Nenhuma ocorrencia registrada.</div>
+              <div className="list__empty">Nenhuma ocorrencia registrada.</div>
             )}
             {occurrences.map((delivery) => {
               const client = findClient(delivery.clientId)
               const obra = findObra(delivery.obraId)
               return (
-                <div key={delivery.id} className="entregas__list-item">
+                <div key={delivery.id} className="list__item">
                   <div>
                     <strong>{delivery.occurrence}</strong>
-                    <span className="entregas__list-meta">
+                    <span className="list__meta">
                       {client?.name ?? 'Cliente'} • {obra?.name ?? 'Obra'}
                     </span>
                   </div>
@@ -298,16 +298,16 @@ const Entregas = () => {
         </section>
       </div>
 
-      <section className="entregas__panel entregas__panel--full">
-        <div className="entregas__panel-header">
+      <section className="panel panel--full">
+        <div className="panel__header">
           <div>
-            <h2 className="entregas__panel-title">Entregas detalhadas</h2>
-            <p className="entregas__panel-subtitle">Enderecos, veiculos e comprovantes</p>
+            <h2 className="panel__title">Entregas detalhadas</h2>
+            <p className="panel__subtitle">Enderecos, veiculos e comprovantes</p>
           </div>
         </div>
-        <div className="entregas__cards">
+        <div className="card-grid">
           {deliveries.length === 0 && (
-            <div className="entregas__empty">Nenhuma entrega registrada ainda.</div>
+            <div className="list__empty">Nenhuma entrega registrada ainda.</div>
           )}
           {deliveries.map((delivery) => {
             const client = findClient(delivery.clientId)
@@ -326,13 +326,13 @@ const Entregas = () => {
                 ? `${delivery.vehicle || 'Veiculo a definir'} • ${delivery.driver || 'Motorista a definir'}`
                 : 'Nao definido'
             return (
-              <article key={delivery.id} className="entregas__card">
-                <header className="entregas__card-header">
+              <article key={delivery.id} className="card">
+                <header className="card__header">
                   <div>
-                    <h3 className="entregas__card-title">
+                    <h3 className="card__title">
                       {client?.name ?? 'Cliente'} • {obra?.name ?? 'Obra'}
                     </h3>
-                    <span className="entregas__card-meta">
+                    <span className="card__meta">
                       Pedido #{delivery.orderId.slice(0, 6)}
                     </span>
                   </div>
@@ -341,39 +341,39 @@ const Entregas = () => {
                   </span>
                 </header>
 
-                <div className="entregas__card-grid">
-                  <div className="entregas__detail">
-                    <span className="entregas__detail-label">Agenda de entrega</span>
-                    <strong className="entregas__detail-value">{schedule}</strong>
+                <div className="card__grid">
+                  <div className="card__detail">
+                    <span className="card__detail-label">Agenda de entrega</span>
+                    <strong className="card__detail-value">{schedule}</strong>
                   </div>
-                  <div className="entregas__detail">
-                    <span className="entregas__detail-label">Endereco da obra</span>
-                    <strong className="entregas__detail-value">{address}</strong>
+                  <div className="card__detail">
+                    <span className="card__detail-label">Endereco da obra</span>
+                    <strong className="card__detail-value">{address}</strong>
                   </div>
-                  <div className="entregas__detail">
-                    <span className="entregas__detail-label">Veiculo e motorista</span>
-                    <strong className="entregas__detail-value">{vehicleLabel}</strong>
+                  <div className="card__detail">
+                    <span className="card__detail-label">Veiculo e motorista</span>
+                    <strong className="card__detail-value">{vehicleLabel}</strong>
                   </div>
-                  <div className="entregas__detail">
-                    <span className="entregas__detail-label">Entrega parcial</span>
-                    <strong className="entregas__detail-value">{partialLabel}</strong>
+                  <div className="card__detail">
+                    <span className="card__detail-label">Entrega parcial</span>
+                    <strong className="card__detail-value">{partialLabel}</strong>
                   </div>
-                  <div className="entregas__detail">
-                    <span className="entregas__detail-label">Comprovante</span>
-                    <strong className="entregas__detail-value">
+                  <div className="card__detail">
+                    <span className="card__detail-label">Comprovante</span>
+                    <strong className="card__detail-value">
                       {proofLabel}
                       {proofDetail}
                     </strong>
                   </div>
-                  <div className="entregas__detail">
-                    <span className="entregas__detail-label">Ocorrencias</span>
-                    <strong className="entregas__detail-value">
+                  <div className="card__detail">
+                    <span className="card__detail-label">Ocorrencias</span>
+                    <strong className="card__detail-value">
                       {delivery.occurrence || 'Sem ocorrencias'}
                     </strong>
                   </div>
                 </div>
 
-                <div className="entregas__card-actions">
+                <div className="card__actions card__actions--end">
                   <button
                     className="button button--ghost"
                     type="button"
@@ -409,27 +409,27 @@ const Entregas = () => {
           </button>
         }
       >
-        <form id={deliveryFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="delivery-date">
+        <form id={deliveryFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="delivery-date">
                 Agenda de entrega
               </label>
               <input
                 id="delivery-date"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.scheduledAt}
                 onChange={(event) => updateForm({ scheduledAt: event.target.value })}
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="delivery-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="delivery-status">
                 Status
               </label>
               <select
                 id="delivery-status"
-                className="form__input"
+                className="modal__input"
                 value={form.status}
                 onChange={(event) =>
                   updateForm({ status: event.target.value as Delivery['status'] })
@@ -442,13 +442,13 @@ const Entregas = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="delivery-address">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="delivery-address">
               Endereco da obra
             </label>
             <input
               id="delivery-address"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.address}
               onChange={(event) => updateForm({ address: event.target.value })}
@@ -456,27 +456,27 @@ const Entregas = () => {
             />
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="delivery-vehicle">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="delivery-vehicle">
                 Veiculo
               </label>
               <input
                 id="delivery-vehicle"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.vehicle}
                 onChange={(event) => updateForm({ vehicle: event.target.value })}
                 placeholder="Ex: Caminhao 01"
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="delivery-driver">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="delivery-driver">
                 Motorista
               </label>
               <input
                 id="delivery-driver"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.driver}
                 onChange={(event) => updateForm({ driver: event.target.value })}
@@ -485,7 +485,7 @@ const Entregas = () => {
             </div>
           </div>
 
-          <label className="toggle form__checkbox">
+          <label className="toggle modal__checkbox">
             <input
               type="checkbox"
               checked={form.isPartial}
@@ -497,14 +497,14 @@ const Entregas = () => {
             <span className="toggle__label">Entrega parcial</span>
           </label>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="delivery-proof">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="delivery-proof">
                 Comprovante
               </label>
               <select
                 id="delivery-proof"
-                className="form__input"
+                className="modal__input"
                 value={form.proofType}
                 onChange={(event) => updateForm({ proofType: event.target.value as ProofOption })}
               >
@@ -513,13 +513,13 @@ const Entregas = () => {
                 <option value="assinatura">Assinatura</option>
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="delivery-proof-note">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="delivery-proof-note">
                 Detalhe do comprovante
               </label>
               <input
                 id="delivery-proof-note"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.proofNote}
                 onChange={(event) => updateForm({ proofNote: event.target.value })}
@@ -528,20 +528,20 @@ const Entregas = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="delivery-occurrence">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="delivery-occurrence">
               Ocorrencias
             </label>
             <textarea
               id="delivery-occurrence"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.occurrence}
               onChange={(event) => updateForm({ occurrence: event.target.value })}
               placeholder="Atraso, quebra ou cliente nao recebeu"
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

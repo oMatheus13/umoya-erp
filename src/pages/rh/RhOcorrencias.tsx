@@ -120,6 +120,7 @@ const RhOcorrencias = () => {
     payload.ocorrenciasRH = payload.ocorrenciasRH.filter((entry) => entry.id !== deleteId)
     dataService.replaceAll(payload)
     refresh()
+    setIsModalOpen(false)
     setStatus('Ocorrencia removida.')
     setDeleteId(null)
   }
@@ -139,52 +140,60 @@ const RhOcorrencias = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <section className="rh-page__panel">
-        <div className="rh-page__panel-header">
+      <section className="panel">
+        <div className="panel__header">
           <div>
             <h2>Ocorrencias recentes</h2>
             <p>Historico por funcionario e data.</p>
           </div>
-          <span className="rh-page__panel-meta">{ocorrencias.length} registros</span>
+          <span className="panel__meta">{ocorrencias.length} registros</span>
         </div>
-        <div className="table-card rh-page__table">
+        <div className="table-card">
           <table className="table">
-            <thead>
+            <thead className="table__head table__head--mobile-hide">
               <tr>
                 <th>Funcionario</th>
                 <th>Data</th>
                 <th>Tipo</th>
                 <th>Descricao</th>
-                <th>Status</th>
-                <th>Acoes</th>
+                <th className="table__actions table__actions--end">Status / Editar</th>
               </tr>
             </thead>
             <tbody>
               {ocorrencias.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="table__empty">
+                  <td colSpan={5} className="table__empty">
                     Nenhuma ocorrencia registrada ainda.
                   </td>
                 </tr>
               )}
               {ocorrencias.map((entry) => (
                 <tr key={entry.id}>
-                  <td>{getEmployeeName(entry.employeeId)}</td>
-                  <td>{formatDateShort(entry.date)}</td>
-                  <td>{entry.type}</td>
-                  <td>{entry.description}</td>
-                  <td>{entry.resolved ? 'Resolvida' : 'Pendente'}</td>
-                  <td className="table__actions">
-                    <ActionMenu
-                      items={[
-                        { label: 'Editar', onClick: () => handleEdit(entry) },
-                        {
-                          label: 'Excluir',
-                          onClick: () => setDeleteId(entry.id),
-                          variant: 'danger',
-                        },
-                      ]}
-                    />
+                  <td className="table__cell--truncate">
+                    <div className="table__stack">
+                      <strong>{getEmployeeName(entry.employeeId)}</strong>
+                      <span className="table__sub table__sub--mobile">{entry.type}</span>
+                      <span className="table__sub table__sub--mobile">
+                        {formatDateShort(entry.date)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="table__cell--mobile-hide">{formatDateShort(entry.date)}</td>
+                  <td className="table__cell--mobile-hide">{entry.type}</td>
+                  <td className="table__cell--mobile-hide">{entry.description}</td>
+                  <td className="table__actions table__actions--end">
+                    <div className="table__end">
+                      <div className="table__status">
+                        <span className={`badge ${entry.resolved ? 'badge--resolvido' : 'badge--pendente'}`}>
+                          {entry.resolved ? 'Resolvida' : 'Pendente'}
+                        </span>
+                      </div>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEdit(entry) },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -199,23 +208,37 @@ const RhOcorrencias = () => {
         title={editingId ? 'Editar ocorrencia' : 'Registrar ocorrencia'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={occurrenceFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">Salvar</span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={occurrenceFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">Salvar</span>
+            </button>
+          </>
         }
       >
-        <form id={occurrenceFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="occ-employee">
+        <form id={occurrenceFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="occ-employee">
                 Funcionario
               </label>
               <select
                 id="occ-employee"
-                className="form__input"
+                className="modal__input"
                 value={form.employeeId}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, employeeId: event.target.value }))
@@ -229,13 +252,13 @@ const RhOcorrencias = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="occ-date">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="occ-date">
                 Data
               </label>
               <input
                 id="occ-date"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.date}
                 onChange={(event) => setForm((prev) => ({ ...prev, date: event.target.value }))}
@@ -243,13 +266,13 @@ const RhOcorrencias = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="occ-type">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="occ-type">
               Tipo
             </label>
             <input
               id="occ-type"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.type}
               onChange={(event) => setForm((prev) => ({ ...prev, type: event.target.value }))}
@@ -257,13 +280,13 @@ const RhOcorrencias = () => {
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="occ-desc">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="occ-desc">
               Descricao
             </label>
             <textarea
               id="occ-desc"
-              className="form__textarea"
+              className="modal__textarea"
               rows={3}
               value={form.description}
               onChange={(event) =>
@@ -273,7 +296,7 @@ const RhOcorrencias = () => {
             />
           </div>
 
-          <label className="toggle form__checkbox">
+          <label className="toggle modal__checkbox">
             <input
               type="checkbox"
               checked={form.resolved}

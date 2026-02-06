@@ -68,7 +68,7 @@ const Modal = ({ open, title, size = 'md', actions, onClose, children }: ModalPr
               {title}
             </h2>
           )}
-          <div className="modal__actions">
+          <div className="modal__header-actions">
             {actions}
             <button className="button button--ghost" type="button" onClick={onClose}>
               <span

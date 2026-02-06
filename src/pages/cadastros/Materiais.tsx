@@ -203,6 +203,8 @@ const Materiais = () => {
     payload.materiais = payload.materiais.filter((material) => material.id !== deleteId)
     dataService.replaceAll(payload)
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Material excluido.')
     setDeleteId(null)
   }
@@ -226,22 +228,22 @@ const Materiais = () => {
       />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="materiais__summary summary-card">
-        <article className="materiais__stat">
-          <span className="materiais__stat-label">Materiais cadastrados</span>
-          <strong className="materiais__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Materiais cadastrados</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="materiais__stat">
-          <span className="materiais__stat-label">Com preco por unidade</span>
-          <strong className="materiais__stat-value">{summary.unitPricing}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Com preco por unidade</span>
+          <strong className="summary__value">{summary.unitPricing}</strong>
         </article>
-        <article className="materiais__stat">
-          <span className="materiais__stat-label">Com preco por lote</span>
-          <strong className="materiais__stat-value">{summary.lotPricing}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Com preco por lote</span>
+          <strong className="summary__value">{summary.lotPricing}</strong>
         </article>
-        <article className="materiais__stat">
-          <span className="materiais__stat-label">Materiais ativos</span>
-          <strong className="materiais__stat-value">{summary.active}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Materiais ativos</span>
+          <strong className="summary__value">{summary.active}</strong>
         </article>
       </div>
 
@@ -251,24 +253,38 @@ const Materiais = () => {
         title={editingId ? 'Editar material' : 'Novo material'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={materialFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Atualizar' : 'Salvar material'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={materialFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar' : 'Salvar material'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={materialFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="material-name">
+        <form id={materialFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="material-name">
               Nome
             </label>
             <input
               id="material-name"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.name}
               onChange={(event) => updateForm({ name: event.target.value })}
@@ -276,14 +292,14 @@ const Materiais = () => {
             />
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-unit">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-unit">
                 Unidade de medida
               </label>
               <select
                 id="material-unit"
-                className="form__input"
+                className="modal__input"
                 value={form.unit}
                 onChange={(event) =>
                   updateForm({ unit: event.target.value as MaterialForm['unit'] })
@@ -297,13 +313,13 @@ const Materiais = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-kind">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-kind">
                 Tipo do material
               </label>
               <select
                 id="material-kind"
-                className="form__input"
+                className="modal__input"
                 value={form.kind}
                 onChange={(event) =>
                   updateForm({ kind: event.target.value as MaterialForm['kind'] })
@@ -317,13 +333,13 @@ const Materiais = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-cost">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-cost">
                 Custo interno
               </label>
               <input
                 id="material-cost"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -335,13 +351,13 @@ const Materiais = () => {
           </div>
 
           {form.kind === 'trelica' && (
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-meters-unit">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-meters-unit">
                 Metros por unidade
               </label>
               <input
                 id="material-meters-unit"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -351,20 +367,20 @@ const Materiais = () => {
                 }
                 placeholder="Ex: 12"
               />
-              <p className="form__help">
+              <p className="modal__help">
                 Usado para converter metros em unidades de trelica.
               </p>
             </div>
           )}
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-market-unit">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-market-unit">
                 Valor de mercado ({selectedUnitLabel})
               </label>
               <input
                 id="material-market-unit"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -375,13 +391,13 @@ const Materiais = () => {
                 placeholder="0.00"
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-market-lot">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-market-lot">
                 Valor de mercado (lote)
               </label>
               <input
                 id="material-market-lot"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -394,13 +410,13 @@ const Materiais = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="material-lot-size">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="material-lot-size">
               Tamanho do lote ({selectedUnitLabel})
             </label>
             <input
               id="material-lot-size"
-              className="form__input"
+              className="modal__input"
               type="number"
               min="0"
               step="0.01"
@@ -408,19 +424,19 @@ const Materiais = () => {
               onChange={(event) => updateForm({ lotSize: Number(event.target.value) })}
               placeholder="Quantidade por lote"
             />
-            <p className="form__help">
+            <p className="modal__help">
               Use quando o material e comprado em lotes (ex: 40 sacos).
             </p>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-stock">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-stock">
                 Estoque inicial
               </label>
               <input
                 id="material-stock"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -429,13 +445,13 @@ const Materiais = () => {
                 placeholder="0"
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="material-min-stock">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="material-min-stock">
                 Estoque minimo
               </label>
               <input
                 id="material-min-stock"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -446,20 +462,20 @@ const Materiais = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="material-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="material-notes">
               Observacoes
             </label>
             <textarea
               id="material-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.notes}
               onChange={(event) => updateForm({ notes: event.target.value })}
               placeholder="Qualidade, fornecedor preferencial, etc."
             />
           </div>
 
-          <label className="toggle form__checkbox">
+          <label className="toggle modal__checkbox">
             <input
               type="checkbox"
               checked={form.active}
@@ -471,82 +487,86 @@ const Materiais = () => {
             <span className="toggle__label">Material ativo</span>
           </label>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
       <div className="materiais__layout">
-        <section className="materiais__panel">
-          <div className="materiais__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Materia-prima cadastrada</h2>
               <p>Referencia para compras e estoque minimo.</p>
             </div>
-            <span className="materiais__panel-meta">{materials.length} registros</span>
+            <span className="panel__meta">{materials.length} registros</span>
           </div>
-          <div className="table-card materiais__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Material</th>
                   <th>Tipo</th>
                   <th>Unidade</th>
-                  <th>Estoque</th>
                   <th>Minimo</th>
                   <th>Mercado/unidade</th>
                   <th>Mercado/lote</th>
                   <th>Lote</th>
                   <th>Metros/unid</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {materials.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="table__empty">
+                    <td colSpan={9} className="table__empty">
                       Nenhum material cadastrado ainda.
                     </td>
                   </tr>
                 )}
                 {materials.map((material) => (
                   <tr key={material.id}>
-                    <td>{material.name}</td>
-                    <td>{getMaterialKindLabel(material.kind)}</td>
-                    <td>{getMaterialUnitLabel(material.unit, data.tabelas)}</td>
-                    <td>
-                      {material.stock ?? 0}
-                      {material.unit
-                        ? ` ${getMaterialUnitLabel(material.unit, data.tabelas)}`
-                        : ''}
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{material.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {formatValue(material.marketUnitPrice ?? material.cost)}
+                        </span>
+                      </div>
                     </td>
-                    <td>{material.minStock ?? '-'}</td>
-                    <td>{formatValue(material.marketUnitPrice ?? material.cost)}</td>
-                    <td>{formatValue(material.marketLotPrice)}</td>
-                    <td>{material.lotSize ?? '-'}</td>
-                    <td>
+                    <td className="table__cell--mobile-hide">
+                      {getMaterialKindLabel(material.kind)}
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {getMaterialUnitLabel(material.unit, data.tabelas)}
+                    </td>
+                    <td className="table__cell--mobile-hide">{material.minStock ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">
+                      {formatValue(material.marketUnitPrice ?? material.cost)}
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {formatValue(material.marketLotPrice)}
+                    </td>
+                    <td className="table__cell--mobile-hide">{material.lotSize ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">
                       {material.kind === 'trelica' && material.metersPerUnit
                         ? material.metersPerUnit
                         : '-'}
                     </td>
-                    <td>
-                      <span
-                        className={`badge ${material.active !== false ? 'badge--aprovado' : 'badge--rascunho'}`}
-                      >
-                        {material.active !== false ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                    <td className="table__actions">
-                      <ActionMenu
-                        items={[
-                          { label: 'Editar', onClick: () => handleEdit(material) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteId(material.id),
-                            variant: 'danger',
-                          },
-                        ]}
-                      />
+                    <td className="table__actions table__actions--end">
+                      <div className="table__end">
+                        <div className="table__status">
+                          <span
+                            className={`badge ${material.active !== false ? 'badge--aprovado' : 'badge--rascunho'}`}
+                          >
+                            {material.active !== false ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEdit(material) },
+                          ]}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

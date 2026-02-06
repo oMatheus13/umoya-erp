@@ -225,6 +225,8 @@ const ProducaoRefugo = () => {
       },
     })
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Registro removido.')
     setDeleteId(null)
   }
@@ -259,26 +261,26 @@ const ProducaoRefugo = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="refugo__summary summary-card">
-        <article className="refugo__stat">
-          <span className="refugo__stat-label">Registros</span>
-          <strong className="refugo__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Registros</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="refugo__stat">
-          <span className="refugo__stat-label">Itens impactados</span>
-          <strong className="refugo__stat-value">{summary.items}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Itens impactados</span>
+          <strong className="summary__value">{summary.items}</strong>
         </article>
-        <article className="refugo__stat">
-          <span className="refugo__stat-label">Custo estimado</span>
-          <strong className="refugo__stat-value">{formatCurrency(summary.cost)}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Custo estimado</span>
+          <strong className="summary__value">{formatCurrency(summary.cost)}</strong>
         </article>
-        <article className="refugo__stat">
-          <span className="refugo__stat-label">Pendentes</span>
-          <strong className="refugo__stat-value">{summary.open}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Pendentes</span>
+          <strong className="summary__value">{summary.open}</strong>
         </article>
       </div>
 
-      <div className="refugo__filters">
+      <div className="filters">
         <div className="form__group">
           <label className="form__label" htmlFor="refugo-filter-type">
             Tipo
@@ -323,7 +325,7 @@ const ProducaoRefugo = () => {
 
       <div className="table-card">
         <table className="table">
-          <thead>
+          <thead className="table__head table__head--mobile-hide">
             <tr>
               <th>Data</th>
               <th>Tipo</th>
@@ -333,44 +335,57 @@ const ProducaoRefugo = () => {
               <th>Qtd.</th>
               <th>Motivo</th>
               <th>Custo</th>
-              <th>Status</th>
-              <th className="table__actions">Acoes</th>
+              <th className="table__actions table__actions--end">Status / Editar</th>
             </tr>
           </thead>
           <tbody>
             {filteredScraps.length === 0 ? (
               <tr>
-                <td className="table__empty" colSpan={10}>
+                <td className="table__empty" colSpan={9}>
                   Nenhum registro encontrado.
                 </td>
               </tr>
             ) : (
               filteredScraps.map((scrap) => (
                 <tr key={scrap.id}>
-                  <td>{formatDateShort(scrap.createdAt)}</td>
-                  <td>
+                  <td className="table__cell--mobile-hide">{formatDateShort(scrap.createdAt)}</td>
+                  <td className="table__cell--mobile-hide">
                     <span className={`badge badge--${scrap.type}`}>{typeLabels[scrap.type]}</span>
                   </td>
-                  <td>{getProductName(scrap.productId)}</td>
-                  <td>
+                  <td className="table__cell--truncate">
+                    <div className="table__stack">
+                      <strong>{getProductName(scrap.productId)}</strong>
+                      <span className="table__sub table__sub--mobile">
+                        {typeLabels[scrap.type]}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="table__cell--mobile-hide">
                     {data.produtos.find((item) => item.id === scrap.productId)?.hasVariants
                       ? getVariantName(scrap.productId, scrap.variantId)
                       : '-'}
                   </td>
-                  <td>{getOrderLabel(scrap.productionOrderId)}</td>
-                  <td>{scrap.quantity}</td>
-                  <td>{scrap.notes ? `${scrap.reason} — ${scrap.notes}` : scrap.reason}</td>
-                  <td>{scrap.estimatedCost ? formatCurrency(scrap.estimatedCost) : '-'}</td>
-                  <td>
-                    <span className={`badge badge--${scrap.status}`}>{statusLabels[scrap.status]}</span>
+                  <td className="table__cell--mobile-hide">{getOrderLabel(scrap.productionOrderId)}</td>
+                  <td className="table__cell--mobile-hide">{scrap.quantity}</td>
+                  <td className="table__cell--mobile-hide">
+                    {scrap.notes ? `${scrap.reason} — ${scrap.notes}` : scrap.reason}
                   </td>
-                  <td className="table__actions">
-                    <ActionMenu
-                      items={[
-                        { label: 'Editar', onClick: () => handleEdit(scrap) },
-                        { label: 'Excluir', onClick: () => setDeleteId(scrap.id) },
-                      ]}
-                    />
+                  <td className="table__cell--mobile-hide">
+                    {scrap.estimatedCost ? formatCurrency(scrap.estimatedCost) : '-'}
+                  </td>
+                  <td className="table__actions table__actions--end">
+                    <div className="table__end">
+                      <div className="table__status">
+                        <span className={`badge badge--${scrap.status}`}>
+                          {statusLabels[scrap.status]}
+                        </span>
+                      </div>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEdit(scrap) },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))
@@ -384,25 +399,39 @@ const ProducaoRefugo = () => {
         title={editingId ? 'Editar registro' : 'Novo registro'}
         onClose={closeModal}
         actions={
-          <button className="button button--primary" type="submit" form={scrapFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Salvar' : 'Registrar'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={scrapFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Salvar' : 'Registrar'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={scrapFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="refugo-product">
+        <form id={scrapFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="refugo-product">
                 Produto
               </label>
               <select
                 id="refugo-product"
-                className="form__input"
+                className="modal__input"
                 value={form.productId}
                 onChange={(event) => handleProductChange(event.target.value)}
               >
@@ -416,13 +445,13 @@ const ProducaoRefugo = () => {
             {data.produtos.find((product) => product.id === form.productId)?.hasVariants &&
               data.produtos.find((product) => product.id === form.productId)?.unit !==
                 'metro_linear' && (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="refugo-variant">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor="refugo-variant">
                     Variante
                   </label>
                   <select
                     id="refugo-variant"
-                    className="form__input"
+                    className="modal__input"
                     value={form.variantId}
                     onChange={(event) => updateForm({ variantId: event.target.value })}
                   >
@@ -438,14 +467,14 @@ const ProducaoRefugo = () => {
               )}
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="refugo-type">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="refugo-type">
                 Tipo
               </label>
               <select
                 id="refugo-type"
-                className="form__input"
+                className="modal__input"
                 value={form.type}
                 onChange={(event) =>
                   updateForm({ type: event.target.value as ProductionScrapType })
@@ -458,13 +487,13 @@ const ProducaoRefugo = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="refugo-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="refugo-status">
                 Status
               </label>
               <select
                 id="refugo-status"
-                className="form__input"
+                className="modal__input"
                 value={form.status}
                 onChange={(event) =>
                   updateForm({ status: event.target.value as ProductionScrapStatus })
@@ -479,14 +508,14 @@ const ProducaoRefugo = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="refugo-quantity">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="refugo-quantity">
                 Quantidade
               </label>
               <input
                 id="refugo-quantity"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="1"
                 value={form.quantity}
@@ -495,13 +524,13 @@ const ProducaoRefugo = () => {
                 }
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="refugo-cost">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="refugo-cost">
                 Custo estimado (R$)
               </label>
               <input
                 id="refugo-cost"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 step="0.01"
                 min="0"
@@ -513,13 +542,13 @@ const ProducaoRefugo = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="refugo-order">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="refugo-order">
               Ordem de producao (opcional)
             </label>
             <select
               id="refugo-order"
-              className="form__input"
+              className="modal__input"
               value={form.productionOrderId}
               onChange={(event) =>
                 updateForm({ productionOrderId: event.target.value })
@@ -534,32 +563,32 @@ const ProducaoRefugo = () => {
             </select>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="refugo-reason">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="refugo-reason">
               Motivo
             </label>
             <input
               id="refugo-reason"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.reason}
               onChange={(event) => updateForm({ reason: event.target.value })}
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="refugo-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="refugo-notes">
               Observacoes
             </label>
             <textarea
               id="refugo-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.notes}
               onChange={(event) => updateForm({ notes: event.target.value })}
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

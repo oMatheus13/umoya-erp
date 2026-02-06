@@ -7,7 +7,7 @@ import { useERPData } from '../../store/appStore'
 import type { PaymentTableEntry, TableEntry, UnitTableEntry } from '../../types/erp'
 import { createId } from '../../utils/ids'
 
-type TableKind = 'units' | 'categories' | 'paymentMethods'
+type TableKind = 'units' | 'paymentMethods'
 
 type TableForm = {
   label: string
@@ -19,13 +19,11 @@ type TableForm = {
 
 const tableLabels: Record<TableKind, string> = {
   units: 'Unidades',
-  categories: 'Categorias',
   paymentMethods: 'Formas de pagamento',
 }
 
 const tableSingular: Record<TableKind, string> = {
   units: 'Unidade',
-  categories: 'Categoria',
   paymentMethods: 'Forma de pagamento',
 }
 
@@ -134,7 +132,7 @@ const Tabelas = () => {
       nextItems = editingId
         ? items.map((item) => (item.id === editingId ? unitEntry : item))
         : [...items, unitEntry]
-    } else if (activeTable === 'paymentMethods') {
+    } else {
       const paymentEntry: PaymentTableEntry = {
         ...baseEntry,
         cashboxId: form.cashboxId || undefined,
@@ -142,10 +140,6 @@ const Tabelas = () => {
       nextItems = editingId
         ? items.map((item) => (item.id === editingId ? paymentEntry : item))
         : [...items, paymentEntry]
-    } else {
-      nextItems = editingId
-        ? items.map((item) => (item.id === editingId ? baseEntry : item))
-        : [...items, baseEntry]
     }
 
     updateTable(activeTable, nextItems, {
@@ -166,38 +160,39 @@ const Tabelas = () => {
       title: `${tableSingular[kind]} removida`,
       description: entry?.label,
     })
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Item removido.')
   }
 
   const renderList = (kind: TableKind) => {
     const items = tables[kind]
     if (items.length === 0) {
-      return <p className="tabelas__empty">Nenhum item registrado.</p>
+      return <p className="list__empty">Nenhum item registrado.</p>
     }
     return (
-      <div className="tabelas__list">
+      <div className="list">
         {items.map((item) => (
-          <div key={item.id} className="tabelas__item">
+          <div key={item.id} className="list__item">
             <div>
               <strong>{item.label}</strong>
               {'symbol' in item && item.symbol && (
-                <span className="tabelas__meta">Simbolo: {item.symbol}</span>
+                <span className="list__meta">Simbolo: {item.symbol}</span>
               )}
               {'cashboxId' in item && item.cashboxId && (
-                <span className="tabelas__meta">
+                <span className="list__meta">
                   Caixa: {cashboxes.find((box) => box.id === item.cashboxId)?.name ?? '-'}
                 </span>
               )}
-              {item.description && <span className="tabelas__meta">{item.description}</span>}
+              {item.description && <span className="list__meta">{item.description}</span>}
             </div>
-            <div className="tabelas__item-actions">
+            <div className="list__actions">
               <span className={`badge ${item.active === false ? 'badge--recusado' : 'badge--aprovado'}`}>
                 {item.active === false ? 'Inativo' : 'Ativo'}
               </span>
               <ActionMenu
                 items={[
                   { label: 'Editar', onClick: () => openModal(kind, item) },
-                  { label: 'Excluir', onClick: () => handleDelete(kind, item.id) },
                 ]}
               />
             </div>
@@ -214,11 +209,11 @@ const Tabelas = () => {
       {status && <p className="form__status">{status}</p>}
 
       <div className="tabelas__grid">
-        <article className="tabelas__panel">
-          <div className="tabelas__panel-header">
+        <article className="panel">
+          <div className="panel__header">
             <div>
-              <h2>Unidades</h2>
-              <p>Defina como os itens sao medidos no sistema.</p>
+              <h2 className="panel__title">Unidades</h2>
+              <p className="panel__subtitle">Defina como os itens sao medidos no sistema.</p>
             </div>
             <button className="button button--ghost" type="button" onClick={() => openModal('units')}>
               Nova unidade
@@ -227,28 +222,11 @@ const Tabelas = () => {
           {renderList('units')}
         </article>
 
-        <article className="tabelas__panel">
-          <div className="tabelas__panel-header">
+        <article className="panel">
+          <div className="panel__header">
             <div>
-              <h2>Categorias</h2>
-              <p>Organize produtos, materiais e servicos.</p>
-            </div>
-            <button
-              className="button button--ghost"
-              type="button"
-              onClick={() => openModal('categories')}
-            >
-              Nova categoria
-            </button>
-          </div>
-          {renderList('categories')}
-        </article>
-
-        <article className="tabelas__panel">
-          <div className="tabelas__panel-header">
-            <div>
-              <h2>Formas de pagamento</h2>
-              <p>Defina quais meios estao disponiveis no caixa.</p>
+              <h2 className="panel__title">Formas de pagamento</h2>
+              <p className="panel__subtitle">Defina quais meios estao disponiveis no caixa.</p>
             </div>
             <button
               className="button button--ghost"
@@ -267,22 +245,36 @@ const Tabelas = () => {
         title={editingId ? `Editar ${tableLabels[activeTable]}` : `Nova ${tableLabels[activeTable]}`}
         onClose={closeModal}
         actions={
-          <button className="button button--primary" type="submit" form={tableFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">{editingId ? 'Salvar' : 'Criar'}</span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => handleDelete(activeTable, editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={tableFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">{editingId ? 'Salvar' : 'Criar'}</span>
+            </button>
+          </>
         }
       >
-        <form id={tableFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="tabela-label">
+        <form id={tableFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="tabela-label">
               Nome
             </label>
             <input
               id="tabela-label"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.label}
               onChange={(event) => updateForm({ label: event.target.value })}
@@ -290,13 +282,13 @@ const Tabelas = () => {
           </div>
 
           {activeTable === 'units' && (
-            <div className="form__group">
-              <label className="form__label" htmlFor="tabela-symbol">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="tabela-symbol">
                 Simbolo
               </label>
               <input
                 id="tabela-symbol"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.symbol}
                 onChange={(event) => updateForm({ symbol: event.target.value })}
@@ -306,13 +298,13 @@ const Tabelas = () => {
           )}
 
           {activeTable === 'paymentMethods' && (
-            <div className="form__group">
-              <label className="form__label" htmlFor="tabela-cashbox">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="tabela-cashbox">
                 Caixa vinculado
               </label>
               <select
                 id="tabela-cashbox"
-                className="form__input"
+                className="modal__input"
                 value={form.cashboxId}
                 onChange={(event) => updateForm({ cashboxId: event.target.value })}
               >
@@ -326,19 +318,19 @@ const Tabelas = () => {
             </div>
           )}
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="tabela-description">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="tabela-description">
               Observacoes
             </label>
             <textarea
               id="tabela-description"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.description}
               onChange={(event) => updateForm({ description: event.target.value })}
             />
           </div>
 
-          <label className="toggle form__checkbox">
+          <label className="toggle modal__checkbox">
             <input
               type="checkbox"
               checked={form.active}
@@ -350,7 +342,7 @@ const Tabelas = () => {
             <span className="toggle__label">Item ativo</span>
           </label>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
     </Page>

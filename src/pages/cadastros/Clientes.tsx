@@ -196,6 +196,8 @@ const Clientes = () => {
     payload.clientes = payload.clientes.filter((client) => client.id !== deleteId)
     dataService.replaceAll(payload)
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Cliente excluido.')
     setDeleteId(null)
   }
@@ -220,24 +222,38 @@ const Clientes = () => {
         title={editingId ? 'Editar cliente' : 'Novo cliente'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={clientFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Atualizar' : 'Salvar cliente'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={clientFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar' : 'Salvar cliente'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={clientFormId} className="form" onSubmit={handleSubmit}>
-            <div className="form__group">
-              <label className="form__label" htmlFor="client-name">
+        <form id={clientFormId} className="modal__form" onSubmit={handleSubmit}>
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="client-name">
                 Nome
               </label>
               <input
                 id="client-name"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.name}
                 onChange={(event) => updateForm({ name: event.target.value })}
@@ -245,27 +261,27 @@ const Clientes = () => {
               />
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="client-document">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="client-document">
                   CPF/CNPJ
                 </label>
                 <input
                   id="client-document"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.document}
                   onChange={(event) => updateForm({ document: event.target.value })}
                   placeholder="Documento"
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="client-city">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="client-city">
                   Cidade
                 </label>
                 <input
                   id="client-city"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.city}
                   onChange={(event) => updateForm({ city: event.target.value })}
@@ -274,27 +290,27 @@ const Clientes = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="client-email">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="client-email">
                   Email
                 </label>
                 <input
                   id="client-email"
-                  className="form__input"
+                  className="modal__input"
                   type="email"
                   value={form.email}
                   onChange={(event) => updateForm({ email: event.target.value })}
                   placeholder="email@cliente.com"
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="client-phone">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="client-phone">
                   Telefone
                 </label>
                 <input
                   id="client-phone"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.phone}
                   onChange={(event) => updateForm({ phone: event.target.value })}
@@ -303,41 +319,41 @@ const Clientes = () => {
               </div>
             </div>
 
-            <div className="form__section">
-              <div className="form__actions">
+            <div className="modal__section">
+              <div className="modal__form-actions">
                 <strong>Obras do cliente</strong>
                 <button className="button button--ghost" type="button" onClick={addObra}>
                   Adicionar obra
                 </button>
               </div>
               {form.obras.length === 0 && (
-                <p className="form__help">Nenhuma obra cadastrada para este cliente.</p>
+                <p className="modal__help">Nenhuma obra cadastrada para este cliente.</p>
               )}
             </div>
 
             {form.obras.map((obra, index) => (
-              <div key={obra.id} className="form__section">
-                <div className="form__row">
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`client-work-name-${index}`}>
+              <div key={obra.id} className="modal__section">
+                <div className="modal__row">
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`client-work-name-${index}`}>
                       Nome da obra
                     </label>
                     <input
                       id={`client-work-name-${index}`}
-                      className="form__input"
+                      className="modal__input"
                       type="text"
                       value={obra.name}
                       onChange={(event) => updateObra(index, { name: event.target.value })}
                       placeholder="Residencial, lote 12, etc."
                     />
                   </div>
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`client-work-city-${index}`}>
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`client-work-city-${index}`}>
                       Cidade
                     </label>
                     <input
                       id={`client-work-city-${index}`}
-                      className="form__input"
+                      className="modal__input"
                       type="text"
                       value={obra.city}
                       onChange={(event) => updateObra(index, { city: event.target.value })}
@@ -346,13 +362,13 @@ const Clientes = () => {
                   </div>
                 </div>
 
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`client-work-address-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`client-work-address-${index}`}>
                     Endereco da obra
                   </label>
                   <input
                     id={`client-work-address-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     type="text"
                     value={obra.address}
                     onChange={(event) => updateObra(index, { address: event.target.value })}
@@ -360,20 +376,20 @@ const Clientes = () => {
                   />
                 </div>
 
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`client-work-notes-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`client-work-notes-${index}`}>
                     Observacoes da obra
                   </label>
                   <textarea
                     id={`client-work-notes-${index}`}
-                    className="form__input form__textarea"
+                    className="modal__input modal__textarea"
                     value={obra.notes}
                     onChange={(event) => updateObra(index, { notes: event.target.value })}
                     placeholder="Detalhes de acesso, ponto de referencia, etc."
                   />
                 </div>
 
-                <label className="toggle form__checkbox">
+                <label className="toggle modal__checkbox">
                   <input
                     type="checkbox"
                     checked={obra.active}
@@ -385,7 +401,7 @@ const Clientes = () => {
                   <span className="toggle__label">Obra ativa</span>
                 </label>
 
-                <div className="form__actions">
+                <div className="modal__form-actions">
                   <button
                     className="button button--ghost"
                     type="button"
@@ -397,20 +413,20 @@ const Clientes = () => {
               </div>
             ))}
 
-            <div className="form__group">
-              <label className="form__label" htmlFor="client-notes">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="client-notes">
                 Observacoes
               </label>
               <textarea
                 id="client-notes"
-                className="form__input form__textarea"
+                className="modal__input modal__textarea"
                 value={form.notes}
                 onChange={(event) => updateForm({ notes: event.target.value })}
                 placeholder="Preferencias, prazos, etc."
               />
             </div>
 
-            <label className="toggle form__checkbox">
+            <label className="toggle modal__checkbox">
               <input
                 type="checkbox"
                 checked={form.active}
@@ -422,22 +438,22 @@ const Clientes = () => {
               <span className="toggle__label">Cliente ativo</span>
             </label>
 
-            {status && <p className="form__status">{status}</p>}
+            {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
       <div className="clientes__layout">
-        <section className="clientes__panel">
-          <div className="clientes__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Clientes cadastrados</h2>
               <p>Base pronta para orcamentos e pedidos.</p>
             </div>
-            <span className="clientes__panel-meta">{clients.length} registros</span>
+            <span className="panel__meta">{clients.length} registros</span>
           </div>
-          <div className="table-card clientes__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Cliente</th>
                   <th>Documento</th>
@@ -445,42 +461,47 @@ const Clientes = () => {
                   <th>Telefone</th>
                   <th>Cidade</th>
                   <th>Obras</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {clients.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="table__empty">
+                    <td colSpan={7} className="table__empty">
                       Nenhum cliente cadastrado ainda.
                     </td>
                   </tr>
                 )}
                 {clients.map((client) => (
                   <tr key={client.id}>
-                    <td>{client.name}</td>
-                    <td>{client.document ?? '-'}</td>
-                    <td>{client.email ?? '-'}</td>
-                    <td>{client.phone ?? '-'}</td>
-                    <td>{client.city ?? '-'}</td>
-                    <td>{client.obras?.length ?? 0}</td>
-                    <td>
-                      <span className={`badge ${client.active ? 'badge--aprovado' : 'badge--rascunho'}`}>
-                        {client.active ? 'Ativo' : 'Inativo'}
-                      </span>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{client.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {client.phone ?? '-'}
+                        </span>
+                      </div>
                     </td>
-                    <td className="table__actions">
-                      <ActionMenu
-                        items={[
-                          { label: 'Editar', onClick: () => handleEdit(client) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteId(client.id),
-                            variant: 'danger',
-                          },
-                        ]}
-                      />
+                    <td className="table__cell--mobile-hide">{client.document ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{client.email ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{client.phone ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{client.city ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{client.obras?.length ?? 0}</td>
+                    <td className="table__actions table__actions--end">
+                      <div className="table__end">
+                        <div className="table__status">
+                          <span
+                            className={`badge ${client.active ? 'badge--aprovado' : 'badge--rascunho'}`}
+                          >
+                            {client.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEdit(client) },
+                          ]}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}

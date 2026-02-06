@@ -151,6 +151,8 @@ const EstoqueFormas = () => {
     payload.moldes = payload.moldes.filter((mold) => mold.id !== deleteId)
     dataService.replaceAll(payload)
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Forma excluida.')
     setDeleteId(null)
   }
@@ -179,43 +181,43 @@ const EstoqueFormas = () => {
       />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="moldes__summary summary-card">
-        <article className="moldes__stat">
-          <span className="moldes__stat-label">Formas cadastradas</span>
-          <strong className="moldes__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Formas cadastradas</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="moldes__stat">
-          <span className="moldes__stat-label">Estoque total</span>
-          <strong className="moldes__stat-value">{summary.stock}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Estoque total</span>
+          <strong className="summary__value">{summary.stock}</strong>
         </article>
-        <article className="moldes__stat">
-          <span className="moldes__stat-label">Baixo</span>
-          <strong className="moldes__stat-value">{summary.low}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Baixo</span>
+          <strong className="summary__value">{summary.low}</strong>
         </article>
-        <article className="moldes__stat">
-          <span className="moldes__stat-label">Sem estoque</span>
-          <strong className="moldes__stat-value">{summary.out}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Sem estoque</span>
+          <strong className="summary__value">{summary.out}</strong>
         </article>
       </div>
 
       <div className="moldes__layout">
-        <section className="moldes__panel">
-          <div className="moldes__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Formas cadastradas</h2>
               <p>Dimensoes e quantidade disponivel.</p>
             </div>
-            <span className="moldes__panel-meta">{molds.length} registros</span>
+            <span className="panel__meta">{molds.length} registros</span>
           </div>
-          <div className="table-card moldes__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Forma</th>
                   <th>Codigo</th>
                   <th>Medidas (C x L x A)</th>
                   <th>Estoque</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Editar</th>
                 </tr>
               </thead>
               <tbody>
@@ -228,19 +230,21 @@ const EstoqueFormas = () => {
                 )}
                 {molds.map((mold) => (
                   <tr key={mold.id}>
-                    <td>{mold.name}</td>
-                    <td>{mold.code ?? '-'}</td>
-                    <td>{formatDimensions(mold)}</td>
-                    <td>{mold.stock ?? 0}</td>
-                    <td className="table__actions">
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{mold.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          Estoque: {mold.stock ?? 0}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">{mold.code ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">{formatDimensions(mold)}</td>
+                    <td className="table__cell--mobile-hide">{mold.stock ?? 0}</td>
+                    <td className="table__actions table__actions--end">
                       <ActionMenu
                         items={[
                           { label: 'Editar', onClick: () => handleEdit(mold) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteId(mold.id),
-                            variant: 'danger',
-                          },
                         ]}
                       />
                     </td>
@@ -258,24 +262,38 @@ const EstoqueFormas = () => {
         title={editingId ? 'Editar forma' : 'Nova forma'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={moldFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Atualizar' : 'Salvar forma'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={moldFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar' : 'Salvar forma'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={moldFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="mold-name">
+        <form id={moldFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="mold-name">
               Nome
             </label>
             <input
               id="mold-name"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.name}
               onChange={(event) => updateForm({ name: event.target.value })}
@@ -283,27 +301,27 @@ const EstoqueFormas = () => {
             />
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="mold-code">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="mold-code">
                 Codigo
               </label>
               <input
                 id="mold-code"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.code}
                 onChange={(event) => updateForm({ code: event.target.value })}
                 placeholder="Opcional"
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="mold-stock">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="mold-stock">
                 Quantidade
               </label>
               <input
                 id="mold-stock"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="1"
@@ -313,14 +331,14 @@ const EstoqueFormas = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="mold-length">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="mold-length">
                 Comprimento
               </label>
               <input
                 id="mold-length"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -328,13 +346,13 @@ const EstoqueFormas = () => {
                 onChange={(event) => updateForm({ length: Number(event.target.value) })}
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="mold-width">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="mold-width">
                 Largura
               </label>
               <input
                 id="mold-width"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -342,13 +360,13 @@ const EstoqueFormas = () => {
                 onChange={(event) => updateForm({ width: Number(event.target.value) })}
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="mold-height">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="mold-height">
                 Altura
               </label>
               <input
                 id="mold-height"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -358,20 +376,20 @@ const EstoqueFormas = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="mold-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="mold-notes">
               Observacoes
             </label>
             <textarea
               id="mold-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.notes}
               onChange={(event) => updateForm({ notes: event.target.value })}
               placeholder="Detalhes sobre manutencao ou uso"
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

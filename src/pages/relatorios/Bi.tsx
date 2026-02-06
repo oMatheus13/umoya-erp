@@ -146,8 +146,8 @@ const Bi = () => {
     <Page className="bi">
       <PageHeader
         actions={
-          <div className="bi__filters">
-            <div className="bi__filter">
+          <div className="filters">
+            <div className="form__group">
               <label className="form__label" htmlFor="bi-range">
                 Periodo
               </label>
@@ -165,7 +165,7 @@ const Bi = () => {
                 <option value="all">Tudo</option>
               </select>
             </div>
-            <div className="bi__filter">
+            <div className="form__group">
               <label className="form__label" htmlFor="bi-status">
                 Status
               </label>
@@ -186,64 +186,64 @@ const Bi = () => {
         }
       />
 
-      <div className="bi__cards summary-card">
-        <article className="card">
-          <span className="card__label">Receita</span>
-          <span className="card__value">{formatCurrency(revenue)}</span>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Receita</span>
+          <span className="summary__value">{formatCurrency(revenue)}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Despesas</span>
-          <span className="card__value">{formatCurrency(expenses)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Despesas</span>
+          <span className="summary__value">{formatCurrency(expenses)}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Resultado</span>
-          <span className="card__value">{formatCurrency(net)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Resultado</span>
+          <span className="summary__value">{formatCurrency(net)}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Ticket medio</span>
-          <span className="card__value">{formatCurrency(averageTicket)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Ticket medio</span>
+          <span className="summary__value">{formatCurrency(averageTicket)}</span>
         </article>
       </div>
 
-      <div className="bi__grid">
+      <div className="grid grid--two">
         <section className="panel">
           <h2 className="panel__title">Receita por mes</h2>
-          <div className="bi__chart">
+          <div className="chart chart--bars">
             {monthlyRevenue.months.map((month) => (
-              <div key={month.label} className="bi__bar">
+              <div key={month.label} className="chart__bar">
                 <div
-                  className="bi__bar-fill"
+                  className="chart__bar-fill"
                   style={{ height: `${(month.total / monthlyRevenue.maxValue) * 100}%` }}
                 />
-                <span className="bi__bar-label">{month.label}</span>
+                <span className="chart__bar-label">{month.label}</span>
               </div>
             ))}
           </div>
         </section>
         <section className="panel">
           <h2 className="panel__title">Pedidos por status</h2>
-          <div className="bi__rows">
+          <div className="chart chart--rows">
             {Object.entries(statusCounts).map(([key, value]) => (
-              <div key={key} className="bi__row">
-                <span className="bi__row-label">{key.replace('_', ' ')}</span>
-                <div className="bi__row-bar">
+              <div key={key} className="chart__row">
+                <span className="chart__row-label">{key.replace('_', ' ')}</span>
+                <div className="chart__row-bar">
                   <span
-                    className="bi__row-fill"
+                    className="chart__row-fill"
                     style={{ width: `${(value / maxStatus) * 100}%` }}
                   />
                 </div>
-                <strong className="bi__row-value">{value}</strong>
+                <strong className="chart__row-value">{value}</strong>
               </div>
             ))}
           </div>
         </section>
       </div>
 
-      <div className="bi__tables">
+      <div className="grid grid--two">
         <section className="panel">
           <h2 className="panel__title">Top produtos</h2>
-          <div className="table-card bi__table">
-            <table className="table">
+          <div className="table-card">
+            <table className="table table--compact">
               <thead>
                 <tr>
                   <th>Produto</th>
@@ -270,8 +270,8 @@ const Bi = () => {
         </section>
         <section className="panel">
           <h2 className="panel__title">Top clientes</h2>
-          <div className="table-card bi__table">
-            <table className="table">
+          <div className="table-card">
+            <table className="table table--compact">
               <thead>
                 <tr>
                   <th>Cliente</th>

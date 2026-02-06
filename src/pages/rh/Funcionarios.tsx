@@ -140,6 +140,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     () => [...data.usuarios].sort((a, b) => a.name.localeCompare(b.name)),
     [data.usuarios],
   )
+  const linkedAccessUser = useMemo(
+    () =>
+      editingEmployeeId
+        ? users.find((user) => user.employeeId === editingEmployeeId) ?? null
+        : null,
+    [editingEmployeeId, users],
+  )
 
   const isAdmin = currentUser?.role === 'admin'
   const hasEmployeeAccess = editingEmployeeId
@@ -691,6 +698,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     payload.usuarios = payload.usuarios.filter((user) => user.employeeId !== deleteEmployeeId)
     dataService.replaceAll(payload)
     refresh()
+    setIsEmployeeModalOpen(false)
+    resetEmployeeForm()
     if (linkedUsers.length > 0) {
       const errors: string[] = []
       for (const user of linkedUsers) {
@@ -718,6 +727,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     payload.cargos = payload.cargos.filter((item) => item.id !== deleteRoleId)
     dataService.replaceAll(payload)
     refresh()
+    setIsRoleModalOpen(false)
+    resetRoleForm()
     setStatus('Cargo excluido.')
     setDeleteRoleId(null)
   }
@@ -730,6 +741,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     payload.niveis = payload.niveis.filter((item) => item.id !== deleteLevelId)
     dataService.replaceAll(payload)
     refresh()
+    setIsLevelModalOpen(false)
+    resetLevelForm()
     setStatus('Nivel excluido.')
     setDeleteLevelId(null)
   }
@@ -746,6 +759,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     payload.apontamentos = payload.apontamentos.filter((item) => item.id !== deleteLogId)
     dataService.replaceAll(payload)
     refresh()
+    setIsLogModalOpen(false)
+    resetLogForm()
     setLogStatus('Apontamento excluido.')
     setDeleteLogId(null)
   }
@@ -856,24 +871,24 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       {employeeStatus && <p className="form__status">{employeeStatus}</p>}
       {logStatus && <p className="form__status">{logStatus}</p>}
 
-      <div className="funcionarios__cards summary-card">
-        <article className="card">
-          <span className="card__label">Funcionarios ativos</span>
-          <span className="card__value">
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Funcionarios ativos</span>
+          <span className="summary__value">
             {employees.filter((employee) => employee.active !== false).length}
           </span>
         </article>
-        <article className="card">
-          <span className="card__label">Producao do mes</span>
-          <span className="card__value">{monthQuantity}</span>
+        <article className="summary__item">
+          <span className="summary__label">Producao do mes</span>
+          <span className="summary__value">{monthQuantity}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Pagamento do mes</span>
-          <span className="card__value">{formatCurrency(monthPay)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Pagamento do mes</span>
+          <span className="summary__value">{formatCurrency(monthPay)}</span>
         </article>
       </div>
 
-      <div className="funcionarios__grid">
+      <div className="grid grid--two">
         <section className="panel">
           <h2 className="panel__title">Ranking do mes</h2>
           <div className="list">
@@ -910,61 +925,71 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         </section>
       </div>
 
-      <div className="funcionarios__layout">
-        <div className="funcionarios__panel">
-          <div className="funcionarios__panel-header">
+      <div className="grid grid--two">
+        <div className="panel">
+          <div className="panel__header">
             <div>
               <h2>Funcionarios</h2>
               <p>Equipe cadastrada e status ativo.</p>
             </div>
-            <span className="funcionarios__panel-meta">{employees.length} registros</span>
+            <span className="panel__meta">{employees.length} registros</span>
           </div>
-          <div className="table-card funcionarios__table">
-            <table className="table">
-              <thead>
+          <div className="table-card">
+            <table className="table table--compact">
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Nome</th>
                   <th>CPF</th>
                   <th>Cargo</th>
                   <th>Nivel</th>
-                  <th>Ativo</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {employees.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="table__empty">
+                    <td colSpan={5} className="table__empty">
                       Nenhum funcionario cadastrado ainda.
                     </td>
                   </tr>
                 )}
                 {employees.map((employee) => (
                   <tr key={employee.id}>
-                    <td>{employee.name}</td>
-                    <td>{employee.cpf ?? '-'}</td>
-                    <td>{getRole(employee.roleId)?.name ?? '-'}</td>
-                    <td>{getLevel(employee.levelId)?.name ?? '-'}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          employee.active ? 'badge--aprovado' : 'badge--rascunho'
-                        }`}
-                      >
-                        {employee.active ? 'Ativo' : 'Inativo'}
-                      </span>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{employee.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {getRole(employee.roleId)?.name ?? '-'}
+                        </span>
+                        <span className="table__sub table__sub--mobile">
+                          {getLevel(employee.levelId)?.name ?? '-'}
+                        </span>
+                      </div>
                     </td>
-                    <td className="table__actions">
-                      <ActionMenu
-                        items={[
-                          { label: 'Editar', onClick: () => handleEditEmployee(employee) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteEmployeeId(employee.id),
-                            variant: 'danger',
-                          },
-                        ]}
-                      />
+                    <td className="table__cell--mobile-hide">{employee.cpf ?? '-'}</td>
+                    <td className="table__cell--mobile-hide">
+                      {getRole(employee.roleId)?.name ?? '-'}
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {getLevel(employee.levelId)?.name ?? '-'}
+                    </td>
+                    <td className="table__actions table__actions--end">
+                      <div className="table__end">
+                        <div className="table__status">
+                          <span
+                            className={`badge ${
+                              employee.active ? 'badge--aprovado' : 'badge--rascunho'
+                            }`}
+                          >
+                            {employee.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEditEmployee(employee) },
+                          ]}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -973,24 +998,24 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
           </div>
         </div>
 
-        <div className="funcionarios__panel">
-          <div className="funcionarios__panel-header">
+        <div className="panel">
+          <div className="panel__header">
             <div>
               <h2>Apontamentos</h2>
               <p>Registros de producao e pagamentos.</p>
             </div>
-            <span className="funcionarios__panel-meta">{logs.length} registros</span>
+            <span className="panel__meta">{logs.length} registros</span>
           </div>
-          <div className="table-card funcionarios__table">
-            <table className="table">
-              <thead>
+          <div className="table-card">
+            <table className="table table--compact">
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
-                  <th>Data</th>
                   <th>Funcionario</th>
+                  <th>Data</th>
                   <th>Produto</th>
                   <th>Quantidade</th>
                   <th>Pagamento</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Editar</th>
                 </tr>
               </thead>
               <tbody>
@@ -1003,23 +1028,32 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 )}
                 {logs.map((log) => (
                   <tr key={log.id}>
-                    <td>{formatDateShort(log.workDate)}</td>
-                    <td>{getEmployee(log.employeeId)?.name ?? 'Funcionario'}</td>
-                    <td>{getProduct(log.productId)?.name ?? 'Produto'}</td>
-                    <td>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{getEmployee(log.employeeId)?.name ?? 'Funcionario'}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {formatCurrency(log.totalPay)}
+                        </span>
+                        <span className="table__sub table__sub--mobile">
+                          {formatDateShort(log.workDate)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {formatDateShort(log.workDate)}
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {getProduct(log.productId)?.name ?? 'Produto'}
+                    </td>
+                    <td className="table__cell--mobile-hide">
                       {log.quantity}
                       {getProduct(log.productId)?.unit ? ` ${getProduct(log.productId)?.unit}` : ''}
                     </td>
-                    <td>{formatCurrency(log.totalPay)}</td>
-                    <td className="table__actions">
+                    <td className="table__cell--mobile-hide">{formatCurrency(log.totalPay)}</td>
+                    <td className="table__actions table__actions--end">
                       <ActionMenu
                         items={[
                           { label: 'Editar', onClick: () => handleEditLog(log) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteLogId(log.id),
-                            variant: 'danger',
-                          },
                         ]}
                       />
                     </td>
@@ -1031,22 +1065,22 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         </div>
       </div>
 
-      <div className="funcionarios__grid">
-        <section className="funcionarios__panel">
-          <div className="funcionarios__panel-header">
+      <div className="grid grid--two">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Cargos</h2>
               <p>Multiplicadores aplicados a mao de obra.</p>
             </div>
-            <span className="funcionarios__panel-meta">{roles.length} registros</span>
+            <span className="panel__meta">{roles.length} registros</span>
           </div>
-          <div className="table-card funcionarios__table">
-            <table className="table">
-              <thead>
+          <div className="table-card">
+            <table className="table table--compact">
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Nome</th>
                   <th>Multiplicador</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Editar</th>
                 </tr>
               </thead>
               <tbody>
@@ -1059,17 +1093,19 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 )}
                 {roles.map((role) => (
                   <tr key={role.id}>
-                    <td>{role.name}</td>
-                    <td>{role.multiplier.toFixed(2)}x</td>
-                    <td className="table__actions">
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{role.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {role.multiplier.toFixed(2)}x
+                        </span>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">{role.multiplier.toFixed(2)}x</td>
+                    <td className="table__actions table__actions--end">
                       <ActionMenu
                         items={[
                           { label: 'Editar', onClick: () => handleEditRole(role) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteRoleId(role.id),
-                            variant: 'danger',
-                          },
                         ]}
                       />
                     </td>
@@ -1080,21 +1116,21 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
           </div>
         </section>
 
-        <section className="funcionarios__panel">
-          <div className="funcionarios__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Niveis</h2>
               <p>Ajuste por experiencia e desempenho.</p>
             </div>
-            <span className="funcionarios__panel-meta">{levels.length} registros</span>
+            <span className="panel__meta">{levels.length} registros</span>
           </div>
-          <div className="table-card funcionarios__table">
-            <table className="table">
-              <thead>
+          <div className="table-card">
+            <table className="table table--compact">
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Nome</th>
                   <th>Multiplicador</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Editar</th>
                 </tr>
               </thead>
               <tbody>
@@ -1107,17 +1143,19 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 )}
                 {levels.map((level) => (
                   <tr key={level.id}>
-                    <td>{level.name}</td>
-                    <td>{level.multiplier.toFixed(2)}x</td>
-                    <td className="table__actions">
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{level.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {level.multiplier.toFixed(2)}x
+                        </span>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">{level.multiplier.toFixed(2)}x</td>
+                    <td className="table__actions table__actions--end">
                       <ActionMenu
                         items={[
                           { label: 'Editar', onClick: () => handleEditLevel(level) },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteLevelId(level.id),
-                            variant: 'danger',
-                          },
                         ]}
                       />
                     </td>
@@ -1129,80 +1167,93 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         </section>
       </div>
 
-      <div className="funcionarios__grid">
-        <section className="funcionarios__panel">
-          <div className="funcionarios__panel-header">
+      <div className="grid grid--two">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Contas de acesso</h2>
               <p>Perfis vinculados aos funcionarios.</p>
             </div>
-            <span className="funcionarios__panel-meta">{users.length} registros</span>
+            <span className="panel__meta">{users.length} registros</span>
           </div>
           {accessStatus && <p className="form__status">{accessStatus}</p>}
-          <div className="table-card funcionarios__table">
-            <table className="table">
-              <thead>
+          <div className="table-card">
+            <table className="table table--compact">
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Nome</th>
                   <th>Email</th>
                   <th>CPF</th>
                   <th>Perfil</th>
                   <th>Funcionario</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="table__empty">
+                    <td colSpan={6} className="table__empty">
                       Nenhuma conta cadastrada ainda.
                     </td>
                   </tr>
                 )}
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.name}</td>
-                    <td>{user.email}</td>
-                    <td>{user.cpf ?? '-'}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          user.role === 'admin' ? 'badge--aprovado' : 'badge--rascunho'
-                        }`}
-                      >
-                        {user.role === 'admin' ? 'Admin' : 'Funcionario'}
-                      </span>
-                    </td>
-                    <td>{getEmployeeName(user.employeeId)}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          user.active === false ? 'badge--rascunho' : 'badge--aprovado'
-                        }`}
-                      >
-                        {user.active === false ? 'Inativo' : 'Ativo'}
-                      </span>
-                    </td>
-                    <td className="table__actions">
-                      <ActionMenu
-                        items={[
-                          {
-                            label: user.active === false ? 'Ativar' : 'Desativar',
-                            onClick: () => setToggleUserId(user.id),
-                            disabled: !isAdmin,
-                          },
-                          {
-                            label: 'Excluir acesso',
-                            onClick: () => setDeleteUserId(user.id),
-                            variant: 'danger',
-                            disabled: !isAdmin,
-                          },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {users.map((user) => {
+                  const employeeName = getEmployeeName(user.employeeId)
+                  const displayEmployeeName = employeeName === '-' ? user.name : employeeName
+                  const roleLabel = user.role === 'admin' ? 'Admin' : 'Funcionario'
+
+                  return (
+                    <tr key={user.id}>
+                      <td className="table__cell--truncate">
+                        <div className="table__stack">
+                          <strong className="table__cell--mobile-hide">{user.name}</strong>
+                          <strong className="table__sub--mobile">{displayEmployeeName}</strong>
+                          <span className="table__sub table__sub--mobile">{roleLabel}</span>
+                        </div>
+                      </td>
+                      <td className="table__cell--mobile-hide">{user.email}</td>
+                      <td className="table__cell--mobile-hide">{user.cpf ?? '-'}</td>
+                      <td className="table__cell--mobile-hide">
+                        <span
+                          className={`badge ${
+                            user.role === 'admin' ? 'badge--aprovado' : 'badge--rascunho'
+                          }`}
+                        >
+                          {roleLabel}
+                        </span>
+                      </td>
+                      <td className="table__cell--mobile-hide">{getEmployeeName(user.employeeId)}</td>
+                      <td className="table__actions table__actions--end">
+                        <div className="table__end">
+                          <div className="table__status">
+                            <span
+                              className={`badge ${
+                                user.active === false ? 'badge--rascunho' : 'badge--aprovado'
+                              }`}
+                            >
+                              {user.active === false ? 'Inativo' : 'Ativo'}
+                            </span>
+                          </div>
+                          <ActionMenu
+                            items={[
+                              {
+                                label: 'Editar',
+                                onClick: () => {
+                                  const employee = getEmployee(user.employeeId)
+                                  if (employee) {
+                                    handleEditEmployee(employee)
+                                  } else {
+                                    setAccessStatus('Funcionario nao encontrado.')
+                                  }
+                                },
+                              },
+                            ]}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -1216,24 +1267,64 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         title={editingEmployeeId ? 'Editar funcionario' : 'Novo funcionario'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={employeeFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingEmployeeId ? 'Atualizar' : 'Salvar funcionario'}
-            </span>
-          </button>
+          <>
+            {linkedAccessUser && isAdmin && (
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => setToggleUserId(linkedAccessUser.id)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  {linkedAccessUser.active === false ? 'toggle_on' : 'toggle_off'}
+                </span>
+                <span className="modal__action-label">
+                  {linkedAccessUser.active === false ? 'Reativar acesso' : 'Desativar acesso'}
+                </span>
+              </button>
+            )}
+            {linkedAccessUser && isAdmin && (
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => setDeleteUserId(linkedAccessUser.id)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  person_remove
+                </span>
+                <span className="modal__action-label">Excluir acesso</span>
+              </button>
+            )}
+            {editingEmployeeId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteEmployeeId(editingEmployeeId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={employeeFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingEmployeeId ? 'Atualizar' : 'Salvar funcionario'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={employeeFormId} className="form" onSubmit={handleEmployeeSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="employee-name">
+        <form id={employeeFormId} className="modal__form" onSubmit={handleEmployeeSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="employee-name">
               Nome
             </label>
             <input
               id="employee-name"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={employeeForm.name}
               onChange={(event) => updateEmployeeForm({ name: event.target.value })}
@@ -1241,14 +1332,14 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             />
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="employee-role">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="employee-role">
                 Cargo
               </label>
               <select
                 id="employee-role"
-                className="form__input"
+                className="modal__input"
                 value={employeeForm.roleId}
                 onChange={(event) => updateEmployeeForm({ roleId: event.target.value })}
               >
@@ -1260,13 +1351,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="employee-level">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="employee-level">
                 Nivel
               </label>
               <select
                 id="employee-level"
-                className="form__input"
+                className="modal__input"
                 value={employeeForm.levelId}
                 onChange={(event) => updateEmployeeForm({ levelId: event.target.value })}
               >
@@ -1280,14 +1371,14 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="employee-cpf">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="employee-cpf">
                 CPF
               </label>
               <input
                 id="employee-cpf"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 inputMode="numeric"
                 value={employeeForm.cpf}
@@ -1295,13 +1386,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 placeholder="000.000.000-00"
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="employee-hired">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="employee-hired">
                 Data de entrada
               </label>
               <input
                 id="employee-hired"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={employeeForm.hiredAt}
                 onChange={(event) => updateEmployeeForm({ hiredAt: event.target.value })}
@@ -1309,7 +1400,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           </div>
 
-          <label className="toggle form__checkbox">
+          <label className="toggle modal__checkbox">
             <input
               type="checkbox"
               checked={employeeForm.active}
@@ -1322,17 +1413,17 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
           </label>
 
           {isAdmin && (
-            <div className="form__section">
-              <div className="form__group">
-                <span className="form__label">Acesso ao sistema</span>
+            <div className="modal__section">
+              <div className="modal__group">
+                <span className="modal__label">Acesso ao sistema</span>
                 {!isSupabaseEnabled() ? (
-                  <p className="form__help">
+                  <p className="modal__help">
                     Configure o Supabase para criar contas de acesso.
                   </p>
                 ) : hasEmployeeAccess ? (
-                  <p className="form__help">Este funcionario ja possui acesso.</p>
+                  <p className="modal__help">Este funcionario ja possui acesso.</p>
                 ) : (
-                  <label className="toggle form__checkbox">
+                  <label className="toggle modal__checkbox">
                     <input
                       type="checkbox"
                       checked={createAccess}
@@ -1360,13 +1451,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
 
               {createAccess && canCreateAccess && !hasEmployeeAccess && (
                 <>
-                  <div className="form__group">
-                    <label className="form__label" htmlFor="employee-access-cpf">
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor="employee-access-cpf">
                       CPF de acesso
                     </label>
                     <input
                       id="employee-access-cpf"
-                      className="form__input"
+                      className="modal__input"
                       type="text"
                       inputMode="numeric"
                       value={accountForm.cpf}
@@ -1374,27 +1465,27 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                       placeholder="000.000.000-00"
                     />
                   </div>
-                  <div className="form__row">
-                    <div className="form__group">
-                      <label className="form__label" htmlFor="employee-access-email">
+                  <div className="modal__row">
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor="employee-access-email">
                         Email de acesso
                       </label>
                       <input
                         id="employee-access-email"
-                        className="form__input"
+                        className="modal__input"
                         type="email"
                         value={accountForm.email}
                         onChange={(event) => updateAccountForm({ email: event.target.value })}
                         placeholder="email@empresa.com (opcional)"
                       />
                     </div>
-                    <div className="form__group">
-                      <label className="form__label" htmlFor="employee-access-role">
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor="employee-access-role">
                         Perfil
                       </label>
                       <select
                         id="employee-access-role"
-                        className="form__input"
+                        className="modal__input"
                         value={accountForm.role}
                         onChange={(event) =>
                           updateAccountForm({
@@ -1407,27 +1498,27 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                       </select>
                     </div>
                   </div>
-                  <div className="form__row">
-                    <div className="form__group">
-                      <label className="form__label" htmlFor="employee-access-password">
+                  <div className="modal__row">
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor="employee-access-password">
                         Senha
                       </label>
                       <input
                         id="employee-access-password"
-                        className="form__input"
+                        className="modal__input"
                         type="password"
                         value={accountForm.password}
                         onChange={(event) => updateAccountForm({ password: event.target.value })}
                         placeholder="Minimo 6 caracteres"
                       />
                     </div>
-                    <div className="form__group">
-                      <label className="form__label" htmlFor="employee-access-confirm">
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor="employee-access-confirm">
                         Confirmar senha
                       </label>
                       <input
                         id="employee-access-confirm"
-                        className="form__input"
+                        className="modal__input"
                         type="password"
                         value={accountForm.confirm}
                         onChange={(event) => updateAccountForm({ confirm: event.target.value })}
@@ -1435,13 +1526,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                       />
                     </div>
                   </div>
-                  {accountStatus && <p className="form__status">{accountStatus}</p>}
+                  {accountStatus && <p className="modal__status">{accountStatus}</p>}
                 </>
               )}
             </div>
           )}
 
-          {employeeStatus && <p className="form__status">{employeeStatus}</p>}
+          {employeeStatus && <p className="modal__status">{employeeStatus}</p>}
         </form>
       </Modal>
 
@@ -1451,36 +1542,50 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         title={editingRoleId ? 'Editar cargo' : 'Novo cargo'}
         size="sm"
         actions={
-          <button className="button button--primary" type="submit" form={roleFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingRoleId ? 'Atualizar' : 'Salvar cargo'}
-            </span>
-          </button>
+          <>
+            {editingRoleId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteRoleId(editingRoleId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={roleFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingRoleId ? 'Atualizar' : 'Salvar cargo'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={roleFormId} className="form" onSubmit={handleRoleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="role-name">
+        <form id={roleFormId} className="modal__form" onSubmit={handleRoleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="role-name">
               Cargo
             </label>
             <input
               id="role-name"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={roleForm.name}
               onChange={(event) => updateRoleForm({ name: event.target.value })}
             />
           </div>
-          <div className="form__group">
-            <label className="form__label" htmlFor="role-multiplier">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="role-multiplier">
               Multiplicador
             </label>
             <input
               id="role-multiplier"
-              className="form__input"
+              className="modal__input"
               type="number"
               min="0.1"
               step="0.1"
@@ -1488,7 +1593,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               onChange={(event) => updateRoleForm({ multiplier: Number(event.target.value) })}
             />
           </div>
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
@@ -1498,36 +1603,50 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         title={editingLevelId ? 'Editar nivel' : 'Novo nivel'}
         size="sm"
         actions={
-          <button className="button button--primary" type="submit" form={levelFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingLevelId ? 'Atualizar' : 'Salvar nivel'}
-            </span>
-          </button>
+          <>
+            {editingLevelId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteLevelId(editingLevelId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={levelFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingLevelId ? 'Atualizar' : 'Salvar nivel'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={levelFormId} className="form" onSubmit={handleLevelSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="level-name">
+        <form id={levelFormId} className="modal__form" onSubmit={handleLevelSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="level-name">
               Nivel
             </label>
             <input
               id="level-name"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={levelForm.name}
               onChange={(event) => updateLevelForm({ name: event.target.value })}
             />
           </div>
-          <div className="form__group">
-            <label className="form__label" htmlFor="level-multiplier">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="level-multiplier">
               Multiplicador
             </label>
             <input
               id="level-multiplier"
-              className="form__input"
+              className="modal__input"
               type="number"
               min="0.1"
               step="0.1"
@@ -1535,7 +1654,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               onChange={(event) => updateLevelForm({ multiplier: Number(event.target.value) })}
             />
           </div>
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
@@ -1545,24 +1664,38 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
         title={editingLogId ? 'Editar apontamento' : 'Registrar producao'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={logFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingLogId ? 'Atualizar apontamento' : 'Registrar producao'}
-            </span>
-          </button>
+          <>
+            {editingLogId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteLogId(editingLogId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={logFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingLogId ? 'Atualizar apontamento' : 'Registrar producao'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={logFormId} className="form" onSubmit={handleLogSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="log-employee">
+        <form id={logFormId} className="modal__form" onSubmit={handleLogSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="log-employee">
               Funcionario
             </label>
             <select
               id="log-employee"
-              className="form__input"
+              className="modal__input"
               value={logForm.employeeId}
               onChange={(event) => updateLogForm({ employeeId: event.target.value })}
             >
@@ -1575,14 +1708,14 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </select>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="log-product">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="log-product">
                 Produto
               </label>
               <select
                 id="log-product"
-                className="form__input"
+                className="modal__input"
                 value={logForm.productId}
                 onChange={(event) => {
                   const productId = event.target.value
@@ -1602,13 +1735,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="log-variant">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="log-variant">
                 Variacao
               </label>
               <select
                 id="log-variant"
-                className="form__input"
+                className="modal__input"
                 value={logForm.variantId}
                 onChange={(event) => updateLogForm({ variantId: event.target.value })}
                 disabled={!logForm.productId}
@@ -1625,21 +1758,21 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="log-quantity">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="log-quantity">
                 Quantidade
               </label>
               <input
                 id="log-quantity"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="1"
                 value={logForm.quantity}
                 onChange={(event) => updateLogForm({ quantity: Number(event.target.value) })}
               />
               {selectedLogProduct && selectedLaborBasis === 'metro' && (
-                <span className="form__help">
+                <span className="modal__help">
                   Pagamento por metro.{' '}
                   {selectedLaborLength > 0
                     ? `Comprimento usado: ${selectedLaborLength}m por unidade.`
@@ -1647,13 +1780,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 </span>
               )}
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="log-date">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="log-date">
                 Data
               </label>
               <input
                 id="log-date"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={logForm.workDate}
                 onChange={(event) => updateLogForm({ workDate: event.target.value })}
@@ -1661,7 +1794,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           </div>
 
-          {logStatus && <p className="form__status">{logStatus}</p>}
+          {logStatus && <p className="modal__status">{logStatus}</p>}
         </form>
       </Modal>
 

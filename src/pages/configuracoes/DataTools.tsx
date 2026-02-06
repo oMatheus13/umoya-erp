@@ -24,51 +24,61 @@ const DataTools = () => {
     <Page className="data-tools">
       <PageHeader />
 
-      <div className="data-tools__grid">
-        <div className="data-tools__panel">
-          <h2>Resetar dados</h2>
-          <p>
-            Apaga cadastros e movimentacoes do ERP. Contas de acesso permanecem ativas.
-          </p>
-          <button
-            className="button button--danger"
-            type="button"
-            onClick={() => setIsResetOpen(true)}
-          >
-            Resetar tudo
-          </button>
-        </div>
-      </div>
+      <div className="grid grid--stack">
+        <section className="panel">
+          <div className="panel__header">
+            <div>
+              <h2 className="panel__title">Resetar dados</h2>
+              <p className="panel__subtitle">
+                Apaga cadastros e movimentacoes do ERP. Contas de acesso permanecem ativas.
+              </p>
+            </div>
+            <div className="panel__actions">
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setIsResetOpen(true)}
+              >
+                Resetar tudo
+              </button>
+            </div>
+          </div>
+        </section>
 
-      <div className="data-tools__panel data-tools__panel--wide">
-        <h2>Resumo atual</h2>
-        <div className="data-tools__stats">
-          <div>
-            <span>Produtos</span>
-            <strong>{data.produtos.length}</strong>
+        <section className="panel">
+          <div className="panel__header">
+            <div>
+              <h2 className="panel__title">Resumo atual</h2>
+            </div>
           </div>
-          <div>
-            <span>Clientes</span>
-            <strong>{data.clientes.length}</strong>
+          <div className="panel__items">
+            <div className="panel__item">
+              <span className="panel__item-label">Produtos</span>
+              <strong className="panel__item-value">{data.produtos.length}</strong>
+            </div>
+            <div className="panel__item">
+              <span className="panel__item-label">Clientes</span>
+              <strong className="panel__item-value">{data.clientes.length}</strong>
+            </div>
+            <div className="panel__item">
+              <span className="panel__item-label">Pedidos</span>
+              <strong className="panel__item-value">{data.pedidos.length}</strong>
+            </div>
+            <div className="panel__item">
+              <span className="panel__item-label">Financeiro</span>
+              <strong className="panel__item-value">{data.financeiro.length}</strong>
+            </div>
+            <div className="panel__item">
+              <span className="panel__item-label">Funcionarios</span>
+              <strong className="panel__item-value">{data.funcionarios.length}</strong>
+            </div>
+            <div className="panel__item">
+              <span className="panel__item-label">Usuarios</span>
+              <strong className="panel__item-value">{data.usuarios.length}</strong>
+            </div>
           </div>
-          <div>
-            <span>Pedidos</span>
-            <strong>{data.pedidos.length}</strong>
-          </div>
-          <div>
-            <span>Financeiro</span>
-            <strong>{data.financeiro.length}</strong>
-          </div>
-          <div>
-            <span>Funcionarios</span>
-            <strong>{data.funcionarios.length}</strong>
-          </div>
-          <div>
-            <span>Usuarios</span>
-            <strong>{data.usuarios.length}</strong>
-          </div>
-        </div>
-        {status && <p className="data-tools__status">{status}</p>}
+          {status && <p className="form__status">{status}</p>}
+        </section>
       </div>
       <ConfirmDialog
         open={isResetOpen}

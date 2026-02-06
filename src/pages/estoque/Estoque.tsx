@@ -64,42 +64,42 @@ const Estoque = () => {
     <Page className="estoque">
       <PageHeader />
 
-      <div className="estoque__summary summary-card">
-        <article className="estoque__stat">
-          <span className="estoque__stat-label">Itens em estoque</span>
-          <strong className="estoque__stat-value">{totalStock}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Itens em estoque</span>
+          <strong className="summary__value">{totalStock}</strong>
         </article>
-        <article className="estoque__stat">
-          <span className="estoque__stat-label">SKUs ativos</span>
-          <strong className="estoque__stat-value">{totalSkus}</strong>
+        <article className="summary__item">
+          <span className="summary__label">SKUs ativos</span>
+          <strong className="summary__value">{totalSkus}</strong>
         </article>
-        <article className="estoque__stat">
-          <span className="estoque__stat-label">Estoque critico</span>
-          <strong className="estoque__stat-value">{criticalItems.length}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Estoque critico</span>
+          <strong className="summary__value">{criticalItems.length}</strong>
         </article>
-        <article className="estoque__stat">
-          <span className="estoque__stat-label">Sem estoque</span>
-          <strong className="estoque__stat-value">{outOfStock.length}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Sem estoque</span>
+          <strong className="summary__value">{outOfStock.length}</strong>
         </article>
       </div>
 
-      <div className="estoque__grid">
-        <section className="estoque__panel">
-          <div className="estoque__panel-header">
+      <div className="grid grid--two">
+        <section className="panel">
+          <div className="panel__header">
             <div>
-              <h2 className="estoque__panel-title">Alertas de estoque</h2>
-              <p className="estoque__panel-subtitle">Itens que exigem reposicao</p>
+              <h2 className="panel__title">Alertas de estoque</h2>
+              <p className="panel__subtitle">Itens que exigem reposicao</p>
             </div>
           </div>
-          <div className="estoque__list">
+          <div className="list">
             {criticalItems.length === 0 && (
-              <div className="estoque__empty">Nenhum alerta de estoque ativo.</div>
+              <div className="list__empty">Nenhum alerta de estoque ativo.</div>
             )}
             {criticalItems.map((item) => (
-              <div key={`${item.productId}-${item.variantId}`} className="estoque__list-item">
+              <div key={`${item.productId}-${item.variantId}`} className="list__item">
                 <div>
                   <strong>{getLabel(item)}</strong>
-                  <span className="estoque__list-meta">{item.status}</span>
+                  <span className="list__meta">{item.status}</span>
                 </div>
                 <strong>{item.stock}</strong>
               </div>
@@ -107,17 +107,17 @@ const Estoque = () => {
           </div>
         </section>
 
-        <section className="estoque__panel">
-          <div className="estoque__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
-              <h2 className="estoque__panel-title">Maiores saldos</h2>
-              <p className="estoque__panel-subtitle">Produtos com maior quantidade</p>
+              <h2 className="panel__title">Maiores saldos</h2>
+              <p className="panel__subtitle">Produtos com maior quantidade</p>
             </div>
           </div>
-          <div className="estoque__list">
-            {topStock.length === 0 && <div className="estoque__empty">Nenhum item cadastrado.</div>}
+          <div className="list">
+            {topStock.length === 0 && <div className="list__empty">Nenhum item cadastrado.</div>}
             {topStock.map((item) => (
-              <div key={`${item.productId}-${item.variantId}`} className="estoque__list-item">
+              <div key={`${item.productId}-${item.variantId}`} className="list__item">
                 <span>{getLabel(item)}</span>
                 <strong>{item.stock}</strong>
               </div>
@@ -125,7 +125,6 @@ const Estoque = () => {
           </div>
         </section>
       </div>
-
     </Page>
   )
 }

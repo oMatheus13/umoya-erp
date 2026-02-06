@@ -128,6 +128,8 @@ const AuditoriaPage = ({ category }: AuditoriaPageProps) => {
     payload.auditoria = payload.auditoria.filter((item) => item.id !== deleteId)
     dataService.replaceAll(payload)
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Registro removido.')
     setDeleteId(null)
   }
@@ -149,30 +151,30 @@ const AuditoriaPage = ({ category }: AuditoriaPageProps) => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="auditoria__summary summary-card">
-        <article className="auditoria__stat">
-          <span className="auditoria__stat-label">Registros</span>
-          <strong className="auditoria__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Registros</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="auditoria__stat">
-          <span className="auditoria__stat-label">Ultima atualizacao</span>
-          <strong className="auditoria__stat-value">{summary.latest}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Ultima atualizacao</span>
+          <strong className="summary__value">{summary.latest}</strong>
         </article>
-        <article className="auditoria__stat">
-          <span className="auditoria__stat-label">Responsaveis</span>
-          <strong className="auditoria__stat-value">{summary.actors}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Responsaveis</span>
+          <strong className="summary__value">{summary.actors}</strong>
         </article>
       </div>
 
       <div className="table-card">
         <table className="table">
-          <thead>
+          <thead className="table__head table__head--mobile-hide">
             <tr>
               <th>Data</th>
               <th>Titulo</th>
               <th>Responsavel</th>
               <th>Detalhes</th>
-              <th className="table__actions">Acoes</th>
+              <th className="table__actions table__actions--end">Editar</th>
             </tr>
           </thead>
           <tbody>
@@ -185,15 +187,28 @@ const AuditoriaPage = ({ category }: AuditoriaPageProps) => {
             ) : (
               entries.map((entry) => (
                 <tr key={entry.id}>
-                  <td>{formatDateShort(entry.createdAt)}</td>
-                  <td>{entry.title}</td>
-                  <td>{entry.actorName ?? '-'}</td>
-                  <td>{entry.description ?? entry.metadata ?? '-'}</td>
-                  <td className="table__actions">
+                  <td className="table__cell--mobile-hide">
+                    {formatDateShort(entry.createdAt)}
+                  </td>
+                  <td className="table__cell--truncate">
+                    <div className="table__stack">
+                      <strong>{entry.title}</strong>
+                      <span className="table__sub table__sub--mobile">
+                        {entry.actorName ?? '-'}
+                      </span>
+                      <span className="table__sub table__sub--mobile">
+                        {formatDateShort(entry.createdAt)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="table__cell--mobile-hide">{entry.actorName ?? '-'}</td>
+                  <td className="table__cell--mobile-hide">
+                    {entry.description ?? entry.metadata ?? '-'}
+                  </td>
+                  <td className="table__actions table__actions--end">
                     <ActionMenu
                       items={[
                         { label: 'Editar', onClick: () => openModal(entry) },
-                        { label: 'Excluir', onClick: () => setDeleteId(entry.id) },
                       ]}
                     />
                   </td>
@@ -209,69 +224,83 @@ const AuditoriaPage = ({ category }: AuditoriaPageProps) => {
         title={editingId ? 'Editar registro' : 'Novo registro'}
         onClose={closeModal}
         actions={
-          <button className="button button--primary" type="submit" form={auditFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Salvar' : 'Registrar'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={auditFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Salvar' : 'Registrar'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={auditFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="audit-title">
+        <form id={auditFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="audit-title">
               Titulo
             </label>
             <input
               id="audit-title"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.title}
               onChange={(event) => updateForm({ title: event.target.value })}
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="audit-actor">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="audit-actor">
               Responsavel
             </label>
             <input
               id="audit-actor"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.actorName}
               onChange={(event) => updateForm({ actorName: event.target.value })}
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="audit-description">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="audit-description">
               Detalhes
             </label>
             <textarea
               id="audit-description"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.description}
               onChange={(event) => updateForm({ description: event.target.value })}
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="audit-metadata">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="audit-metadata">
               Observacoes internas
             </label>
             <input
               id="audit-metadata"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.metadata}
               onChange={(event) => updateForm({ metadata: event.target.value })}
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

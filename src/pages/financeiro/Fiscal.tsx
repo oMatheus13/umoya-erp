@@ -201,6 +201,8 @@ const Fiscal = () => {
       },
     })
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Nota fiscal removida.')
     setDeleteId(null)
   }
@@ -220,22 +222,22 @@ const Fiscal = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="fiscal__summary summary-card">
-        <article className="fiscal__stat">
-          <span className="fiscal__stat-label">Registros</span>
-          <strong className="fiscal__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Registros</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="fiscal__stat">
-          <span className="fiscal__stat-label">Pendentes</span>
-          <strong className="fiscal__stat-value">{summary.pending}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Pendentes</span>
+          <strong className="summary__value">{summary.pending}</strong>
         </article>
-        <article className="fiscal__stat">
-          <span className="fiscal__stat-label">Autorizadas</span>
-          <strong className="fiscal__stat-value">{summary.approved}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Autorizadas</span>
+          <strong className="summary__value">{summary.approved}</strong>
         </article>
-        <article className="fiscal__stat">
-          <span className="fiscal__stat-label">Canceladas</span>
-          <strong className="fiscal__stat-value">{summary.canceled}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Canceladas</span>
+          <strong className="summary__value">{summary.canceled}</strong>
         </article>
       </div>
 
@@ -249,15 +251,14 @@ const Fiscal = () => {
               <th>Cliente</th>
               <th>Numero</th>
               <th>Serie</th>
-              <th>Status</th>
               <th>XML</th>
-              <th className="table__actions">Acoes</th>
+              <th className="table__actions table__actions--end">Status / Editar</th>
             </tr>
           </thead>
           <tbody>
             {notes.length === 0 ? (
               <tr>
-                <td className="table__empty" colSpan={9}>
+                <td className="table__empty" colSpan={8}>
                   Nenhuma nota fiscal registrada.
                 </td>
               </tr>
@@ -270,19 +271,20 @@ const Fiscal = () => {
                   <td>{getClientName(note.clientId)}</td>
                   <td>{note.number ?? '-'}</td>
                   <td>{note.series ?? '-'}</td>
-                  <td>
-                    <span className={`badge badge--${note.status}`}>
-                      {statusLabels[note.status]}
-                    </span>
-                  </td>
                   <td>{note.xmlStored ? 'Sim' : 'Nao'}</td>
-                  <td className="table__actions">
-                    <ActionMenu
-                      items={[
-                        { label: 'Editar', onClick: () => handleEdit(note) },
-                        { label: 'Excluir', onClick: () => setDeleteId(note.id) },
-                      ]}
-                    />
+                  <td className="table__actions table__actions--end">
+                    <div className="table__end">
+                      <div className="table__status">
+                        <span className={`badge badge--${note.status}`}>
+                          {statusLabels[note.status]}
+                        </span>
+                      </div>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEdit(note) },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))
@@ -296,25 +298,39 @@ const Fiscal = () => {
         title={editingId ? 'Editar nota' : 'Nova nota'}
         onClose={closeModal}
         actions={
-          <button className="button button--primary" type="submit" form={fiscalFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Salvar' : 'Registrar'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={fiscalFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Salvar' : 'Registrar'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={fiscalFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="fiscal-type">
+        <form id={fiscalFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="fiscal-type">
                 Tipo de nota
               </label>
               <select
                 id="fiscal-type"
-                className="form__input"
+                className="modal__input"
                 value={form.type}
                 onChange={(event) =>
                   updateForm({ type: event.target.value as FiscalNoteType })
@@ -327,13 +343,13 @@ const Fiscal = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="fiscal-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="fiscal-status">
                 Status
               </label>
               <select
                 id="fiscal-status"
-                className="form__input"
+                className="modal__input"
                 value={form.status}
                 onChange={(event) =>
                   updateForm({ status: event.target.value as FiscalNoteStatus })
@@ -348,13 +364,13 @@ const Fiscal = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="fiscal-order">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="fiscal-order">
               Pedido vinculado
             </label>
             <select
               id="fiscal-order"
-              className="form__input"
+              className="modal__input"
               value={form.orderId}
               onChange={(event) => handleOrderChange(event.target.value)}
             >
@@ -368,13 +384,13 @@ const Fiscal = () => {
             </select>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="fiscal-client">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="fiscal-client">
               Cliente
             </label>
             <select
               id="fiscal-client"
-              className="form__input"
+              className="modal__input"
               value={form.clientId}
               onChange={(event) => updateForm({ clientId: event.target.value })}
             >
@@ -387,27 +403,27 @@ const Fiscal = () => {
             </select>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="fiscal-number">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="fiscal-number">
                 Numero
               </label>
               <input
                 id="fiscal-number"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.number}
                 onChange={(event) => updateForm({ number: event.target.value })}
                 placeholder="Numero da nota"
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="fiscal-series">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="fiscal-series">
                 Serie
               </label>
               <input
                 id="fiscal-series"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.series}
                 onChange={(event) => updateForm({ series: event.target.value })}
@@ -416,20 +432,20 @@ const Fiscal = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="fiscal-date">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="fiscal-date">
                 Data de emissao
               </label>
               <input
                 id="fiscal-date"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.issueDate}
                 onChange={(event) => updateForm({ issueDate: event.target.value })}
               />
             </div>
-            <label className="toggle form__checkbox">
+            <label className="toggle modal__checkbox">
               <input
                 type="checkbox"
                 checked={form.xmlStored}
@@ -442,19 +458,19 @@ const Fiscal = () => {
             </label>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="fiscal-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="fiscal-notes">
               Observacoes
             </label>
             <textarea
               id="fiscal-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.notes}
               onChange={(event) => updateForm({ notes: event.target.value })}
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

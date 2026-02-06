@@ -77,81 +77,87 @@ const RelatoriosProducao = () => {
     <Page className="relatorios">
       <PageHeader />
 
-      <div className="card-grid summary-card">
-        <article className="card">
-          <span className="card__label">Ordens</span>
-          <span className="card__value">{productionSummary.total}</span>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Ordens</span>
+          <span className="summary__value">{productionSummary.total}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Em producao</span>
-          <span className="card__value">{productionSummary.active}</span>
+        <article className="summary__item">
+          <span className="summary__label">Em producao</span>
+          <span className="summary__value">{productionSummary.active}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Finalizadas</span>
-          <span className="card__value">{productionSummary.done}</span>
+        <article className="summary__item">
+          <span className="summary__label">Finalizadas</span>
+          <span className="summary__value">{productionSummary.done}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Lotes ativos</span>
-          <span className="card__value">{lotsSummary.active}</span>
+        <article className="summary__item">
+          <span className="summary__label">Lotes ativos</span>
+          <span className="summary__value">{lotsSummary.active}</span>
         </article>
       </div>
 
-      <div className="grid">
-        <section className="panel">
-          <h2 className="panel__title">Producao por produto</h2>
-          <div className="table-card">
-            <table className="table">
-              <thead>
+      <section className="panel">
+        <h2 className="panel__title">Producao por produto</h2>
+        <div className="table-card">
+          <table className="table">
+            <thead className="table__head table__head--mobile-hide">
+              <tr>
+                <th>Produto</th>
+                <th>Unidade</th>
+                <th>Total</th>
+                <th>Em producao</th>
+                <th>Finalizadas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {productionByProduct.length === 0 ? (
                 <tr>
-                  <th>Produto</th>
-                  <th>Unidade</th>
-                  <th>Total</th>
-                  <th>Em producao</th>
-                  <th>Finalizadas</th>
+                  <td className="table__empty" colSpan={5}>
+                    Nenhuma ordem registrada.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {productionByProduct.length === 0 ? (
-                  <tr>
-                    <td className="table__empty" colSpan={5}>
-                      Nenhuma ordem registrada.
+              ) : (
+                productionByProduct.map((row) => (
+                  <tr key={row.productId}>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{row.name}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {row.total.toFixed(2)}
+                        </span>
+                      </div>
                     </td>
+                    <td className="table__cell--mobile-hide">{row.unitLabel}</td>
+                    <td className="table__cell--mobile-hide">{row.total.toFixed(2)}</td>
+                    <td className="table__cell--mobile-hide">{row.active.toFixed(2)}</td>
+                    <td className="table__cell--mobile-hide">{row.done.toFixed(2)}</td>
                   </tr>
-                ) : (
-                  productionByProduct.map((row) => (
-                    <tr key={row.productId}>
-                      <td>{row.name}</td>
-                      <td>{row.unitLabel}</td>
-                      <td>{row.total.toFixed(2)}</td>
-                      <td>{row.active.toFixed(2)}</td>
-                      <td>{row.done.toFixed(2)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-        <section className="panel">
-          <h2 className="panel__title">Lotes recentes</h2>
-          <div className="list">
-            {recentLots.length === 0 && (
-              <div className="list__item">
-                <span>Nenhum lote registrado.</span>
-                <strong>-</strong>
-              </div>
-            )}
-            {recentLots.map((lot) => (
-              <div key={lot.id} className="list__item">
-                <span>
-                  {getProductName(lot.productId)} · {lot.quantity} un
-                </span>
-                <strong>{formatDateShort(lot.createdAt)}</strong>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2 className="panel__title">Lotes recentes</h2>
+        <div className="list">
+          {recentLots.length === 0 && (
+            <div className="list__item">
+              <span>Nenhum lote registrado.</span>
+              <strong>-</strong>
+            </div>
+          )}
+          {recentLots.map((lot) => (
+            <div key={lot.id} className="list__item">
+              <span>
+                {getProductName(lot.productId)} · {lot.quantity} un
+              </span>
+              <strong>{formatDateShort(lot.createdAt)}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
     </Page>
   )
 }

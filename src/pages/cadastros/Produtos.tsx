@@ -62,6 +62,7 @@ const Produtos = () => {
   const [variantStatus, setVariantStatus] = useState<string | null>(null)
   const [isProductModalOpen, setIsProductModalOpen] = useState(false)
   const [isVariantModalOpen, setIsVariantModalOpen] = useState(false)
+  const [isVariantListOpen, setIsVariantListOpen] = useState(false)
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
   const [deleteVariantId, setDeleteVariantId] = useState<string | null>(null)
   const [form, setForm] = useState<ProductForm>({
@@ -165,6 +166,19 @@ const Produtos = () => {
     setIsProductModalOpen(true)
   }
 
+  const openVariantList = (product: Product) => {
+    if (!product.hasVariants) {
+      return
+    }
+    setSelectedProductId(product.id)
+    setVariantStatus(null)
+    setIsVariantListOpen(true)
+  }
+
+  const closeVariantList = () => {
+    setIsVariantListOpen(false)
+  }
+
   const closeVariantModal = () => {
     setIsVariantModalOpen(false)
     resetVariantForm()
@@ -181,6 +195,7 @@ const Produtos = () => {
     }
     setVariantStatus(null)
     resetVariantForm()
+    setIsVariantListOpen(false)
     setIsVariantModalOpen(true)
   }
 
@@ -208,6 +223,7 @@ const Produtos = () => {
   }
 
   const handleVariantEdit = (variant: ProductVariant) => {
+    setIsVariantListOpen(false)
     setEditingVariantId(variant.id)
     setVariantForm({
       name: variant.name,
@@ -526,6 +542,8 @@ const Produtos = () => {
       const nextProduct = payload.produtos[0]
       setSelectedProductId(nextProduct ? nextProduct.id : null)
     }
+    setIsProductModalOpen(false)
+    resetForm()
     setStatus('Produto excluido.')
     setDeleteProductId(null)
   }
@@ -545,6 +563,8 @@ const Produtos = () => {
     }
     dataService.replaceAll(payload)
     refresh()
+    setIsVariantModalOpen(false)
+    resetVariantForm()
     setVariantStatus('Variacao excluida.')
     setDeleteVariantId(null)
   }
@@ -563,22 +583,22 @@ const Produtos = () => {
       />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="produtos__summary summary-card">
-        <article className="produtos__stat">
-          <span className="produtos__stat-label">Total</span>
-          <strong className="produtos__stat-value">{productSummary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Total</span>
+          <strong className="summary__value">{productSummary.total}</strong>
         </article>
-        <article className="produtos__stat">
-          <span className="produtos__stat-label">Ativos</span>
-          <strong className="produtos__stat-value">{productSummary.active}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Ativos</span>
+          <strong className="summary__value">{productSummary.active}</strong>
         </article>
-        <article className="produtos__stat">
-          <span className="produtos__stat-label">Variacoes</span>
-          <strong className="produtos__stat-value">{productSummary.variants}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Variacoes</span>
+          <strong className="summary__value">{productSummary.variants}</strong>
         </article>
-        <article className="produtos__stat">
-          <span className="produtos__stat-label">Estoque total</span>
-          <strong className="produtos__stat-value">{productSummary.stock}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Estoque total</span>
+          <strong className="summary__value">{productSummary.stock}</strong>
         </article>
       </div>
 
@@ -588,24 +608,38 @@ const Produtos = () => {
         title={editingId ? 'Editar produto' : 'Novo produto'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={productFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Atualizar' : 'Salvar produto'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteProductId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={productFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar' : 'Salvar produto'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={productFormId} className="form" onSubmit={handleSubmit}>
-            <div className="form__group">
-              <label className="form__label" htmlFor="product-name">
+        <form id={productFormId} className="modal__form" onSubmit={handleSubmit}>
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="product-name">
                 Nome
               </label>
               <input
                 id="product-name"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.name}
                 onChange={(event) => updateForm({ name: event.target.value })}
@@ -613,27 +647,27 @@ const Produtos = () => {
               />
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-sku">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-sku">
                   SKU
                 </label>
                 <input
                   id="product-sku"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.sku}
                   onChange={(event) => updateForm({ sku: event.target.value })}
                   placeholder="SKU opcional"
                 />
               </div>
-              <div className="form__group">
-              <label className="form__label" htmlFor="product-unit">
+              <div className="modal__group">
+              <label className="modal__label" htmlFor="product-unit">
                 Unidade
               </label>
               <select
                 id="product-unit"
-                className="form__input"
+                className="modal__input"
                 value={form.unit}
                 onChange={(event) =>
                   updateForm({ unit: event.target.value as ProductForm['unit'] })
@@ -649,7 +683,7 @@ const Produtos = () => {
             </div>
             </div>
 
-            <label className="toggle form__checkbox">
+            <label className="toggle modal__checkbox">
               <input
                 type="checkbox"
                 checked={form.hasVariants}
@@ -663,7 +697,7 @@ const Produtos = () => {
               </span>
             </label>
 
-            <label className="toggle form__checkbox">
+            <label className="toggle modal__checkbox">
               <input
                 type="checkbox"
                 checked={form.producedInternally}
@@ -679,14 +713,14 @@ const Produtos = () => {
               </span>
             </label>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-length">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-length">
                   Comprimento base
                 </label>
                 <input
                   id="product-length"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -695,13 +729,13 @@ const Produtos = () => {
                   disabled={form.hasVariants}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-width">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-width">
                   Largura base
                 </label>
                 <input
                   id="product-width"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -710,13 +744,13 @@ const Produtos = () => {
                   disabled={form.hasVariants}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-height">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-height">
                   Altura base
                 </label>
                 <input
                   id="product-height"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -727,14 +761,14 @@ const Produtos = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-price">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-price">
                   Preco base
                 </label>
                 <input
                   id="product-price"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -743,16 +777,16 @@ const Produtos = () => {
                   disabled={form.hasVariants}
                 />
                 {form.hasVariants && (
-                  <p className="form__help">Defina o preco dentro das variacoes.</p>
+                  <p className="modal__help">Defina o preco dentro das variacoes.</p>
                 )}
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-cost">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-cost">
                   Preco de custo
                 </label>
                 <input
                   id="product-cost"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -761,19 +795,19 @@ const Produtos = () => {
                   disabled={form.hasVariants}
                 />
                 {form.hasVariants && (
-                  <p className="form__help">Custo pode ser definido por variacao.</p>
+                  <p className="modal__help">Custo pode ser definido por variacao.</p>
                 )}
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-price-min">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-price-min">
                   Preco minimo (nao negociavel)
                 </label>
                 <input
                   id="product-price-min"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -783,12 +817,12 @@ const Produtos = () => {
                   disabled={form.hasVariants}
                 />
                 {!form.hasVariants && form.price > 0 ? (
-                  <p className="form__help">
+                  <p className="modal__help">
                     Sugestao: minimo sem prejuizo {formatCurrency(previewSummary.minUnit)} | desconto maximo{' '}
                     {formatPercent(previewSummary.maxPercent)}% ({formatCurrency(previewSummary.maxValue)}).
                   </p>
                 ) : (
-                  <p className="form__help">
+                  <p className="modal__help">
                     {form.hasVariants
                       ? 'Desconto minimo e definido nas variacoes.'
                       : 'Defina o preco base para calcular o desconto sugerido.'}
@@ -797,14 +831,14 @@ const Produtos = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-labor">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-labor">
                   Mao de obra (por {formatLaborBasis(form.laborBasis)})
                 </label>
                 <input
                   id="product-labor"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -812,13 +846,13 @@ const Produtos = () => {
                   onChange={(event) => updateForm({ laborCost: Number(event.target.value) })}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-labor-basis">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-labor-basis">
                   Base da mao de obra
                 </label>
                 <select
                   id="product-labor-basis"
-                  className="form__input"
+                  className="modal__input"
                   value={form.laborBasis}
                   onChange={(event) =>
                     updateForm({ laborBasis: event.target.value as ProductForm['laborBasis'] })
@@ -828,13 +862,13 @@ const Produtos = () => {
                   <option value="metro">Metro linear</option>
                 </select>
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="product-stock">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-stock">
                   Estoque inicial
                 </label>
                 <input
                   id="product-stock"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="1"
@@ -845,7 +879,7 @@ const Produtos = () => {
               </div>
             </div>
 
-            <label className="toggle form__checkbox">
+            <label className="toggle modal__checkbox">
               <input
                 type="checkbox"
                 checked={form.active}
@@ -857,109 +891,96 @@ const Produtos = () => {
               <span className="toggle__label">Produto ativo</span>
             </label>
 
-            {status && <p className="form__status">{status}</p>}
+            {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
       <div className="produtos__layout">
-        <section className="produtos__panel">
-          <div className="produtos__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Produtos cadastrados</h2>
               <p>Visao geral de custos, estoque e precos base.</p>
             </div>
-            <span className="produtos__panel-meta">{products.length} registros</span>
+            <span className="panel__meta">{products.length} registros</span>
           </div>
-          <div className="table-card produtos__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
-                <tr>
+              <thead className="table__head table__head--mobile-hide">
+                <tr className="table__row">
                   <th>Produto</th>
-                  <th>SKU</th>
-                  <th>Medidas base</th>
-                  <th>Variacoes</th>
-                  <th>Estoque total</th>
-                  <th>Preco base</th>
-                  <th>Custo unitario</th>
-                  <th>Mao de obra</th>
-                  <th>Regra</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
+                  <th className="table__cell--tight table__cell--mobile-hide">SKU</th>
+                  <th className="table__cell--mobile-hide">Medidas base</th>
+                  <th className="table__cell--mobile-hide">Preco base</th>
+                  <th className="table__cell--mobile-hide">Custo unitario</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {products.length === 0 && (
-                  <tr>
-                    <td colSpan={11} className="table__empty">
+                  <tr className="table__row">
+                    <td colSpan={6} className="table__empty">
                       Nenhum produto cadastrado ainda.
                     </td>
                   </tr>
                 )}
                 {products.map((product) => {
                   const usesVariants = product.hasVariants ?? false
-                  const hasLinearVariants =
-                    product.unit === 'metro_linear' && (product.variants ?? []).length > 0
-                  const totalStock = (product.variants ?? []).reduce(
-                    (acc, variant) => acc + (variant.stock ?? 0),
-                    0,
-                  )
-                  const displayedStock =
-                    usesVariants || hasLinearVariants ? totalStock : product.stock ?? 0
                   const displayDimensions = usesVariants
-                    ? '-'
+                    ? ''
                     : formatDimensions(product.length, product.width, product.height)
-                  const displayPrice = usesVariants ? '-' : formatCurrency(product.price)
-                  const displayCost = usesVariants ? '-' : resolveCostForDisplay(product)
-                  const displayLabor = usesVariants
-                    ? '-'
-                    : product.laborCost !== undefined
-                      ? `${formatCurrency(product.laborCost)} / ${formatLaborBasis(
-                          product.laborBasis,
-                        )}`
-                      : '-'
-                  const displayRule = usesVariants ? '-' : formatPriceRule(product)
+                  const displayPrice = usesVariants ? '' : formatCurrency(product.price)
+                  const displayCost = usesVariants ? '' : resolveCostForDisplay(product)
+                  const nameContent = (
+                    <>
+                      <strong>{product.name}</strong>
+                      {usesVariants ? (
+                        <span className="table__sub">Com variacao</span>
+                      ) : (
+                        <>
+                          <span className="table__sub table__sub--mobile">{displayPrice}</span>
+                          <span className="table__sub table__sub--mobile">{displayCost}</span>
+                        </>
+                      )}
+                    </>
+                  )
                   return (
-                    <tr key={product.id}>
-                      <td>{product.name}</td>
-                      <td>{product.sku ?? '-'}</td>
-                      <td>{displayDimensions}</td>
-                      <td>{usesVariants ? product.variants?.length ?? 0 : '-'}</td>
-                      <td>
-                        {displayedStock}
-                        {product.unit
-                          ? ` ${getProductUnitLabel(product.unit, data.tabelas)}`
-                          : ''}
+                    <tr key={product.id} className="table__row">
+                      <td className="table__cell--truncate">
+                        {usesVariants ? (
+                          <button
+                            type="button"
+                            className="table__stack table__link"
+                            onClick={() => openVariantList(product)}
+                            aria-label={`Ver variacoes de ${product.name}`}
+                          >
+                            {nameContent}
+                          </button>
+                        ) : (
+                          <div className="table__stack">{nameContent}</div>
+                        )}
                       </td>
-                      <td>{displayPrice}</td>
-                      <td>{displayCost}</td>
-                      <td>{displayLabor}</td>
-                      <td>{displayRule}</td>
-                      <td>
-                        <span
-                          className={`badge ${product.active ? 'badge--aprovado' : 'badge--rascunho'}`}
-                        >
-                          {product.active ? 'Ativo' : 'Inativo'}
-                        </span>
+                      <td className="table__cell--tight table__cell--mobile-hide">
+                        {product.sku ?? '-'}
                       </td>
-                      <td className="table__actions">
-                        <ActionMenu
-                          items={[
-                            { label: 'Editar', onClick: () => handleEdit(product) },
-                            ...(usesVariants
-                              ? [
-                                  {
-                                    label: 'Variacoes',
-                                    onClick: () => setSelectedProductId(product.id),
-                                  },
-                                ]
-                              : []),
-                            {
-                              label: 'Excluir',
-                              onClick: () => setDeleteProductId(product.id),
-                              variant: 'danger',
-                            },
-                          ]}
-                        />
+                      <td className="table__cell--mobile-hide">{displayDimensions}</td>
+                      <td className="table__cell--mobile-hide">{displayPrice}</td>
+                      <td className="table__cell--mobile-hide">{displayCost}</td>
+                      <td className="table__actions table__actions--end">
+                        <div className="table__end">
+                          <div className="table__status">
+                            <span
+                              className={`badge ${product.active ? 'badge--aprovado' : 'badge--rascunho'}`}
+                            >
+                              {product.active ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </div>
+                          <ActionMenu
+                            items={[
+                              { label: 'Editar', onClick: () => handleEdit(product) },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )
@@ -971,32 +992,160 @@ const Produtos = () => {
       </div>
 
       <Modal
+        open={isVariantListOpen}
+        onClose={closeVariantList}
+        title={selectedProduct ? `Variacoes: ${selectedProduct.name}` : 'Variacoes do produto'}
+        size="lg"
+        actions={
+          selectedProduct?.hasVariants ? (
+            <button className="button button--primary" type="button" onClick={openVariantModal}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                add
+              </span>
+              <span className="modal__action-label">Nova variacao</span>
+            </button>
+          ) : null
+        }
+      >
+        {selectedProduct ? (
+          selectedProduct.hasVariants ? (
+            <>
+              <p className="modal__help">{variants.length} registros</p>
+              <div className="table-card">
+                <table className="table">
+                  <thead className="table__head table__head--mobile-hide">
+                    <tr>
+                      <th>Variacao</th>
+                      <th className="table__cell--tight table__cell--mobile-hide">SKU</th>
+                      <th className="table__cell--mobile-hide">Medidas (C x L x A)</th>
+                      <th className="table__cell--mobile-hide">Preco</th>
+                      <th className="table__cell--mobile-hide">Custo</th>
+                      <th className="table__actions table__actions--end">Status / Editar</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variants.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="table__empty">
+                          Nenhuma variacao cadastrada ainda.
+                        </td>
+                      </tr>
+                    )}
+                    {variants.map((variant) => {
+                      const displayPrice =
+                        variant.priceOverride !== undefined
+                          ? formatCurrency(variant.priceOverride)
+                          : '-'
+                      const displayCost = selectedProduct
+                        ? resolveCostForDisplay(selectedProduct, variant)
+                        : '-'
+                      return (
+                        <tr key={variant.id}>
+                          <td className="table__cell--truncate">
+                            <div className="table__stack">
+                              <strong>{variant.name}</strong>
+                              <span className="table__sub table__sub--mobile">
+                                {displayPrice}
+                              </span>
+                              <span className="table__sub table__sub--mobile">
+                                {displayCost}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="table__cell--tight table__cell--mobile-hide">
+                            {variant.sku ?? '-'}
+                          </td>
+                          <td className="table__cell--mobile-hide">
+                            {formatVariantDimensions(variant, selectedProduct ?? undefined)}
+                          </td>
+                          <td className="table__cell--mobile-hide">{displayPrice}</td>
+                          <td className="table__cell--mobile-hide">{displayCost}</td>
+                          <td className="table__actions table__actions--end">
+                            <div className="table__end">
+                              <div className="table__status">
+                                <span
+                                  className={`badge ${
+                                    variant.active === false
+                                      ? 'badge--rascunho'
+                                      : 'badge--aprovado'
+                                  }`}
+                                >
+                                  {variant.active === false ? 'Inativa' : 'Ativa'}
+                                </span>
+                              </div>
+                              <ActionMenu
+                                items={[
+                                  {
+                                    label: 'Editar',
+                                    onClick: () => handleVariantEdit(variant),
+                                    disabled: variant.locked,
+                                  },
+                                ]}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : (
+            <p className="modal__help">
+              Este produto esta sem variacoes. Ative a opcao no cadastro para gerenciar
+              medidas e estoque por variacao.
+            </p>
+          )
+        ) : (
+          <p className="modal__help">Selecione um produto com variacoes para visualizar.</p>
+        )}
+      </Modal>
+
+      <Modal
         open={isVariantModalOpen}
         onClose={closeVariantModal}
         title={editingVariantId ? 'Editar variacao' : 'Nova variacao'}
         size="lg"
         actions={
           selectedProduct ? (
-          <button className="button button--primary" type="submit" form={variantFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingVariantId ? 'Atualizar variacao' : 'Salvar variacao'}
-            </span>
-          </button>
+            <>
+              {editingVariantId && (
+                <button
+                  className="button button--danger"
+                  type="button"
+                  onClick={() => setDeleteVariantId(editingVariantId)}
+                >
+                  <span
+                    className="material-symbols-outlined modal__action-icon"
+                    aria-hidden="true"
+                  >
+                    delete
+                  </span>
+                  <span className="modal__action-label">Excluir</span>
+                </button>
+              )}
+              <button className="button button--primary" type="submit" form={variantFormId}>
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  save
+                </span>
+                <span className="modal__action-label">
+                  {editingVariantId ? 'Atualizar variacao' : 'Salvar variacao'}
+                </span>
+              </button>
+            </>
           ) : null
         }
       >
         {selectedProduct ? (
-          <form id={variantFormId} className="form" onSubmit={handleVariantSubmit}>
-            <div className="form__group">
-              <label className="form__label" htmlFor="variant-name">
+          <form id={variantFormId} className="modal__form" onSubmit={handleVariantSubmit}>
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="variant-name">
                 Nome da variacao
               </label>
               <input
                 id="variant-name"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={variantForm.name}
                 onChange={(event) => updateVariantForm({ name: event.target.value })}
@@ -1004,14 +1153,14 @@ const Produtos = () => {
               />
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="variant-length">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="variant-length">
                   Comprimento
                 </label>
                 <input
                   id="variant-length"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -1019,13 +1168,13 @@ const Produtos = () => {
                   onChange={(event) => updateVariantForm({ length: Number(event.target.value) })}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="variant-width">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="variant-width">
                   Largura
                 </label>
                 <input
                   id="variant-width"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -1033,13 +1182,13 @@ const Produtos = () => {
                   onChange={(event) => updateVariantForm({ width: Number(event.target.value) })}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="variant-height">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="variant-height">
                   Altura
                 </label>
                 <input
                   id="variant-height"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -1049,14 +1198,14 @@ const Produtos = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="variant-stock">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="variant-stock">
                   Estoque
                 </label>
                 <input
                   id="variant-stock"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="1"
@@ -1064,13 +1213,13 @@ const Produtos = () => {
                   onChange={(event) => updateVariantForm({ stock: Number(event.target.value) })}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="variant-sku">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="variant-sku">
                   SKU da variacao
                 </label>
                 <input
                   id="variant-sku"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={variantForm.sku}
                   onChange={(event) => updateVariantForm({ sku: event.target.value })}
@@ -1079,14 +1228,14 @@ const Produtos = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="variant-price">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="variant-price">
                   Preco sobrescrito
                 </label>
                 <input
                   id="variant-price"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -1097,13 +1246,13 @@ const Produtos = () => {
                   placeholder={`Base: ${formatCurrency(selectedProduct.price)}`}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="variant-cost">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="variant-cost">
                   Custo sobrescrito
                 </label>
                 <input
                   id="variant-cost"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -1120,7 +1269,7 @@ const Produtos = () => {
               </div>
             </div>
 
-            <label className="toggle form__checkbox">
+            <label className="toggle modal__checkbox">
               <input
                 type="checkbox"
                 checked={variantForm.active}
@@ -1132,137 +1281,12 @@ const Produtos = () => {
               <span className="toggle__label">Variacao ativa</span>
             </label>
 
-            {variantStatus && <p className="form__status">{variantStatus}</p>}
+            {variantStatus && <p className="modal__status">{variantStatus}</p>}
           </form>
         ) : (
-          <p className="produtos__hint">Selecione um produto para gerenciar variacoes.</p>
+          <p className="modal__help">Selecione um produto para gerenciar variacoes.</p>
         )}
       </Modal>
-
-      <div className="produtos__variants">
-        <section className="produtos__panel">
-          <div className="produtos__panel-header">
-            <div className="produtos__panel-title">
-              <h2>Variacoes do produto</h2>
-              <p>Controle medidas, estoque e precos por variacao.</p>
-              <select
-                className="form__input produtos__panel-select"
-                value={selectedProductId ?? ''}
-                onChange={(event) => setSelectedProductId(event.target.value)}
-              >
-                <option value="" disabled>
-                  Selecione um produto
-                </option>
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="produtos__panel-actions">
-              <span className="produtos__panel-meta">
-                {selectedUsesVariants ? `${variants.length} registros` : 'Sem variacoes'}
-              </span>
-              <button
-                className="button button--primary"
-                type="button"
-                onClick={openVariantModal}
-                disabled={!selectedProduct || !selectedProduct.hasVariants}
-              >
-                Nova variacao
-              </button>
-            </div>
-          </div>
-          {variantStatus && <p className="form__status">{variantStatus}</p>}
-          {!selectedProduct && (
-            <div className="table-card produtos__table">
-              <p className="table__empty">Selecione um produto para visualizar as variacoes.</p>
-            </div>
-          )}
-          {selectedProduct && !selectedUsesVariants && (
-            <div className="table-card produtos__table">
-              <p className="table__empty">
-                Este produto esta sem variacoes. Ative a opcao no cadastro para gerenciar
-                medidas e estoque por variacao.
-              </p>
-            </div>
-          )}
-          {selectedProduct && selectedUsesVariants && (
-            <div className="table-card produtos__table">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Variacao</th>
-                    <th>Medidas (C x L x A)</th>
-                    <th>Estoque</th>
-                  <th>Preco</th>
-                  <th>Custo</th>
-                  <th>SKU</th>
-                  <th>Tipo</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {variants.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="table__empty">
-                      Nenhuma variacao cadastrada ainda.
-                    </td>
-                  </tr>
-                )}
-                {variants.map((variant) => (
-                  <tr key={variant.id}>
-                    <td>{variant.name}</td>
-                    <td>{formatVariantDimensions(variant, selectedProduct ?? undefined)}</td>
-                    <td>{variant.stock}</td>
-                    <td>
-                      {variant.priceOverride !== undefined
-                        ? formatCurrency(variant.priceOverride)
-                        : '-'}
-                    </td>
-                    <td>
-                      {selectedProduct
-                        ? resolveCostForDisplay(selectedProduct, variant)
-                        : '-'}
-                    </td>
-                    <td>{variant.sku ?? '-'}</td>
-                    <td>{variant.isCustom ? 'Custom' : 'Padrao'}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          variant.active === false ? 'badge--rascunho' : 'badge--aprovado'
-                        }`}
-                      >
-                        {variant.active === false ? 'Inativa' : 'Ativa'}
-                      </span>
-                    </td>
-                    <td className="table__actions">
-                      <ActionMenu
-                        items={[
-                          {
-                            label: 'Editar',
-                            onClick: () => handleVariantEdit(variant),
-                            disabled: variant.locked,
-                          },
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteVariantId(variant.id),
-                            variant: 'danger',
-                            disabled: variant.locked,
-                          },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
       <ConfirmDialog
         open={!!deleteProductId}
         title="Excluir produto?"

@@ -165,28 +165,30 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="perfil__layout">
-        <section className="perfil__card">
-          <div className="perfil__avatar" style={{ background: avatarColor }}>
-            {form.avatarUrl ? (
-              <img src={form.avatarUrl} alt={resolvedUser.name} />
-            ) : (
-              resolvedUser.name?.[0] ?? 'U'
-            )}
-          </div>
-          <div>
-            <h2>{resolvedUser.displayName || resolvedUser.name}</h2>
-            <p>{resolvedUser.email}</p>
-            <span
-              className={`badge ${resolvedUser.role === 'admin' ? 'badge--aprovado' : 'badge--rascunho'}`}
-            >
-              {roleLabel}
-            </span>
+      <div className="grid grid--profile">
+        <section className="card card--profile">
+          <div className="card__row">
+            <div className="ui-avatar" style={{ background: avatarColor }}>
+              {form.avatarUrl ? (
+                <img src={form.avatarUrl} alt={resolvedUser.name} />
+              ) : (
+                resolvedUser.name?.[0] ?? 'U'
+              )}
+            </div>
+            <div className="card__stack">
+              <h2 className="card__title">{resolvedUser.displayName || resolvedUser.name}</h2>
+              <p className="card__meta">{resolvedUser.email}</p>
+              <span
+                className={`badge ${resolvedUser.role === 'admin' ? 'badge--aprovado' : 'badge--rascunho'}`}
+              >
+                {roleLabel}
+              </span>
+            </div>
           </div>
         </section>
 
-        <section className="perfil__panel">
-          <div className="perfil__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Dados do usuario</h2>
               <p>Edite informacoes que aparecem nos relatorios e no painel.</p>

@@ -143,26 +143,26 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="usuarios-permissoes__summary summary-card">
-        <article className="usuarios-permissoes__stat">
-          <span className="usuarios-permissoes__stat-label">Cargos cadastrados</span>
-          <strong className="usuarios-permissoes__stat-value">{roles.length}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Cargos cadastrados</span>
+          <strong className="summary__value">{roles.length}</strong>
         </article>
-        <article className="usuarios-permissoes__stat">
-          <span className="usuarios-permissoes__stat-label">Cargos com controle</span>
-          <strong className="usuarios-permissoes__stat-value">
+        <article className="summary__item">
+          <span className="summary__label">Cargos com controle</span>
+          <strong className="summary__value">
             {roles.filter((role) => role.permissions && Object.keys(role.permissions).length > 0).length}
           </strong>
         </article>
-        <article className="usuarios-permissoes__stat">
-          <span className="usuarios-permissoes__stat-label">Equipe total</span>
-          <strong className="usuarios-permissoes__stat-value">{data.funcionarios.length}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Equipe total</span>
+          <strong className="summary__value">{data.funcionarios.length}</strong>
         </article>
       </div>
 
       {roles.length === 0 ? (
-        <section className="usuarios-permissoes__panel">
-          <div className="usuarios-permissoes__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Nenhum cargo encontrado</h2>
               <p>Cadastre cargos em RH &gt; Funcionarios para liberar o controle.</p>
@@ -170,15 +170,15 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
           </div>
         </section>
       ) : (
-        <div className="usuarios-permissoes__layout">
-          <aside className="usuarios-permissoes__panel usuarios-permissoes__roles">
-            <div className="usuarios-permissoes__panel-header">
+        <div className="grid grid--two">
+          <section className="panel">
+            <div className="panel__header">
               <div>
                 <h2>Cargos</h2>
                 <p>Selecione um cargo para editar as permissoes.</p>
               </div>
             </div>
-            <div className="usuarios-permissoes__role-list">
+            <div className="list">
               {roles.map((role) => {
                 const isActive = role.id === selectedRoleId
                 const totalEmployees = roleUsage[role.id] ?? 0
@@ -187,12 +187,13 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
                   <button
                     key={role.id}
                     type="button"
-                    className={`usuarios-permissoes__role${isActive ? ' usuarios-permissoes__role--active' : ''}`}
+                    className={`list__item list__item--button${isActive ? ' list__item--active' : ''}`}
                     onClick={() => setSelectedRoleId(role.id)}
+                    aria-pressed={isActive}
                   >
                     <div>
-                      <span className="usuarios-permissoes__role-name">{role.name}</span>
-                      <span className="usuarios-permissoes__role-meta">
+                      <strong>{role.name}</strong>
+                      <span className="list__meta">
                         {totalEmployees} funcionarios · {role.multiplier.toFixed(2)}x
                       </span>
                     </div>
@@ -205,10 +206,10 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
                 )
               })}
             </div>
-          </aside>
+          </section>
 
-          <section className="usuarios-permissoes__panel usuarios-permissoes__permissions">
-            <div className="usuarios-permissoes__panel-header">
+          <section className="panel">
+            <div className="panel__header">
               <div>
                 <h2>Permissoes do cargo</h2>
                 <p>
@@ -221,33 +222,38 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
               </button>
             </div>
 
-            <div className="usuarios-permissoes__groups">
+            <div className="panel__body">
               {PERMISSION_GROUPS.map((group) => (
-                <div key={group.id} className="usuarios-permissoes__group">
-                  <div className="usuarios-permissoes__group-header">
-                    <h3>{group.label}</h3>
-                    <span>{group.items.length} itens</span>
+                <div key={group.id} className="panel__section">
+                  <div className="panel__section-header">
+                    <h3 className="panel__section-title">{group.label}</h3>
+                    <span className="panel__meta">{group.items.length} itens</span>
                   </div>
-                  <div className="usuarios-permissoes__list">
+                  <div className="list list--compact">
                     {group.items.map((item) => (
-                      <div key={item.key} className="usuarios-permissoes__row">
+                      <div key={item.key} className="list__item">
                         <div>
-                          <span className="usuarios-permissoes__item-title">{item.label}</span>
-                          <span className="usuarios-permissoes__item-key">{item.key}</span>
+                          <strong>{item.label}</strong>
+                          <span className="list__meta">{item.key}</span>
                         </div>
-                        <select
-                          className="form__input usuarios-permissoes__select"
-                          value={resolvedPermissions[item.key]}
-                          onChange={(event) =>
-                            handlePermissionChange(item.key, event.target.value as PermissionLevel)
-                          }
-                        >
-                          {PERMISSION_LEVELS.map((level) => (
-                            <option key={level.value} value={level.value}>
-                              {level.label}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="list__actions">
+                          <select
+                            className="form__input"
+                            value={resolvedPermissions[item.key]}
+                            onChange={(event) =>
+                              handlePermissionChange(
+                                item.key,
+                                event.target.value as PermissionLevel,
+                              )
+                            }
+                          >
+                            {PERMISSION_LEVELS.map((level) => (
+                              <option key={level.value} value={level.value}>
+                                {level.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -21,6 +21,7 @@ type FinanceForm = {
 const Financeiro = () => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [cashCheckDate, setCashCheckDate] = useState<string>(() =>
@@ -52,6 +53,7 @@ const Financeiro = () => {
       cashboxId: 'caixa_operacional',
       transferToId: '',
     })
+    setEditingId(null)
   }
 
   const closeModal = () => {
@@ -63,6 +65,20 @@ const Financeiro = () => {
   const openNewModal = () => {
     setStatus(null)
     resetForm()
+    setIsModalOpen(true)
+  }
+
+  const handleEdit = (entry: FinanceEntry) => {
+    setEditingId(entry.id)
+    setForm({
+      type: entry.type,
+      description: entry.description,
+      amount: entry.amount,
+      category: entry.category ?? '',
+      cashboxId: entry.cashboxId,
+      transferToId: entry.transferToId ?? '',
+    })
+    setStatus(null)
     setIsModalOpen(true)
   }
 
@@ -185,6 +201,8 @@ const Financeiro = () => {
       },
     })
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Lancamento excluido.')
     setDeleteId(null)
   }
@@ -220,27 +238,39 @@ const Financeiro = () => {
         : form.type === 'transferencia'
           ? 'Transferencia registrada'
           : 'Saida registrada'
-    dataService.addFinanceEntry(
-      {
-      id: createId(),
+
+    const payload = dataService.getAll()
+    const existingEntry = editingId
+      ? payload.financeiro.find((entry) => entry.id === editingId)
+      : undefined
+    const next: FinanceEntry = {
+      id: editingId ?? createId(),
       type: form.type,
       description: form.description.trim(),
       amount: form.amount,
       category: form.category.trim() || undefined,
-      createdAt: new Date().toISOString(),
+      createdAt: existingEntry?.createdAt ?? new Date().toISOString(),
       cashboxId: form.cashboxId,
       transferToId: form.type === 'transferencia' ? form.transferToId : undefined,
+    }
+
+    if (editingId) {
+      payload.financeiro = payload.financeiro.map((entry) =>
+        entry.id === editingId ? next : entry,
+      )
+    } else {
+      payload.financeiro = [...payload.financeiro, next]
+    }
+
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: editingId ? 'alteracao' : 'acao',
+        title: editingId ? 'Lancamento atualizado' : entryTitle,
+        description: `${next.description} · ${formatCurrency(next.amount)}`,
       },
-      {
-        auditEvent: {
-          category: 'acao',
-          title: entryTitle,
-          description: `${form.description.trim()} · ${formatCurrency(form.amount)}`,
-        },
-      },
-    )
+    })
     refresh()
-    setStatus('Lancamento registrado.')
+    setStatus(editingId ? 'Lancamento atualizado.' : 'Lancamento registrado.')
     setIsModalOpen(false)
     resetForm()
   }
@@ -290,42 +320,42 @@ const Financeiro = () => {
       />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="financeiro__summary summary-card">
-        <article className="financeiro__stat">
-          <span className="financeiro__stat-label">Saldo total</span>
-          <strong className="financeiro__stat-value">{formatCurrency(totalBalance)}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Saldo total</span>
+          <strong className="summary__value">{formatCurrency(totalBalance)}</strong>
         </article>
-        <article className="financeiro__stat">
-          <span className="financeiro__stat-label">Entradas do mes</span>
-          <strong className="financeiro__stat-value">{formatCurrency(monthIn)}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Entradas do mes</span>
+          <strong className="summary__value">{formatCurrency(monthIn)}</strong>
         </article>
-        <article className="financeiro__stat">
-          <span className="financeiro__stat-label">Saidas do mes</span>
-          <strong className="financeiro__stat-value">{formatCurrency(monthOut)}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Saidas do mes</span>
+          <strong className="summary__value">{formatCurrency(monthOut)}</strong>
         </article>
-        <article className="financeiro__stat">
-          <span className="financeiro__stat-label">Transferencias do mes</span>
-          <strong className="financeiro__stat-value">{formatCurrency(monthTransfers)}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Transferencias do mes</span>
+          <strong className="summary__value">{formatCurrency(monthTransfers)}</strong>
         </article>
       </div>
 
-      <div className="financeiro__grid">
-        <section className="financeiro__panel">
-          <div className="financeiro__panel-header">
+      <div className="grid grid--two">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Estrutura de caixas</h2>
               <p>Saldo do banco nao representa dinheiro disponivel.</p>
             </div>
-            <span className="financeiro__panel-meta">
+            <span className="panel__meta">
               Saldo do mes: {formatCurrency(monthBalance)}
             </span>
           </div>
-          <div className="financeiro__list">
+          <div className="list">
             {cashboxes.map((cashbox) => (
-              <div key={cashbox.id} className="financeiro__list-item">
+              <div key={cashbox.id} className="list__item">
                 <div>
                   <strong>{cashbox.name}</strong>
-                  <span className="financeiro__list-meta">
+                  <span className="list__meta">
                     {cashbox.id === 'caixa_bancario'
                       ? 'Saldo bancario'
                       : cashbox.id === 'caixa_fisico'
@@ -337,30 +367,30 @@ const Financeiro = () => {
               </div>
             ))}
           </div>
-          <div className="financeiro__cashbox-highlight">
-            <div>
-              <span>Caixa bancario</span>
-              <strong>{formatCurrency(bankBalance)}</strong>
+          <div className="panel__items">
+            <div className="panel__item">
+              <span className="panel__item-label">Caixa bancario</span>
+              <strong className="panel__item-value">{formatCurrency(bankBalance)}</strong>
             </div>
-            <div>
-              <span>Caixa fisico</span>
-              <strong>{formatCurrency(cashBalance)}</strong>
+            <div className="panel__item">
+              <span className="panel__item-label">Caixa fisico</span>
+              <strong className="panel__item-value">{formatCurrency(cashBalance)}</strong>
             </div>
-            <div>
-              <span>Caixa operacional</span>
-              <strong>{formatCurrency(operationalBalance)}</strong>
+            <div className="panel__item">
+              <span className="panel__item-label">Caixa operacional</span>
+              <strong className="panel__item-value">{formatCurrency(operationalBalance)}</strong>
             </div>
           </div>
         </section>
 
-        <section className="financeiro__panel">
-          <div className="financeiro__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Caixa fisico diario</h2>
               <p>Conferencia simples para dinheiro em especie.</p>
             </div>
           </div>
-          <div className="financeiro__check">
+          <div className="panel__body">
             <div className="form__row">
               <div className="form__group">
                 <label className="form__label" htmlFor="cash-check-date">
@@ -393,24 +423,18 @@ const Financeiro = () => {
             <div className="form__row">
               <div className="form__group">
                 <label className="form__label">Entradas em dinheiro</label>
-                <div className="form__summary">
-                  <strong>{formatCurrency(cashIn)}</strong>
-                </div>
+                <div className="form__summary">{formatCurrency(cashIn)}</div>
               </div>
               <div className="form__group">
                 <label className="form__label">Saidas em dinheiro</label>
-                <div className="form__summary">
-                  <strong>{formatCurrency(cashOut)}</strong>
-                </div>
+                <div className="form__summary">{formatCurrency(cashOut)}</div>
               </div>
             </div>
 
             <div className="form__row">
               <div className="form__group">
                 <label className="form__label">Saldo final esperado</label>
-                <div className="form__summary">
-                  <strong>{formatCurrency(cashClosing)}</strong>
-                </div>
+                <div className="form__summary">{formatCurrency(cashClosing)}</div>
               </div>
               <div className="form__group">
                 <label className="form__label" htmlFor="cash-check-actual">
@@ -428,11 +452,13 @@ const Financeiro = () => {
               </div>
             </div>
 
-            <div className="financeiro__diff">
-              <span>Diferenca</span>
-              <strong className={cashDiff !== 0 ? 'financeiro__diff-value--alert' : ''}>
+            <div className="form__group">
+              <span className="form__label">Diferenca</span>
+              <div
+                className={`form__summary${cashDiff !== 0 ? ' form__summary--alert' : ''}`}
+              >
                 {formatCurrency(cashDiff)}
-              </strong>
+              </div>
             </div>
 
             <div className="form__group">
@@ -455,15 +481,15 @@ const Financeiro = () => {
             </div>
           </div>
 
-          <div className="financeiro__list">
+          <div className="list">
             {cashChecks.length === 0 && (
-              <div className="financeiro__empty">Nenhuma conferencia registrada.</div>
+              <div className="list__empty">Nenhuma conferencia registrada.</div>
             )}
             {cashChecks.map((check) => (
-              <div key={check.id} className="financeiro__list-item">
+              <div key={check.id} className="list__item">
                 <div>
                   <strong>{formatDateShort(check.date)}</strong>
-                  <span className="financeiro__list-meta">
+                  <span className="list__meta">
                     Saldo final {formatCurrency(check.closing)}
                   </span>
                 </div>
@@ -477,25 +503,41 @@ const Financeiro = () => {
       <Modal
         open={isModalOpen}
         onClose={closeModal}
-        title="Novo lancamento"
+        title={editingId ? 'Editar lancamento' : 'Novo lancamento'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={financeFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">Registrar</span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={financeFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Salvar' : 'Registrar'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={financeFormId} className="form" onSubmit={handleSubmit}>
-            <div className="form__group">
-              <label className="form__label" htmlFor="finance-type">
+        <form id={financeFormId} className="modal__form" onSubmit={handleSubmit}>
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="finance-type">
                 Tipo
               </label>
               <select
                 id="finance-type"
-                className="form__input"
+                className="modal__input"
                 value={form.type}
                 onChange={(event) =>
                   updateForm({ type: event.target.value as FinanceEntry['type'] })
@@ -507,13 +549,13 @@ const Financeiro = () => {
               </select>
             </div>
 
-            <div className="form__group">
-              <label className="form__label" htmlFor="finance-description">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="finance-description">
                 Descricao
               </label>
               <input
                 id="finance-description"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.description}
                 onChange={(event) => updateForm({ description: event.target.value })}
@@ -521,14 +563,14 @@ const Financeiro = () => {
               />
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="finance-amount">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="finance-amount">
                   Valor
                 </label>
                 <input
                   id="finance-amount"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="0.01"
@@ -536,13 +578,13 @@ const Financeiro = () => {
                   onChange={(event) => updateForm({ amount: Number(event.target.value) })}
                 />
               </div>
-              <div className="form__group">
-                <label className="form__label" htmlFor="finance-category">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="finance-category">
                   Categoria
                 </label>
                 <input
                   id="finance-category"
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value={form.category}
                   onChange={(event) => updateForm({ category: event.target.value })}
@@ -551,14 +593,14 @@ const Financeiro = () => {
               </div>
             </div>
 
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="finance-cashbox">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="finance-cashbox">
                   Caixa de origem
                 </label>
                 <select
                   id="finance-cashbox"
-                  className="form__input"
+                  className="modal__input"
                   value={form.cashboxId}
                   onChange={(event) => updateForm({ cashboxId: event.target.value })}
                 >
@@ -571,13 +613,13 @@ const Financeiro = () => {
                 </select>
               </div>
               {form.type === 'transferencia' && (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="finance-cashbox-dest">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor="finance-cashbox-dest">
                     Caixa de destino
                   </label>
                   <select
                     id="finance-cashbox-dest"
-                    className="form__input"
+                    className="modal__input"
                     value={form.transferToId}
                     onChange={(event) => updateForm({ transferToId: event.target.value })}
                   >
@@ -592,82 +634,88 @@ const Financeiro = () => {
               )}
             </div>
 
-            {status && <p className="form__status">{status}</p>}
+            {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
-      <div className="financeiro__layout">
-        <section className="financeiro__panel">
-          <div className="financeiro__panel-header">
-            <div>
-              <h2>Ultimos lancamentos</h2>
-              <p>Registros por categoria e impacto no saldo.</p>
-            </div>
-            <span className="financeiro__panel-meta">{entries.length} registros</span>
+      <section className="panel">
+        <div className="panel__header">
+          <div>
+            <h2>Ultimos lancamentos</h2>
+            <p>Registros por categoria e impacto no saldo.</p>
           </div>
-          <div className="table-card financeiro__table">
-            <table className="table">
-              <thead>
+          <span className="panel__meta">{entries.length} registros</span>
+        </div>
+        <div className="table-card">
+          <table className="table">
+            <thead className="table__head table__head--mobile-hide">
+              <tr>
+                <th>Data</th>
+                <th>Descricao</th>
+                <th>Caixa</th>
+                <th>Categoria</th>
+                <th>Tipo</th>
+                <th>Valor</th>
+                <th className="table__actions table__actions--end">Editar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.length === 0 && (
                 <tr>
-                  <th>Data</th>
-                  <th>Descricao</th>
-                  <th>Caixa</th>
-                  <th>Categoria</th>
-                  <th>Tipo</th>
-                  <th>Valor</th>
-                  <th>Acoes</th>
+                  <td colSpan={7} className="table__empty">
+                    Nenhum lancamento registrado ainda.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {entries.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="table__empty">
-                      Nenhum lancamento registrado ainda.
-                    </td>
-                  </tr>
-                )}
-                {entries.map((entry) => (
-                  <tr key={entry.id}>
-                    <td>{formatDateShort(entry.createdAt)}</td>
-                    <td>{entry.description}</td>
-                    <td>
-                      {entry.type === 'transferencia' && entry.transferToId
-                        ? `${getCashboxName(entry.cashboxId)} → ${getCashboxName(entry.transferToId)}`
-                        : getCashboxName(entry.cashboxId)}
-                    </td>
-                    <td>{entry.category ?? '-'}</td>
-                    <td>
-                      <span
-                        className={`badge ${
-                          entry.type === 'entrada'
-                            ? 'badge--entrada'
-                            : entry.type === 'saida'
-                              ? 'badge--saida'
-                              : 'badge--transferencia'
-                        }`}
-                      >
-                        {entry.type}
+              )}
+              {entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td className="table__cell--mobile-hide">
+                    {formatDateShort(entry.createdAt)}
+                  </td>
+                  <td className="table__cell--truncate">
+                    <div className="table__stack">
+                      <strong>{entry.description}</strong>
+                      <span className="table__sub table__sub--mobile">
+                        {formatDateShort(entry.createdAt)}
                       </span>
-                    </td>
-                    <td>{formatCurrency(entry.amount)}</td>
-                    <td className="table__actions">
-                      <ActionMenu
-                        items={[
-                          {
-                            label: 'Excluir',
-                            onClick: () => setDeleteId(entry.id),
-                            variant: 'danger',
-                          },
-                        ]}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+                      <span className="table__sub table__sub--mobile">
+                        {formatCurrency(entry.amount)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="table__cell--mobile-hide">
+                    {entry.type === 'transferencia' && entry.transferToId
+                      ? `${getCashboxName(entry.cashboxId)} → ${getCashboxName(entry.transferToId)}`
+                      : getCashboxName(entry.cashboxId)}
+                  </td>
+                  <td className="table__cell--mobile-hide">{entry.category ?? '-'}</td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        entry.type === 'entrada'
+                          ? 'badge--entrada'
+                          : entry.type === 'saida'
+                            ? 'badge--saida'
+                            : 'badge--transferencia'
+                      }`}
+                    >
+                      {entry.type}
+                    </span>
+                  </td>
+                  <td className="table__cell--mobile-hide">{formatCurrency(entry.amount)}</td>
+                  <td className="table__actions table__actions--end">
+                    <ActionMenu
+                      items={[
+                        { label: 'Editar', onClick: () => handleEdit(entry) },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
       <ConfirmDialog
         open={!!deleteId}
         title="Excluir lancamento?"

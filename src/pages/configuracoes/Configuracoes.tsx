@@ -33,40 +33,47 @@ const Configuracoes = ({ sidebarMode, onSidebarModeChange }: ConfiguracoesProps)
     <Page className="configuracoes">
       <PageHeader />
 
-      <div className="configuracoes__grid">
-        <div className="panel configuracoes__panel">
-          <div className="configuracoes__panel-header">
-            <div>
-              <h2>Barra lateral</h2>
-              <p>Escolha como deseja navegar pelo sistema.</p>
-            </div>
-          </div>
-
-          <div className="configuracoes__options">
-            {options.map((option) => (
-              <label
-                key={option.id}
-                className={`configuracoes__option${
-                  sidebarMode === option.id ? ' configuracoes__option--active' : ''
-                }`}
-              >
-                <input
-                  className="configuracoes__radio"
-                  type="radio"
-                  name="sidebar-mode"
-                  value={option.id}
-                  checked={sidebarMode === option.id}
-                  onChange={() => onSidebarModeChange(option.id)}
-                />
-                <div className="configuracoes__option-content">
-                  <span className="configuracoes__option-title">{option.title}</span>
-                  <span className="configuracoes__option-desc">{option.description}</span>
-                </div>
-              </label>
-            ))}
+      <section className="panel">
+        <div className="panel__header">
+          <div>
+            <h2 className="panel__title">Barra lateral</h2>
+            <p className="panel__subtitle">Escolha como deseja navegar pelo sistema.</p>
           </div>
         </div>
-      </div>
+
+        <div className="list">
+          {options.map((option) => {
+            const inputId = `sidebar-mode-${option.id}`
+            return (
+              <div
+                key={option.id}
+                className={`list__item list__item--center${
+                  sidebarMode === option.id ? ' list__item--active' : ''
+                }`}
+              >
+                <div>
+                  <strong>{option.title}</strong>
+                  <span className="list__meta">{option.description}</span>
+                </div>
+                <label className="toggle" htmlFor={inputId}>
+                  <input
+                    id={inputId}
+                    type="radio"
+                    name="sidebar-mode"
+                    value={option.id}
+                    checked={sidebarMode === option.id}
+                    onChange={() => onSidebarModeChange(option.id)}
+                  />
+                  <span className="toggle__track" aria-hidden="true">
+                    <span className="toggle__thumb" />
+                  </span>
+                  <span className="toggle__label sr-only">Selecionar</span>
+                </label>
+              </div>
+            )
+          })}
+        </div>
+      </section>
     </Page>
   )
 }

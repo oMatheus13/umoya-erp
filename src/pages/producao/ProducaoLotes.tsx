@@ -224,6 +224,8 @@ const ProducaoLotes = () => {
       },
     })
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Lote removido.')
     setDeleteId(null)
   }
@@ -250,30 +252,30 @@ const ProducaoLotes = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="lotes__summary summary-card">
-        <article className="lotes__stat">
-          <span className="lotes__stat-label">Lotes ativos</span>
-          <strong className="lotes__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Lotes ativos</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="lotes__stat">
-          <span className="lotes__stat-label">Aguardando</span>
-          <strong className="lotes__stat-value">{summary.waiting}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Aguardando</span>
+          <strong className="summary__value">{summary.waiting}</strong>
         </article>
-        <article className="lotes__stat">
-          <span className="lotes__stat-label">Produzindo</span>
-          <strong className="lotes__stat-value">{summary.producing}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Produzindo</span>
+          <strong className="summary__value">{summary.producing}</strong>
         </article>
-        <article className="lotes__stat">
-          <span className="lotes__stat-label">Curando</span>
-          <strong className="lotes__stat-value">{summary.curing}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Curando</span>
+          <strong className="summary__value">{summary.curing}</strong>
         </article>
-        <article className="lotes__stat">
-          <span className="lotes__stat-label">Pronto</span>
-          <strong className="lotes__stat-value">{summary.ready}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Pronto</span>
+          <strong className="summary__value">{summary.ready}</strong>
         </article>
       </div>
 
-      <div className="lotes__filters">
+      <div className="filters">
         <div className="form__group">
           <label className="form__label" htmlFor="lotes-filter-status">
             Status
@@ -316,7 +318,7 @@ const ProducaoLotes = () => {
 
       <div className="table-card">
         <table className="table">
-          <thead>
+          <thead className="table__head table__head--mobile-hide">
             <tr>
               <th>Lote</th>
               <th>Produto</th>
@@ -325,50 +327,66 @@ const ProducaoLotes = () => {
               <th>Comprimento</th>
               <th>Moldagem</th>
               <th>Desforma</th>
-              <th>Status</th>
               <th>Obs.</th>
-              <th className="table__actions">Acoes</th>
+              <th className="table__actions table__actions--end">Status / Editar</th>
             </tr>
           </thead>
           <tbody>
             {filteredLots.length === 0 ? (
               <tr>
-                <td className="table__empty" colSpan={10}>
+                <td className="table__empty" colSpan={9}>
                   Nenhum lote registrado.
                 </td>
               </tr>
             ) : (
-              filteredLots.map((lot) => (
-                <tr key={lot.id}>
-                  <td>#{lot.id.slice(-6)}</td>
-                  <td>{getProductName(lot.productId)}</td>
-                  <td>
-                    {data.produtos.find((item) => item.id === lot.productId)?.hasVariants
-                      ? getVariantName(lot.productId, lot.variantId)
-                      : '-'}
-                  </td>
-                  <td>{lot.quantity}</td>
-                  <td>
-                    {lot.customLength && lot.customLength > 0
-                      ? `${lot.customLength.toFixed(2)} m`
-                      : '-'}
-                  </td>
-                  <td>{formatDateShort(lot.moldedAt ?? '')}</td>
-                  <td>{formatDateShort(lot.demoldedAt ?? lot.curingUntil ?? '')}</td>
-                  <td>
-                    <span className={`badge badge--${lot.status}`}>{statusLabels[lot.status]}</span>
-                  </td>
-                  <td>{lot.notes ?? '-'}</td>
-                  <td className="table__actions">
-                    <ActionMenu
-                      items={[
-                        { label: 'Editar', onClick: () => handleEdit(lot) },
-                        { label: 'Excluir', onClick: () => setDeleteId(lot.id) },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
+              filteredLots.map((lot) => {
+                const moldedAt = formatDateShort(lot.moldedAt ?? '')
+                const demoldedAt = formatDateShort(lot.demoldedAt ?? lot.curingUntil ?? '')
+                return (
+                  <tr key={lot.id}>
+                    <td className="table__cell--mobile-hide">#{lot.id.slice(-6)}</td>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{getProductName(lot.productId)}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          Moldagem: {moldedAt}
+                        </span>
+                        <span className="table__sub table__sub--mobile">
+                          Desenforma: {demoldedAt}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {data.produtos.find((item) => item.id === lot.productId)?.hasVariants
+                        ? getVariantName(lot.productId, lot.variantId)
+                        : '-'}
+                    </td>
+                    <td className="table__cell--mobile-hide">{lot.quantity}</td>
+                    <td className="table__cell--mobile-hide">
+                      {lot.customLength && lot.customLength > 0
+                        ? `${lot.customLength.toFixed(2)} m`
+                        : '-'}
+                    </td>
+                    <td className="table__cell--mobile-hide">{moldedAt}</td>
+                    <td className="table__cell--mobile-hide">{demoldedAt}</td>
+                    <td className="table__cell--mobile-hide">{lot.notes ?? '-'}</td>
+                    <td className="table__actions table__actions--end">
+                      <div className="table__end">
+                        <div className="table__status">
+                          <span className={`badge badge--${lot.status}`}>
+                            {statusLabels[lot.status]}
+                          </span>
+                        </div>
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEdit(lot) },
+                          ]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
@@ -379,25 +397,39 @@ const ProducaoLotes = () => {
         title={editingId ? 'Editar lote' : 'Novo lote'}
         onClose={closeModal}
         actions={
-          <button className="button button--primary" type="submit" form={lotFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Salvar lote' : 'Registrar lote'}
-            </span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={lotFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Salvar lote' : 'Registrar lote'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={lotFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="lote-product">
+        <form id={lotFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="lote-product">
                 Produto
               </label>
               <select
                 id="lote-product"
-                className="form__input"
+                className="modal__input"
                 value={form.productId}
                 onChange={(event) => handleProductChange(event.target.value)}
               >
@@ -411,13 +443,13 @@ const ProducaoLotes = () => {
             {data.produtos.find((product) => product.id === form.productId)?.hasVariants &&
               data.produtos.find((product) => product.id === form.productId)?.unit !==
                 'metro_linear' && (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="lote-variant">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor="lote-variant">
                     Variante
                   </label>
                   <select
                     id="lote-variant"
-                    className="form__input"
+                    className="modal__input"
                     value={form.variantId}
                     onChange={(event) => updateForm({ variantId: event.target.value })}
                   >
@@ -435,13 +467,13 @@ const ProducaoLotes = () => {
 
           {data.produtos.find((product) => product.id === form.productId)?.unit ===
             'metro_linear' && (
-            <div className="form__group">
-              <label className="form__label" htmlFor="lote-length">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="lote-length">
                 Comprimento base (m)
               </label>
               <input
                 id="lote-length"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 step="0.01"
                 min="0"
@@ -453,14 +485,14 @@ const ProducaoLotes = () => {
             </div>
           )}
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="lote-quantity">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="lote-quantity">
                 Quantidade
               </label>
               <input
                 id="lote-quantity"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="1"
                 value={form.quantity}
@@ -469,13 +501,13 @@ const ProducaoLotes = () => {
                 }
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="lote-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="lote-status">
                 Status
               </label>
               <select
                 id="lote-status"
-                className="form__input"
+                className="modal__input"
                 value={form.status}
                 onChange={(event) =>
                   updateForm({ status: event.target.value as ProductionLotStatus })
@@ -490,26 +522,26 @@ const ProducaoLotes = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="lote-molded">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="lote-molded">
                 Data de moldagem
               </label>
               <input
                 id="lote-molded"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.moldedAt}
                 onChange={(event) => updateForm({ moldedAt: event.target.value })}
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="lote-demolded">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="lote-demolded">
                 Desforma
               </label>
               <input
                 id="lote-demolded"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.demoldedAt}
                 onChange={(event) => updateForm({ demoldedAt: event.target.value })}
@@ -517,19 +549,19 @@ const ProducaoLotes = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="lote-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="lote-notes">
               Observacoes
             </label>
             <textarea
               id="lote-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.notes}
               onChange={(event) => updateForm({ notes: event.target.value })}
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

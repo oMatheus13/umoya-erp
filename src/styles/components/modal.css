@@ -80,7 +80,7 @@
   background: var(--color-cloud);
 }
 
-.modal__actions {
+.modal__header-actions {
   display: inline-flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -109,45 +109,49 @@
 }
 
 /* Form layout inside modal */
-.modal .form {
+.modal__form {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-.modal .form > * + * {
+.modal__form > * + * {
   padding-top: var(--spacing-sm);
   border-top: var(--border-thin);
 }
 
-.modal .form__row {
+.modal__row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--spacing-sm);
 }
 
-.modal .form__section {
+.modal__section {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-sm);
 }
 
-.modal .form__group {
+.modal__checkbox {
+  margin: var(--spacing-md) 0;
+}
+
+.modal__group {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2xs);
 }
 
-.modal .form__label {
+.modal__label {
   font-size: var(--font-size-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 
-.modal .form__input,
-.modal .form__textarea,
-.modal .form__summary {
+.modal__input,
+.modal__textarea,
+.modal__summary {
   width: 100%;
   border: none;
   background: transparent;
@@ -156,42 +160,37 @@
   color: var(--color-ink);
 }
 
-.modal .form__input {
+.modal__input {
   padding: var(--spacing-2xs) 0;
 }
 
-.modal .form__textarea {
+.modal__textarea {
   min-height: 84px;
   resize: vertical;
 }
 
-.modal .form__summary {
+.modal__summary {
   padding: var(--spacing-2xs) 0;
   font-weight: var(--font-weight-medium);
 }
 
-.modal .form__help {
+.modal__help {
   margin: 0;
   font-size: var(--font-size-xs);
   color: var(--color-ink-muted);
 }
 
-.modal .form__status {
+.modal__status {
   margin: 0;
   font-size: var(--font-size-xs);
   color: var(--color-danger);
 }
 
-.modal .form__actions {
+.modal__form-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-sm);
-}
-
-.modal > .modal__dialog > .form__actions {
-  padding-top: var(--spacing-sm);
-  border-top: var(--border-thin);
 }
 
 
@@ -219,7 +218,7 @@
     font-size: var(--font-size-h5);
   }
 
-  .modal__actions .button {
+  .modal__header-actions .button {
     --btn-padding-y: 0.5rem;
     --btn-padding-x: 0.55rem;
     min-width: 40px;

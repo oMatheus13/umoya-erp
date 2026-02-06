@@ -1,0 +1,274 @@
+.table-card {
+  --table-min-width: 960px;
+  background: var(--color-true-white);
+  border: var(--border-thin);
+  border-radius: var(--border-radius-sm);
+  padding: var(--spacing-sm);
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: var(--table-min-width);
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table--compact {
+  --table-min-width: 100%;
+}
+
+.table--compact .table__actions--end {
+  width: 1%;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-top: var(--border-thin);
+}
+
+.table thead th {
+  border-top: none;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  font-weight: var(--font-weight-semibold);
+}
+
+.table__head--mobile-hide {
+  display: table-header-group;
+}
+
+.table tbody tr:first-child td {
+  border-top: none;
+}
+
+.table__actions {
+  text-align: right;
+  white-space: nowrap;
+  width: 96px;
+  vertical-align: middle;
+}
+
+.table__actions--end {
+  width: 220px;
+  padding-left: var(--spacing-sm);
+}
+
+.table__end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+}
+
+.table__end .table__status {
+  width: auto;
+}
+
+.table__select {
+  --select-bg: rgba(15, 17, 22, 0.06);
+  --select-fg: var(--color-ink);
+  --select-border: rgba(15, 17, 22, 0.12);
+  border: 1px solid var(--select-border);
+  border-radius: var(--border-radius-full);
+  background-color: var(--select-bg);
+  color: var(--select-fg);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 4px 28px 4px 12px;
+  min-width: 120px;
+  line-height: 1.2;
+  cursor: pointer;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--select-fg) 50%),
+    linear-gradient(135deg, var(--select-fg) 50%, transparent 50%);
+  background-position: calc(100% - 14px) 50%, calc(100% - 10px) 50%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.table__select:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
+}
+
+.table__select option {
+  color: var(--color-ink);
+  background: var(--color-true-white);
+}
+
+.table__select[data-status='rascunho'],
+.table__select[data-status='enviado'],
+.table__select[data-status='aguardando_pagamento'],
+.table__select[data-status='em_producao'] {
+  --select-bg: rgba(255, 179, 71, 0.18);
+  --select-fg: var(--color-warning);
+  --select-border: rgba(255, 179, 71, 0.35);
+}
+
+.table__select[data-status='aprovado'],
+.table__select[data-status='pago'],
+.table__select[data-status='entregue'] {
+  --select-bg: rgba(76, 210, 123, 0.16);
+  --select-fg: var(--color-success);
+  --select-border: rgba(76, 210, 123, 0.35);
+}
+
+.table__select[data-status='recusado'] {
+  --select-bg: rgba(255, 92, 92, 0.16);
+  --select-fg: var(--color-danger);
+  --select-border: rgba(255, 92, 92, 0.35);
+}
+
+.table__empty {
+  padding: var(--spacing-md) 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+
+.table__cell--tight {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.table__cell--truncate {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table__status {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.table__status .badge {
+  font-size: 0.65rem;
+  padding: 2px 8px;
+  letter-spacing: 0.08em;
+}
+
+.table__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.table__link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.table__link:focus-visible {
+  outline: 2px solid var(--color-lime);
+  outline-offset: 2px;
+}
+
+.table__sub {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.table__sub--mobile {
+  display: none;
+}
+
+.table__cell--mobile-only {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .table-card {
+    --table-min-width: 100%;
+    padding: var(--spacing-xs);
+  }
+
+  .table {
+    font-size: var(--font-size-xs);
+  }
+
+  .table th,
+  .table td {
+    padding: var(--spacing-2xs) var(--spacing-xs);
+  }
+
+  .table__cell--mobile-hide {
+    display: none;
+  }
+
+  .table__cell--mobile-only {
+    display: table-cell;
+  }
+
+  .table__head--mobile-hide {
+    display: none;
+  }
+
+  .table__sub--mobile {
+    display: block;
+  }
+
+  .table__status {
+    gap: 4px;
+  }
+
+  .table__status .badge {
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    letter-spacing: 0.08em;
+  }
+
+  .table__actions {
+    width: 72px;
+  }
+
+  .table__end {
+    gap: var(--spacing-2xs);
+  }
+
+  .table__actions--end {
+    width: 150px;
+    padding-left: var(--spacing-xs);
+  }
+
+  .table tr,
+  .table__row {
+    gap: var(--spacing-2xs);
+  }
+
+  .table tr > .table__actions,
+  .table__row > .table__actions {
+    flex: 0 0 72px;
+  }
+
+  .table tr > .table__actions--end,
+  .table__row > .table__actions--end {
+    flex: 0 0 150px;
+  }
+
+  .table__cell--truncate {
+    max-width: 180px;
+  }
+
+  .table__select {
+    min-width: 100px;
+    padding-right: 24px;
+  }
+}

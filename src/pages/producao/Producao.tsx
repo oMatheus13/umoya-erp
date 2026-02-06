@@ -539,118 +539,118 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
         }
       />
 
-      {status && <p className="producao__status">{status}</p>}
+      {status && <p className="form__status">{status}</p>}
 
-      <div className="producao__summary summary-card">
-        <article className="producao__stat">
-          <span className="producao__stat-label">Total</span>
-          <strong className="producao__stat-value">{productionSummary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Total</span>
+          <strong className="summary__value">{productionSummary.total}</strong>
         </article>
-        <article className="producao__stat">
-          <span className="producao__stat-label">Abertas</span>
-          <strong className="producao__stat-value">{productionSummary.open}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Abertas</span>
+          <strong className="summary__value">{productionSummary.open}</strong>
         </article>
-        <article className="producao__stat">
-          <span className="producao__stat-label">Em producao</span>
-          <strong className="producao__stat-value">{productionSummary.active}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Em producao</span>
+          <strong className="summary__value">{productionSummary.active}</strong>
         </article>
-        <article className="producao__stat">
-          <span className="producao__stat-label">Finalizadas</span>
-          <strong className="producao__stat-value">{productionSummary.done}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Finalizadas</span>
+          <strong className="summary__value">{productionSummary.done}</strong>
         </article>
       </div>
 
-      <div className="producao__layout">
-        <section className="producao__panel">
-          <div className="producao__panel-header">
-            <div>
-              <h2>Ordens recentes</h2>
-              <p>Movimente as ordens para iniciar ou finalizar a producao.</p>
-            </div>
-            <span className="producao__panel-meta">{productionOrders.length} registros</span>
+      <section className="panel">
+        <div className="panel__header">
+          <div>
+            <h2>Ordens recentes</h2>
+            <p>Movimente as ordens para iniciar ou finalizar a producao.</p>
           </div>
-          <div className="producao__list">
-            {productionOrders.length === 0 && (
-              <div className="producao__empty">
-                Nenhuma ordem criada. Marque pedidos como pagos para gerar producao.
-              </div>
-            )}
-            {productionOrders.map((order) => {
-              const pedido = getOrder(order.orderId)
-              const item = pedido?.items[0]
-              const productId = item?.productId ?? order.productId
-              const product = productId
-                ? data.produtos.find((entry) => entry.id === productId)
+          <span className="panel__meta">{productionOrders.length} registros</span>
+        </div>
+        <div className="list">
+          {productionOrders.length === 0 && (
+            <div className="list__empty">
+              Nenhuma ordem criada. Marque pedidos como pagos para gerar producao.
+            </div>
+          )}
+          {productionOrders.map((order) => {
+            const pedido = getOrder(order.orderId)
+            const item = pedido?.items[0]
+            const productId = item?.productId ?? order.productId
+            const product = productId
+              ? data.produtos.find((entry) => entry.id === productId)
+              : undefined
+            const variant =
+              product && product.unit !== 'metro_linear' && product.hasVariants
+                ? getVariant(productId, item?.variantId ?? order.variantId)
                 : undefined
-              const variant =
-                product && product.unit !== 'metro_linear' && product.hasVariants
-                  ? getVariant(productId, item?.variantId ?? order.variantId)
-                  : undefined
-              const length =
-                order.customLength ??
-                item?.customLength ??
-                (product?.unit === 'metro_linear' ? product.length : undefined)
-              const lengthLabel =
-                product?.unit === 'metro_linear' && length
-                  ? `${toCentimeters(length).toFixed(0)} cm`
-                  : ''
-              const sourceLabel =
-                order.source === 'estoque'
-                  ? 'Estoque interno'
-                  : pedido
-                    ? getClientName(pedido.clientId)
-                    : 'Pedido'
-              return (
-                <div key={order.id} className="producao__card">
-                  <div className="producao__info">
-                    <strong>Ordem #{order.id.slice(0, 6)}</strong>
-                    <span>{sourceLabel}</span>
-                    <span>
-                      {productId ? getProductName(productId) : 'Produto'}
-                      {variant ? ` • ${variant.name}` : ''}
-                      {lengthLabel ? ` • ${lengthLabel}` : ''}
-                      {' • '}
-                      {order.quantity}
-                    </span>
-                  </div>
-                  <div className="producao__meta">
+            const length =
+              order.customLength ??
+              item?.customLength ??
+              (product?.unit === 'metro_linear' ? product.length : undefined)
+            const lengthLabel =
+              product?.unit === 'metro_linear' && length
+                ? `${toCentimeters(length).toFixed(0)} cm`
+                : ''
+            const sourceLabel =
+              order.source === 'estoque'
+                ? 'Estoque interno'
+                : pedido
+                  ? getClientName(pedido.clientId)
+                  : 'Pedido'
+            return (
+              <div key={order.id} className="list__item">
+                <div>
+                  <strong>Ordem #{order.id.slice(0, 6)}</strong>
+                  <span className="list__meta">{sourceLabel}</span>
+                  <span className="list__meta">
+                    {productId ? getProductName(productId) : 'Produto'}
+                    {variant ? ` • ${variant.name}` : ''}
+                    {lengthLabel ? ` • ${lengthLabel}` : ''}
+                    {' • '}
+                    {order.quantity} un
+                  </span>
+                  <span className="list__meta">
                     <span className={`badge badge--${order.status}`}>
                       {statusLabels[order.status]}
                     </span>
+                    {' · '}
                     <span>Inicio: {formatDateShort(order.plannedAt ?? '')}</span>
+                    {' · '}
                     <span>Fim: {formatDateShort(order.finishedAt ?? '')}</span>
-                  </div>
-                  <div className="producao__actions">
-                    <button
-                      className="button button--ghost"
-                      type="button"
-                      onClick={() => handleStart(order)}
-                      disabled={order.status !== 'aberta'}
-                    >
-                      Iniciar
-                    </button>
-                    <button
-                      className="button button--primary"
-                      type="button"
-                      onClick={() => handleFinish(order)}
-                      disabled={order.status !== 'em_producao'}
-                    >
-                      Finalizar
-                    </button>
-                    <button
-                      className="button button--danger"
-                      type="button"
-                      onClick={() => setDeleteId(order.id)}
-                    >
-                      Excluir
-                    </button>
-                  </div>
+                  </span>
                 </div>
-              )
-            })}
-          </div>
-        </section>
-      </div>
+                <div className="list__actions">
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={() => handleStart(order)}
+                    disabled={order.status !== 'aberta'}
+                  >
+                    Iniciar
+                  </button>
+                  <button
+                    className="button button--primary"
+                    type="button"
+                    onClick={() => handleFinish(order)}
+                    disabled={order.status !== 'em_producao'}
+                  >
+                    Finalizar
+                  </button>
+                  <button
+                    className="button button--danger"
+                    type="button"
+                    onClick={() => setDeleteId(order.id)}
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </section>
       <Modal
         open={isManualOpen}
         onClose={() => setIsManualOpen(false)}
@@ -665,14 +665,14 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
           </button>
         }
       >
-        <div className="form">
-          <div className="form__group">
-            <label className="form__label" htmlFor="manual-product">
+        <div className="modal__form">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="manual-product">
               Produto
             </label>
             <select
               id="manual-product"
-              className="form__input"
+              className="modal__input"
               value={manualForm.productId}
               onChange={(event) => handleManualProductChange(event.target.value)}
             >
@@ -684,15 +684,15 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
               ))}
             </select>
           </div>
-          <div className="form__row">
+          <div className="modal__row">
             {manualIsLinear ? (
-              <div className="form__group">
-                <label className="form__label" htmlFor="manual-length">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="manual-length">
                   Comprimento (cm)
                 </label>
                 <input
                   id="manual-length"
-                  className="form__input"
+                  className="modal__input"
                   type="number"
                   min="0"
                   step="1"
@@ -707,13 +707,13 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                 />
               </div>
             ) : manualHasVariants ? (
-              <div className="form__group">
-                <label className="form__label" htmlFor="manual-variant">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="manual-variant">
                   Variacao
                 </label>
                 <select
                   id="manual-variant"
-                  className="form__input"
+                  className="modal__input"
                   value={manualForm.variantId}
                   onChange={(event) => handleManualVariantChange(event.target.value)}
                   disabled={!manualForm.productId}
@@ -729,23 +729,23 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                 </select>
               </div>
             ) : (
-              <div className="form__group">
-                <label className="form__label">Variacao</label>
+              <div className="modal__group">
+                <label className="modal__label">Variacao</label>
                 <input
-                  className="form__input"
+                  className="modal__input"
                   type="text"
                   value="Produto sem variacoes"
                   disabled
                 />
               </div>
             )}
-            <div className="form__group">
-              <label className="form__label" htmlFor="manual-quantity">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="manual-quantity">
                 Quantidade
               </label>
               <input
                 id="manual-quantity"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="1"

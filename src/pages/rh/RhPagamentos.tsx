@@ -27,6 +27,12 @@ const statusOptions: { value: EmployeePaymentStatus; label: string }[] = [
   { value: 'cancelado', label: 'Cancelado' },
 ]
 
+const paymentStatusStyles: Record<EmployeePaymentStatus, string> = {
+  aberto: 'badge--aberto',
+  pago: 'badge--pago',
+  cancelado: 'badge--cancelada',
+}
+
 const createEmptyForm = (): PaymentForm => {
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -156,6 +162,7 @@ const RhPagamentos = () => {
     payload.pagamentosRH = payload.pagamentosRH.filter((entry) => entry.id !== deleteId)
     dataService.replaceAll(payload)
     refresh()
+    setIsModalOpen(false)
     setStatus('Pagamento removido.')
     setDeleteId(null)
   }
@@ -175,69 +182,79 @@ const RhPagamentos = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="rh-page__summary summary-card">
-        <article className="rh-page__stat">
-          <span className="rh-page__stat-label">Pagamentos</span>
-          <strong className="rh-page__stat-value">{pagamentos.length}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Pagamentos</span>
+          <strong className="summary__value">{pagamentos.length}</strong>
         </article>
-        <article className="rh-page__stat">
-          <span className="rh-page__stat-label">Total pago</span>
-          <strong className="rh-page__stat-value">{formatCurrency(totalPago)}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Total pago</span>
+          <strong className="summary__value">{formatCurrency(totalPago)}</strong>
         </article>
-        <article className="rh-page__stat">
-          <span className="rh-page__stat-label">Em aberto</span>
-          <strong className="rh-page__stat-value">{formatCurrency(totalAberto)}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Em aberto</span>
+          <strong className="summary__value">{formatCurrency(totalAberto)}</strong>
         </article>
       </div>
 
-      <section className="rh-page__panel">
-        <div className="rh-page__panel-header">
+      <section className="panel">
+        <div className="panel__header">
           <div>
             <h2>Pagamentos registrados</h2>
             <p>Historico de pagamentos por periodo.</p>
           </div>
-          <span className="rh-page__panel-meta">{pagamentos.length} registros</span>
+          <span className="panel__meta">{pagamentos.length} registros</span>
         </div>
-        <div className="table-card rh-page__table">
+        <div className="table-card">
           <table className="table">
-            <thead>
+            <thead className="table__head table__head--mobile-hide">
               <tr>
                 <th>Funcionario</th>
                 <th>Periodo</th>
                 <th>Total</th>
-                <th>Status</th>
                 <th>Metodo</th>
-                <th>Acoes</th>
+                <th className="table__actions table__actions--end">Status / Editar</th>
               </tr>
             </thead>
             <tbody>
               {pagamentos.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="table__empty">
+                  <td colSpan={5} className="table__empty">
                     Nenhum pagamento registrado ainda.
                   </td>
                 </tr>
               )}
               {pagamentos.map((entry) => (
                 <tr key={entry.id}>
-                  <td>{getEmployeeName(entry.employeeId)}</td>
-                  <td>
+                  <td className="table__cell--truncate">
+                    <div className="table__stack">
+                      <strong>{getEmployeeName(entry.employeeId)}</strong>
+                      <span className="table__sub table__sub--mobile">
+                        {formatCurrency(entry.total)}
+                      </span>
+                      <span className="table__sub table__sub--mobile">
+                        {formatDateShort(entry.periodEnd)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="table__cell--mobile-hide">
                     {formatDateShort(entry.periodStart)} - {formatDateShort(entry.periodEnd)}
                   </td>
-                  <td>{formatCurrency(entry.total)}</td>
-                  <td>{statusOptions.find((item) => item.value === entry.status)?.label}</td>
-                  <td>{entry.method ?? '-'}</td>
-                  <td className="table__actions">
-                    <ActionMenu
-                      items={[
-                        { label: 'Editar', onClick: () => handleEdit(entry) },
-                        {
-                          label: 'Excluir',
-                          onClick: () => setDeleteId(entry.id),
-                          variant: 'danger',
-                        },
-                      ]}
-                    />
+                  <td className="table__cell--mobile-hide">{formatCurrency(entry.total)}</td>
+                  <td className="table__cell--mobile-hide">{entry.method ?? '-'}</td>
+                  <td className="table__actions table__actions--end">
+                    <div className="table__end">
+                      <div className="table__status">
+                        <span className={`badge ${paymentStatusStyles[entry.status]}`}>
+                          {statusOptions.find((item) => item.value === entry.status)?.label}
+                        </span>
+                      </div>
+                      <ActionMenu
+                        items={[
+                          { label: 'Editar', onClick: () => handleEdit(entry) },
+                        ]}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -252,23 +269,37 @@ const RhPagamentos = () => {
         title={editingId ? 'Editar pagamento' : 'Registrar pagamento'}
         size="lg"
         actions={
-          <button className="button button--primary" type="submit" form={paymentFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">Salvar</span>
-          </button>
+          <>
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={paymentFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">Salvar</span>
+            </button>
+          </>
         }
       >
-        <form id={paymentFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-employee">
+        <form id={paymentFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-employee">
                 Funcionario
               </label>
               <select
                 id="pay-employee"
-                className="form__input"
+                className="modal__input"
                 value={form.employeeId}
                 onChange={(event) => setForm((prev) => ({ ...prev, employeeId: event.target.value }))}
               >
@@ -280,13 +311,13 @@ const RhPagamentos = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-status">
                 Status
               </label>
               <select
                 id="pay-status"
-                className="form__input"
+                className="modal__input"
                 value={form.status}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -304,14 +335,14 @@ const RhPagamentos = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-start">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-start">
                 Inicio
               </label>
               <input
                 id="pay-start"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.periodStart}
                 onChange={(event) =>
@@ -319,13 +350,13 @@ const RhPagamentos = () => {
                 }
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-end">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-end">
                 Fim
               </label>
               <input
                 id="pay-end"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.periodEnd}
                 onChange={(event) =>
@@ -335,14 +366,14 @@ const RhPagamentos = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-base">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-base">
                 Base (R$)
               </label>
               <input
                 id="pay-base"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -352,13 +383,13 @@ const RhPagamentos = () => {
                 }
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-extras">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-extras">
                 Extras (R$)
               </label>
               <input
                 id="pay-extras"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -368,13 +399,13 @@ const RhPagamentos = () => {
                 }
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-discounts">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-discounts">
                 Descontos (R$)
               </label>
               <input
                 id="pay-discounts"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -386,24 +417,24 @@ const RhPagamentos = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="pay-method">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-method">
                 Metodo
               </label>
               <input
                 id="pay-method"
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={form.method}
                 onChange={(event) => setForm((prev) => ({ ...prev, method: event.target.value }))}
                 placeholder="Pix, dinheiro, transferencia"
               />
             </div>
-            <div className="form__group">
-              <label className="form__label">Total</label>
+            <div className="modal__group">
+              <label className="modal__label">Total</label>
               <input
-                className="form__input"
+                className="modal__input"
                 type="text"
                 value={formatCurrency(form.baseValue + form.extras - form.discounts)}
                 disabled
@@ -411,13 +442,13 @@ const RhPagamentos = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="pay-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="pay-notes">
               Observacoes
             </label>
             <textarea
               id="pay-notes"
-              className="form__textarea"
+              className="modal__textarea"
               rows={3}
               value={form.notes}
               onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}

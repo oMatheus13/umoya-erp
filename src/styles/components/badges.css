@@ -1,0 +1,67 @@
+.badge,
+.ui-badge {
+  --badge-bg: rgba(15, 17, 22, 0.08);
+  --badge-fg: var(--color-ink);
+  --badge-border: rgba(15, 17, 22, 0.1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--border-radius-full);
+  border: 1px solid var(--badge-border);
+  background: var(--badge-bg);
+  color: var(--badge-fg);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge--aprovado,
+.badge--pago,
+.badge--entregue,
+.badge--finalizada,
+.badge--pronto,
+.badge--resolvido,
+.badge--ativo,
+.badge--autorizada,
+.badge--entrada,
+.ui-badge--success {
+  --badge-bg: rgba(76, 210, 123, 0.15);
+  --badge-fg: var(--color-success);
+  --badge-border: rgba(76, 210, 123, 0.3);
+}
+
+.badge--pendente,
+.badge--aguardando,
+.badge--rascunho,
+.badge--em_producao,
+.badge--em_rota,
+.badge--produzindo,
+.badge--curando,
+.badge--aberto,
+.badge--aberta,
+.badge--enviado,
+.badge--transferencia,
+.ui-badge--warning {
+  --badge-bg: rgba(255, 179, 71, 0.18);
+  --badge-fg: var(--color-warning);
+  --badge-border: rgba(255, 179, 71, 0.35);
+}
+
+.badge--recusado,
+.badge--cancelada,
+.badge--inativo,
+.badge--saida,
+.ui-badge--danger {
+  --badge-bg: rgba(255, 92, 92, 0.16);
+  --badge-fg: var(--color-danger);
+  --badge-border: rgba(255, 92, 92, 0.35);
+}
+
+.badge--info,
+.ui-badge--info {
+  --badge-bg: rgba(74, 163, 255, 0.16);
+  --badge-fg: var(--color-info);
+  --badge-border: rgba(74, 163, 255, 0.35);
+}

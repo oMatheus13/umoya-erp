@@ -104,6 +104,15 @@ const EstoqueMateriais = () => {
     setIsAdjustOpen(false)
   }
 
+  const formatQuantity = (value?: number) => {
+    if (value === undefined || value === null || Number.isNaN(value)) {
+      return '-'
+    }
+    return new Intl.NumberFormat('pt-BR', {
+      maximumFractionDigits: 2,
+    }).format(value)
+  }
+
   const formatValue = (value?: number) => (value ? formatCurrency(value) : '-')
 
   const getStatusBadge = (material: Material) => {
@@ -122,37 +131,37 @@ const EstoqueMateriais = () => {
       <PageHeader />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="estoque-materiais__summary summary-card">
-        <article className="estoque-materiais__stat">
-          <span className="estoque-materiais__stat-label">Materiais</span>
-          <strong className="estoque-materiais__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Materiais</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="estoque-materiais__stat">
-          <span className="estoque-materiais__stat-label">Estoque total</span>
-          <strong className="estoque-materiais__stat-value">{summary.stock}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Estoque total</span>
+          <strong className="summary__value">{formatQuantity(summary.stock)}</strong>
         </article>
-        <article className="estoque-materiais__stat">
-          <span className="estoque-materiais__stat-label">Baixo</span>
-          <strong className="estoque-materiais__stat-value">{summary.low}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Baixo</span>
+          <strong className="summary__value">{summary.low}</strong>
         </article>
-        <article className="estoque-materiais__stat">
-          <span className="estoque-materiais__stat-label">Sem estoque</span>
-          <strong className="estoque-materiais__stat-value">{summary.out}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Sem estoque</span>
+          <strong className="summary__value">{summary.out}</strong>
         </article>
       </div>
 
       <div className="estoque-materiais__layout">
-        <section className="estoque-materiais__panel">
-          <div className="estoque-materiais__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Saldo de materia-prima</h2>
               <p>Compras atualizam o estoque automaticamente.</p>
             </div>
-            <span className="estoque-materiais__panel-meta">{materials.length} registros</span>
+            <span className="panel__meta">{materials.length} registros</span>
           </div>
-          <div className="table-card estoque-materiais__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Material</th>
                   <th>Unidade</th>
@@ -160,14 +169,13 @@ const EstoqueMateriais = () => {
                   <th>Minimo</th>
                   <th>Mercado/unidade</th>
                   <th>Mercado/lote</th>
-                  <th>Status</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {materials.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="table__empty">
+                    <td colSpan={7} className="table__empty">
                       Nenhum material cadastrado ainda.
                     </td>
                   </tr>
@@ -176,24 +184,44 @@ const EstoqueMateriais = () => {
                   const badge = getStatusBadge(material)
                   return (
                     <tr key={material.id}>
-                      <td>{material.name}</td>
-                      <td>{getMaterialUnitLabel(material.unit, data.tabelas)}</td>
-                      <td>
-                        {material.stock ?? 0}
+                      <td className="table__cell--truncate">
+                        <div className="table__stack">
+                          <strong>{material.name}</strong>
+                          <span className="table__sub table__sub--mobile">
+                            Estoque: {formatQuantity(material.stock ?? 0)}
+                            {material.unit
+                              ? ` ${getMaterialUnitLabel(material.unit, data.tabelas)}`
+                              : ''}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="table__cell--mobile-hide">
+                        {getMaterialUnitLabel(material.unit, data.tabelas)}
+                      </td>
+                      <td className="table__cell--mobile-hide">
+                        {formatQuantity(material.stock ?? 0)}
                         {material.unit
                           ? ` ${getMaterialUnitLabel(material.unit, data.tabelas)}`
                           : ''}
                       </td>
-                      <td>{material.minStock ?? '-'}</td>
-                      <td>{formatValue(material.marketUnitPrice ?? material.cost)}</td>
-                      <td>{formatValue(material.marketLotPrice)}</td>
-                      <td>
-                        <span className={`badge ${badge.className}`}>{badge.label}</span>
+                      <td className="table__cell--mobile-hide">
+                        {formatQuantity(material.minStock)}
                       </td>
-                      <td className="table__actions">
-                        <ActionMenu
-                          items={[{ label: 'Ajustar', onClick: () => openAdjust(material) }]}
-                        />
+                      <td className="table__cell--mobile-hide">
+                        {formatValue(material.marketUnitPrice ?? material.cost)}
+                      </td>
+                      <td className="table__cell--mobile-hide">
+                        {formatValue(material.marketLotPrice)}
+                      </td>
+                      <td className="table__actions table__actions--end">
+                        <div className="table__end">
+                          <div className="table__status">
+                            <span className={`badge ${badge.className}`}>{badge.label}</span>
+                          </div>
+                          <ActionMenu
+                            items={[{ label: 'Ajustar', onClick: () => openAdjust(material) }]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )
@@ -218,14 +246,14 @@ const EstoqueMateriais = () => {
           </button>
         }
       >
-        <form id={adjustFormId} className="form" onSubmit={handleAdjust}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="adjust-material">
+        <form id={adjustFormId} className="modal__form" onSubmit={handleAdjust}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="adjust-material">
               Material
             </label>
             <select
               id="adjust-material"
-              className="form__input"
+              className="modal__input"
               value={form.materialId}
               onChange={(event) => updateForm({ materialId: event.target.value })}
             >
@@ -237,14 +265,14 @@ const EstoqueMateriais = () => {
               ))}
             </select>
           </div>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="adjust-type">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="adjust-type">
                 Tipo
               </label>
               <select
                 id="adjust-type"
-                className="form__input"
+                className="modal__input"
                 value={form.type}
                 onChange={(event) =>
                   updateForm({ type: event.target.value as AdjustForm['type'] })
@@ -254,13 +282,13 @@ const EstoqueMateriais = () => {
                 <option value="saida">Saida</option>
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="adjust-qty">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="adjust-qty">
                 Quantidade
               </label>
               <input
                 id="adjust-qty"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -269,13 +297,13 @@ const EstoqueMateriais = () => {
               />
             </div>
           </div>
-          <div className="form__group">
-            <label className="form__label" htmlFor="adjust-note">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="adjust-note">
               Observacao (opcional)
             </label>
             <input
               id="adjust-note"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.note}
               onChange={(event) => updateForm({ note: event.target.value })}

@@ -323,6 +323,8 @@ const Qualidade = () => {
       },
     })
     refresh()
+    setQualityModalOpen(false)
+    resetQualityForm()
     setStatus('Registro removido.')
     setDeleteQualityId(null)
   }
@@ -343,6 +345,8 @@ const Qualidade = () => {
       },
     })
     refresh()
+    setMaintenanceModalOpen(false)
+    resetMaintenanceForm()
     setStatus('Manutencao removida.')
     setDeleteMaintenanceId(null)
   }
@@ -374,165 +378,217 @@ const Qualidade = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="qualidade__summary summary-card">
-        <article className="qualidade__stat">
-          <span className="qualidade__stat-label">Checks</span>
-          <strong className="qualidade__stat-value">{qualitySummary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Checks</span>
+          <strong className="summary__value">{qualitySummary.total}</strong>
         </article>
-        <article className="qualidade__stat">
-          <span className="qualidade__stat-label">Falhas</span>
-          <strong className="qualidade__stat-value">{qualitySummary.issues}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Falhas</span>
+          <strong className="summary__value">{qualitySummary.issues}</strong>
         </article>
-        <article className="qualidade__stat">
-          <span className="qualidade__stat-label">Pendentes</span>
-          <strong className="qualidade__stat-value">{qualitySummary.open}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Pendentes</span>
+          <strong className="summary__value">{qualitySummary.open}</strong>
         </article>
-        <article className="qualidade__stat">
-          <span className="qualidade__stat-label">Manutencoes abertas</span>
-          <strong className="qualidade__stat-value">{maintenanceSummary.open}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Manutencoes abertas</span>
+          <strong className="summary__value">{maintenanceSummary.open}</strong>
         </article>
       </div>
 
-      <div className="qualidade__grid">
-        <section className="qualidade__panel">
-          <div className="qualidade__panel-header">
-            <div>
-              <h2>Checklists e falhas</h2>
-              <p>Controle de qualidade das pecas e processos.</p>
-            </div>
+      <section className="panel">
+        <div className="panel__header">
+          <div>
+            <h2>Checklists e falhas</h2>
+            <p>Controle de qualidade das pecas e processos.</p>
           </div>
-          <div className="table-card">
-            <table className="table">
-              <thead>
+        </div>
+        <div className="table-card">
+          <table className="table">
+            <thead className="table__head table__head--mobile-hide">
+              <tr>
+                <th>Produto</th>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th>OP</th>
+                <th>Severidade</th>
+                <th>Descricao</th>
+                <th className="table__actions table__actions--end">Status / Editar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {qualityChecks.length === 0 ? (
                 <tr>
-                  <th>Data</th>
-                  <th>Tipo</th>
-                  <th>Produto</th>
-                  <th>OP</th>
-                  <th>Severidade</th>
-                  <th>Status</th>
-                  <th>Descricao</th>
-                  <th className="table__actions">Acoes</th>
+                  <td className="table__empty" colSpan={7}>
+                    Nenhum registro de qualidade.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {qualityChecks.length === 0 ? (
-                  <tr>
-                    <td className="table__empty" colSpan={8}>
-                      Nenhum registro de qualidade.
-                    </td>
-                  </tr>
-                ) : (
-                  qualityChecks.map((entry) => (
+              ) : (
+                qualityChecks.map((entry) => {
+                  const productName = entry.productId
+                    ? getProductName(entry.productId)
+                    : 'Sem produto'
+
+                  return (
                     <tr key={entry.id}>
-                      <td>{formatDateShort(entry.createdAt)}</td>
-                      <td>{qualityLabels[entry.type]}</td>
-                      <td>{entry.productId ? getProductName(entry.productId) : '-'}</td>
-                      <td>{entry.productionOrderId ? `#${entry.productionOrderId.slice(-5)}` : '-'}</td>
-                      <td>{entry.severity ? severityLabels[entry.severity] : '-'}</td>
-                      <td>
-                        <span className={`badge badge--${entry.status}`}>
-                          {qualityStatusLabels[entry.status]}
-                        </span>
+                      <td className="table__cell--truncate">
+                        <div className="table__stack">
+                          <strong>{productName}</strong>
+                          <span className="table__sub table__sub--mobile">
+                            {qualityLabels[entry.type]}
+                          </span>
+                          <span className="table__sub table__sub--mobile">
+                            {formatDateShort(entry.createdAt)}
+                          </span>
+                        </div>
                       </td>
-                      <td>{entry.description}</td>
-                      <td className="table__actions">
-                        <ActionMenu
-                          items={[
-                            { label: 'Editar', onClick: () => handleQualityEdit(entry) },
-                            { label: 'Excluir', onClick: () => setDeleteQualityId(entry.id) },
-                          ]}
-                        />
+                      <td className="table__cell--mobile-hide">{qualityLabels[entry.type]}</td>
+                      <td className="table__cell--mobile-hide">
+                        {formatDateShort(entry.createdAt)}
+                      </td>
+                      <td className="table__cell--mobile-hide">
+                        {entry.productionOrderId ? `#${entry.productionOrderId.slice(-5)}` : '-'}
+                      </td>
+                      <td className="table__cell--mobile-hide">
+                        {entry.severity ? severityLabels[entry.severity] : '-'}
+                      </td>
+                      <td className="table__cell--mobile-hide">{entry.description}</td>
+                      <td className="table__actions table__actions--end">
+                        <div className="table__end">
+                          <div className="table__status">
+                            <span className={`badge badge--${entry.status}`}>
+                              {qualityStatusLabels[entry.status]}
+                            </span>
+                          </div>
+                          <ActionMenu
+                            items={[
+                              { label: 'Editar', onClick: () => handleQualityEdit(entry) },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-        <section className="qualidade__panel">
-          <div className="qualidade__panel-header">
-            <div>
-              <h2>Manutencao de equipamentos</h2>
-              <p>Controle preventivo e corretivo da fabrica.</p>
-            </div>
+      <section className="panel">
+        <div className="panel__header">
+          <div>
+            <h2>Manutencao de equipamentos</h2>
+            <p>Controle preventivo e corretivo da fabrica.</p>
           </div>
-          <div className="table-card">
-            <table className="table">
-              <thead>
+        </div>
+        <div className="table-card">
+          <table className="table">
+            <thead className="table__head table__head--mobile-hide">
+              <tr>
+                <th>Equipamento</th>
+                <th>Tipo</th>
+                <th>Agendada</th>
+                <th>Realizada</th>
+                <th>Custo</th>
+                <th className="table__actions table__actions--end">Status / Editar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {maintenanceLogs.length === 0 ? (
                 <tr>
-                  <th>Equipamento</th>
-                  <th>Tipo</th>
-                  <th>Status</th>
-                  <th>Agendada</th>
-                  <th>Realizada</th>
-                  <th>Custo</th>
-                  <th className="table__actions">Acoes</th>
+                  <td className="table__empty" colSpan={6}>
+                    Nenhuma manutencao registrada.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {maintenanceLogs.length === 0 ? (
-                  <tr>
-                    <td className="table__empty" colSpan={7}>
-                      Nenhuma manutencao registrada.
-                    </td>
-                  </tr>
-                ) : (
-                  maintenanceLogs.map((entry) => (
-                    <tr key={entry.id}>
-                      <td>{entry.equipment}</td>
-                      <td>{maintenanceTypeLabels[entry.type]}</td>
-                      <td>
-                        <span className={`badge badge--${entry.status}`}>
-                          {maintenanceStatusLabels[entry.status]}
+              ) : (
+                maintenanceLogs.map((entry) => (
+                  <tr key={entry.id}>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{entry.equipment}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {maintenanceTypeLabels[entry.type]}
                         </span>
-                      </td>
-                      <td>{formatDateShort(entry.scheduledAt ?? '')}</td>
-                      <td>{formatDateShort(entry.performedAt ?? '')}</td>
-                      <td>{entry.cost ? formatCurrency(entry.cost) : '-'}</td>
-                      <td className="table__actions">
+                        <span className="table__sub table__sub--mobile">
+                          {entry.cost ? formatCurrency(entry.cost) : '-'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {maintenanceTypeLabels[entry.type]}
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {formatDateShort(entry.scheduledAt ?? '')}
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {formatDateShort(entry.performedAt ?? '')}
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {entry.cost ? formatCurrency(entry.cost) : '-'}
+                    </td>
+                    <td className="table__actions table__actions--end">
+                      <div className="table__end">
+                        <div className="table__status">
+                          <span className={`badge badge--${entry.status}`}>
+                            {maintenanceStatusLabels[entry.status]}
+                          </span>
+                        </div>
                         <ActionMenu
                           items={[
                             { label: 'Editar', onClick: () => handleMaintenanceEdit(entry) },
-                            { label: 'Excluir', onClick: () => setDeleteMaintenanceId(entry.id) },
                           ]}
                         />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
       <Modal
         open={qualityModalOpen}
         title="Checklist ou falha"
         onClose={closeQualityModal}
         actions={
-          <button className="button button--primary" type="submit" form={qualityFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {qualityEditingId ? 'Salvar' : 'Registrar'}
-            </span>
-          </button>
+          <>
+            {qualityEditingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteQualityId(qualityEditingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={qualityFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {qualityEditingId ? 'Salvar' : 'Registrar'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={qualityFormId} className="form" onSubmit={handleQualitySubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="quality-type">
+        <form id={qualityFormId} className="modal__form" onSubmit={handleQualitySubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quality-type">
                 Tipo
               </label>
               <select
                 id="quality-type"
-                className="form__input"
+                className="modal__input"
                 value={qualityForm.type}
                 onChange={(event) =>
                   setQualityForm((prev) => ({
@@ -548,13 +604,13 @@ const Qualidade = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="quality-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quality-status">
                 Status
               </label>
               <select
                 id="quality-status"
-                className="form__input"
+                className="modal__input"
                 value={qualityForm.status}
                 onChange={(event) =>
                   setQualityForm((prev) => ({
@@ -570,13 +626,13 @@ const Qualidade = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="quality-severity">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quality-severity">
                 Severidade
               </label>
               <select
                 id="quality-severity"
-                className="form__input"
+                className="modal__input"
                 value={qualityForm.severity}
                 onChange={(event) =>
                   setQualityForm((prev) => ({
@@ -594,14 +650,14 @@ const Qualidade = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="quality-product">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quality-product">
                 Produto
               </label>
               <select
                 id="quality-product"
-                className="form__input"
+                className="modal__input"
                 value={qualityForm.productId}
                 onChange={(event) =>
                   setQualityForm((prev) => ({
@@ -618,13 +674,13 @@ const Qualidade = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="quality-order">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quality-order">
                 Ordem de producao
               </label>
               <select
                 id="quality-order"
-                className="form__input"
+                className="modal__input"
                 value={qualityForm.productionOrderId}
                 onChange={(event) =>
                   setQualityForm((prev) => ({
@@ -643,13 +699,13 @@ const Qualidade = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="quality-description">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="quality-description">
               Descricao
             </label>
             <textarea
               id="quality-description"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={qualityForm.description}
               onChange={(event) =>
                 setQualityForm((prev) => ({ ...prev, description: event.target.value }))
@@ -657,14 +713,14 @@ const Qualidade = () => {
             />
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="quality-cost">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quality-cost">
                 Custo estimado
               </label>
               <input
                 id="quality-cost"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -679,13 +735,13 @@ const Qualidade = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="quality-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="quality-notes">
               Observacoes
             </label>
             <textarea
               id="quality-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={qualityForm.notes}
               onChange={(event) =>
                 setQualityForm((prev) => ({ ...prev, notes: event.target.value }))
@@ -693,7 +749,7 @@ const Qualidade = () => {
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
@@ -702,24 +758,38 @@ const Qualidade = () => {
         title="Manutencao"
         onClose={closeMaintenanceModal}
         actions={
-          <button className="button button--primary" type="submit" form={maintenanceFormId}>
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {maintenanceEditingId ? 'Salvar' : 'Registrar'}
-            </span>
-          </button>
+          <>
+            {maintenanceEditingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteMaintenanceId(maintenanceEditingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button className="button button--primary" type="submit" form={maintenanceFormId}>
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {maintenanceEditingId ? 'Salvar' : 'Registrar'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={maintenanceFormId} className="form" onSubmit={handleMaintenanceSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="maint-equipment">
+        <form id={maintenanceFormId} className="modal__form" onSubmit={handleMaintenanceSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="maint-equipment">
               Equipamento
             </label>
             <input
               id="maint-equipment"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={maintenanceForm.equipment}
               onChange={(event) =>
@@ -728,14 +798,14 @@ const Qualidade = () => {
             />
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="maint-type">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="maint-type">
                 Tipo
               </label>
               <select
                 id="maint-type"
-                className="form__input"
+                className="modal__input"
                 value={maintenanceForm.type}
                 onChange={(event) =>
                   setMaintenanceForm((prev) => ({
@@ -751,13 +821,13 @@ const Qualidade = () => {
                 ))}
               </select>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="maint-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="maint-status">
                 Status
               </label>
               <select
                 id="maint-status"
-                className="form__input"
+                className="modal__input"
                 value={maintenanceForm.status}
                 onChange={(event) =>
                   setMaintenanceForm((prev) => ({
@@ -775,14 +845,14 @@ const Qualidade = () => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="maint-scheduled">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="maint-scheduled">
                 Agendada
               </label>
               <input
                 id="maint-scheduled"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={maintenanceForm.scheduledAt}
                 onChange={(event) =>
@@ -793,13 +863,13 @@ const Qualidade = () => {
                 }
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="maint-performed">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="maint-performed">
                 Realizada
               </label>
               <input
                 id="maint-performed"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={maintenanceForm.performedAt}
                 onChange={(event) =>
@@ -812,13 +882,13 @@ const Qualidade = () => {
             </div>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="maint-cost">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="maint-cost">
               Custo
             </label>
             <input
               id="maint-cost"
-              className="form__input"
+              className="modal__input"
               type="number"
               min="0"
               step="0.01"
@@ -829,13 +899,13 @@ const Qualidade = () => {
             />
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="maint-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="maint-notes">
               Observacoes
             </label>
             <textarea
               id="maint-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={maintenanceForm.notes}
               onChange={(event) =>
                 setMaintenanceForm((prev) => ({ ...prev, notes: event.target.value }))
@@ -843,7 +913,7 @@ const Qualidade = () => {
             />
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

@@ -48,22 +48,22 @@ const RelatoriosVendas = () => {
     <Page className="relatorios">
       <PageHeader />
 
-      <div className="card-grid summary-card">
-        <article className="card">
-          <span className="card__label">Pedidos</span>
-          <span className="card__value">{totals.totalOrders}</span>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Pedidos</span>
+          <span className="summary__value">{totals.totalOrders}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Receita total</span>
-          <span className="card__value">{formatCurrency(totals.totalValue)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Receita total</span>
+          <span className="summary__value">{formatCurrency(totals.totalValue)}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Ticket medio</span>
-          <span className="card__value">{formatCurrency(totals.ticket)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Ticket medio</span>
+          <span className="summary__value">{formatCurrency(totals.ticket)}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Pedidos em aberto</span>
-          <span className="card__value">{totals.openOrders}</span>
+        <article className="summary__item">
+          <span className="summary__label">Pedidos em aberto</span>
+          <span className="summary__value">{totals.openOrders}</span>
         </article>
       </div>
 

@@ -58,30 +58,30 @@ const Indicadores = () => {
     <Page className="indicadores">
       <PageHeader />
 
-      <div className="card-grid summary-card">
-        <article className="card">
-          <span className="card__label">Pedidos</span>
-          <span className="card__value">{totalOrders}</span>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Pedidos</span>
+          <span className="summary__value">{totalOrders}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Clientes</span>
-          <span className="card__value">{totalClients}</span>
+        <article className="summary__item">
+          <span className="summary__label">Clientes</span>
+          <span className="summary__value">{totalClients}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Fornecedores</span>
-          <span className="card__value">{totalSuppliers}</span>
+        <article className="summary__item">
+          <span className="summary__label">Fornecedores</span>
+          <span className="summary__value">{totalSuppliers}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Produtos</span>
-          <span className="card__value">{totalProducts}</span>
+        <article className="summary__item">
+          <span className="summary__label">Produtos</span>
+          <span className="summary__value">{totalProducts}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Caixa atual</span>
-          <span className="card__value">{formatCurrency(cash)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Caixa atual</span>
+          <span className="summary__value">{formatCurrency(cash)}</span>
         </article>
-        <article className="card">
-          <span className="card__label">Faturamento</span>
-          <span className="card__value">{formatCurrency(revenue)}</span>
+        <article className="summary__item">
+          <span className="summary__label">Faturamento</span>
+          <span className="summary__value">{formatCurrency(revenue)}</span>
         </article>
       </div>
 

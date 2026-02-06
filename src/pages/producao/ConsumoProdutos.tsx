@@ -488,37 +488,35 @@ const ConsumoProdutos = () => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="consumo-produtos__summary summary-card">
-        <article className="consumo-produtos__stat">
-          <span className="consumo-produtos__stat-label">Produtos</span>
-          <strong className="consumo-produtos__stat-value">{summary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Produtos</span>
+          <strong className="summary__value">{summary.total}</strong>
         </article>
-        <article className="consumo-produtos__stat">
-          <span className="consumo-produtos__stat-label">Configurados</span>
-          <strong className="consumo-produtos__stat-value">{summary.configured}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Configurados</span>
+          <strong className="summary__value">{summary.configured}</strong>
         </article>
-        <article className="consumo-produtos__stat">
-          <span className="consumo-produtos__stat-label">Pendentes</span>
-          <strong className="consumo-produtos__stat-value">{summary.pending}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Pendentes</span>
+          <strong className="summary__value">{summary.pending}</strong>
         </article>
-        <article className="consumo-produtos__stat">
-          <span className="consumo-produtos__stat-label">Itens de consumo</span>
-          <strong className="consumo-produtos__stat-value">{summary.totalUsages}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Itens de consumo</span>
+          <strong className="summary__value">{summary.totalUsages}</strong>
         </article>
       </div>
 
-      <section className="consumo-produtos__panel consumo-produtos__panel--batch">
-        <div className="consumo-produtos__panel-header">
+      <section className="panel panel--batch">
+        <div className="panel__header">
           <div>
             <h2>Bateladas de concreto</h2>
             <p>
               Registre o traco e o rendimento para gerar o consumo automatico por produto.
             </p>
           </div>
-          <div className="consumo-produtos__batch-actions">
-            <span className="consumo-produtos__panel-meta">
-              {summary.batched} bateladas ativas
-            </span>
+          <div className="panel__actions">
+            <span className="panel__meta">{summary.batched} bateladas ativas</span>
             <button
               className="button button--primary"
               type="button"
@@ -528,9 +526,9 @@ const ConsumoProdutos = () => {
             </button>
           </div>
         </div>
-        <div className="consumo-produtos__batch-grid">
+        <div className="card-grid">
           {summary.batched === 0 && (
-            <p className="consumo-produtos__batch-empty">
+            <p className="card-grid__empty">
               Nenhuma batelada cadastrada ainda. Use o botao acima para iniciar.
             </p>
           )}
@@ -544,25 +542,25 @@ const ConsumoProdutos = () => {
                 return [
                   <article
                     key={`${product.id}-${variant.id}`}
-                    className="consumo-produtos__batch-card"
+                    className="card"
                   >
-                    <div>
-                      <h3>
+                    <h3 className="card__title">
                         {product.name} • {variant.name}
                       </h3>
-                      <p>
-                        Rendimento: {recipe.yieldQuantity}{' '}
-                        {getProductUnitLabel(product.unit, data.tabelas)}
-                      </p>
-                      <p>{recipe.items.length} materiais</p>
+                    <p className="card__meta">
+                      Rendimento: {recipe.yieldQuantity}{' '}
+                      {getProductUnitLabel(product.unit, data.tabelas)}
+                    </p>
+                    <p className="card__meta">{recipe.items.length} materiais</p>
+                    <div className="card__actions">
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        onClick={() => openBatchModal(product, variant.id)}
+                      >
+                        Editar batelada
+                      </button>
                     </div>
-                    <button
-                      className="button button--ghost"
-                      type="button"
-                      onClick={() => openBatchModal(product, variant.id)}
-                    >
-                      Editar batelada
-                    </button>
                   </article>,
                 ]
               })
@@ -572,46 +570,47 @@ const ConsumoProdutos = () => {
               return []
             }
             return [
-              <article key={product.id} className="consumo-produtos__batch-card">
-                <div>
-                  <h3>{product.name}</h3>
-                  <p>
-                    Rendimento: {recipe.yieldQuantity} {getProductUnitLabel(product.unit, data.tabelas)}
-                  </p>
-                  <p>{recipe.items.length} materiais</p>
+              <article key={product.id} className="card">
+                <h3 className="card__title">{product.name}</h3>
+                <p className="card__meta">
+                  Rendimento: {recipe.yieldQuantity}{' '}
+                  {getProductUnitLabel(product.unit, data.tabelas)}
+                </p>
+                <p className="card__meta">{recipe.items.length} materiais</p>
+                <div className="card__actions">
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={() => openBatchModal(product)}
+                  >
+                    Editar batelada
+                  </button>
                 </div>
-                <button
-                  className="button button--ghost"
-                  type="button"
-                  onClick={() => openBatchModal(product)}
-                >
-                  Editar batelada
-                </button>
               </article>,
             ]
           })}
         </div>
       </section>
 
-      <section className="consumo-produtos__panel">
-        <div className="consumo-produtos__panel-header">
+      <section className="panel">
+        <div className="panel__header">
           <div>
             <h2>Produtos cadastrados</h2>
             <p>Consumo definido por unidade (m², metro linear ou unidade).</p>
           </div>
-          <span className="consumo-produtos__panel-meta">
+          <span className="panel__meta">
             {productionProducts.length} registros
           </span>
         </div>
-        <div className="table-card consumo-produtos__table">
+        <div className="table-card">
           <table className="table">
-            <thead>
+            <thead className="table__head table__head--mobile-hide">
               <tr>
                 <th>Produto</th>
                 <th>Unidade</th>
                 <th>Materiais</th>
                 <th>Resumo</th>
-                <th>Acoes</th>
+                <th className="table__actions table__actions--end">Editar</th>
               </tr>
             </thead>
             <tbody>
@@ -651,10 +650,16 @@ const ConsumoProdutos = () => {
                       : 'Manual'
                 return (
                   <tr key={product.id}>
-                    <td>{product.name}</td>
-                    <td>{getProductUnitLabel(product.unit, data.tabelas)}</td>
-                    <td>{usages.length}</td>
-                    <td>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{product.name}</strong>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">
+                      {getProductUnitLabel(product.unit, data.tabelas)}
+                    </td>
+                    <td className="table__cell--mobile-hide">{usages.length}</td>
+                    <td className="table__cell--mobile-hide">
                       {usages.length === 0
                         ? usageSource
                         : product.hasVariants
@@ -666,7 +671,7 @@ const ConsumoProdutos = () => {
                               )
                               .join(' • ')}`}
                     </td>
-                    <td className="table__actions">
+                    <td className="table__actions table__actions--end">
                       <ActionMenu
                         items={[
                           {
@@ -706,26 +711,26 @@ const ConsumoProdutos = () => {
           </button>
         }
       >
-        <div className="form">
-          <div className="form__section">
-            <p className="form__help">
+        <div className="modal__form">
+          <div className="modal__section">
+            <p className="modal__help">
               Informe a quantidade de materia-prima por unidade de venda do produto.
             </p>
-            <p className="form__help">
+            <p className="modal__help">
               Conversoes: 1 balde = 0,01 m3 | 1 carrinho rente = 5 baldes | 1 carrinho cheio = 7
               baldes | 1 saco de cimento = 3,5 baldes.
             </p>
           </div>
 
           {editingProduct?.hasVariants && (
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="usage-variant">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="usage-variant">
                   Variacao
                 </label>
                 <select
                   id="usage-variant"
-                  className="form__input"
+                  className="modal__input"
                   value={editingVariantId ?? ''}
                   onChange={(event) => handleUsageVariantChange(event.target.value)}
                 >
@@ -750,14 +755,14 @@ const ConsumoProdutos = () => {
               ? convertUsageToPurchaseQuantity(material, item.usageUnit, item.quantity)
               : 0
             return (
-              <div key={item.id} className="form__row">
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`usage-material-${index}`}>
+              <div key={item.id} className="modal__row">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`usage-material-${index}`}>
                     Material
                   </label>
                   <select
                     id={`usage-material-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     value={item.materialId}
                     onChange={(event) => handleMaterialChange(item.id, event.target.value)}
                   >
@@ -769,13 +774,13 @@ const ConsumoProdutos = () => {
                     ))}
                   </select>
                 </div>
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`usage-qty-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`usage-qty-${index}`}>
                     Quantidade ({unitLabel})
                   </label>
                   <input
                     id={`usage-qty-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -785,19 +790,19 @@ const ConsumoProdutos = () => {
                     }
                   />
                   {material && (
-                    <p className="form__help">
+                    <p className="modal__help">
                       Compra: {purchaseQuantity.toFixed(3)} {purchaseLabel}
                     </p>
                   )}
                 </div>
                 {material && (
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`usage-unit-${index}`}>
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`usage-unit-${index}`}>
                       Unidade de uso
                     </label>
                     <select
                       id={`usage-unit-${index}`}
-                      className="form__input"
+                      className="modal__input"
                       value={item.usageUnit}
                       onChange={(event) =>
                         updateUsage(item.id, {
@@ -812,14 +817,14 @@ const ConsumoProdutos = () => {
                       ))}
                     </select>
                     {material.kind === 'trelica' && (
-                      <p className="form__help">
+                      <p className="modal__help">
                         1 unidade = {material.metersPerUnit ?? '-'} m
                       </p>
                     )}
                   </div>
                 )}
-                <div className="form__group">
-                  <label className="form__label"> </label>
+                <div className="modal__group">
+                  <label className="modal__label"> </label>
                   <button
                     className="button button--danger"
                     type="button"
@@ -832,7 +837,7 @@ const ConsumoProdutos = () => {
             )
           })}
 
-          <div className="form__actions">
+          <div className="modal__form-actions">
             <button className="button button--ghost" type="button" onClick={addUsage}>
               Adicionar material
             </button>
@@ -854,26 +859,26 @@ const ConsumoProdutos = () => {
           </button>
         }
       >
-        <div className="form">
-          {batchStatus && <p className="form__status">{batchStatus}</p>}
-          <div className="form__section">
-            <p className="form__help">
+        <div className="modal__form">
+          {batchStatus && <p className="modal__status">{batchStatus}</p>}
+          <div className="modal__section">
+            <p className="modal__help">
               Informe o traco de concreto e o rendimento para gerar o consumo automatico.
             </p>
-            <p className="form__help">
+            <p className="modal__help">
               Conversoes: 1 balde = 0,01 m3 | 1 carrinho rente = 5 baldes | 1 carrinho cheio = 7
               baldes | 1 saco de cimento = 3,5 baldes.
             </p>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="batch-product">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="batch-product">
                 Produto
               </label>
               <select
                 id="batch-product"
-                className="form__input"
+                className="modal__input"
                 value={batchProductId}
                 onChange={(event) => handleBatchProductChange(event.target.value)}
               >
@@ -885,19 +890,19 @@ const ConsumoProdutos = () => {
                 ))}
               </select>
               {batchProduct?.batchRecipe && (
-                <p className="form__help">
+                <p className="modal__help">
                   Este produto ja possui batelada. Salvar vai substituir o rendimento atual.
                 </p>
               )}
             </div>
             {batchProduct?.hasVariants && (
-              <div className="form__group">
-                <label className="form__label" htmlFor="batch-variant">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="batch-variant">
                   Variacao
                 </label>
                 <select
                   id="batch-variant"
-                  className="form__input"
+                  className="modal__input"
                   value={batchVariantId}
                   onChange={(event) => handleBatchVariantChange(event.target.value)}
                   disabled={!batchProductId}
@@ -910,26 +915,26 @@ const ConsumoProdutos = () => {
                   ))}
                 </select>
                 {batchVariant?.batchRecipe && (
-                  <p className="form__help">
+                  <p className="modal__help">
                     Esta variacao ja possui batelada. Salvar vai substituir o rendimento atual.
                   </p>
                 )}
               </div>
             )}
-            <div className="form__group">
-              <label className="form__label" htmlFor="batch-yield">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="batch-yield">
                 Rendimento da batelada ({getProductUnitLabel(batchProduct?.unit, data.tabelas)})
               </label>
               <input
                 id="batch-yield"
-                className="form__input"
+                className="modal__input"
                 type="number"
                 min="0"
                 step="0.01"
                 value={batchYieldQuantity}
                 onChange={(event) => setBatchYieldQuantity(Number(event.target.value))}
               />
-              <p className="form__help">Quantidade total que a batelada produz.</p>
+              <p className="modal__help">Quantidade total que a batelada produz.</p>
             </div>
           </div>
 
@@ -945,14 +950,14 @@ const ConsumoProdutos = () => {
             const perUnit =
               batchYieldQuantity > 0 ? item.quantity / batchYieldQuantity : 0
             return (
-              <div key={item.id} className="form__row">
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`batch-material-${index}`}>
+              <div key={item.id} className="modal__row">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`batch-material-${index}`}>
                     Material
                   </label>
                   <select
                     id={`batch-material-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     value={item.materialId}
                     onChange={(event) => handleBatchMaterialChange(item.id, event.target.value)}
                   >
@@ -964,13 +969,13 @@ const ConsumoProdutos = () => {
                     ))}
                   </select>
                 </div>
-                <div className="form__group">
-                  <label className="form__label" htmlFor={`batch-qty-${index}`}>
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor={`batch-qty-${index}`}>
                     Quantidade ({unitLabel})
                   </label>
                   <input
                     id={`batch-qty-${index}`}
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -981,11 +986,11 @@ const ConsumoProdutos = () => {
                   />
                   {material && (
                     <>
-                      <p className="form__help">
+                      <p className="modal__help">
                         Compra (batelada): {purchaseQuantity.toFixed(3)} {purchaseLabel}
                       </p>
                       {batchYieldQuantity > 0 && (
-                        <p className="form__help">
+                        <p className="modal__help">
                           Por unidade: {perUnit.toFixed(4)} {unitLabel}
                         </p>
                       )}
@@ -993,13 +998,13 @@ const ConsumoProdutos = () => {
                   )}
                 </div>
                 {material && (
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`batch-unit-${index}`}>
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`batch-unit-${index}`}>
                       Unidade de uso
                     </label>
                     <select
                       id={`batch-unit-${index}`}
-                      className="form__input"
+                      className="modal__input"
                       value={item.usageUnit}
                       onChange={(event) =>
                         updateBatchItem(item.id, {
@@ -1014,14 +1019,14 @@ const ConsumoProdutos = () => {
                       ))}
                     </select>
                     {material.kind === 'trelica' && (
-                      <p className="form__help">
+                      <p className="modal__help">
                         1 unidade = {material.metersPerUnit ?? '-'} m
                       </p>
                     )}
                   </div>
                 )}
-                <div className="form__group">
-                  <label className="form__label"> </label>
+                <div className="modal__group">
+                  <label className="modal__label"> </label>
                   <button
                     className="button button--danger"
                     type="button"
@@ -1034,7 +1039,7 @@ const ConsumoProdutos = () => {
             )
           })}
 
-          <div className="form__actions">
+          <div className="modal__form-actions">
             <button className="button button--ghost" type="button" onClick={addBatchItem}>
               Adicionar material
             </button>

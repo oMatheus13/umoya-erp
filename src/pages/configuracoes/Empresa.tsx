@@ -51,16 +51,15 @@ const Empresa = () => {
       <PageHeader />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="empresa__layout">
-        <section className="empresa__panel">
-          <div className="empresa__panel-header">
-            <div>
-              <h2>Cadastro completo</h2>
-              <p>Revise CNPJ, enderecos e contatos da empresa.</p>
-            </div>
+      <section className="panel">
+        <div className="panel__header">
+          <div>
+            <h2>Cadastro completo</h2>
+            <p>Revise CNPJ, enderecos e contatos da empresa.</p>
           </div>
+        </div>
 
-          <form className="form" onSubmit={handleSubmit}>
+        <form className="form" onSubmit={handleSubmit}>
             <div className="form__group">
               <label className="form__label" htmlFor="company-name">
                 Razao social
@@ -266,9 +265,8 @@ const Empresa = () => {
                 Salvar informacoes
               </button>
             </div>
-          </form>
-        </section>
-      </div>
+        </form>
+      </section>
     </Page>
   )
 }

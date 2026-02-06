@@ -76,20 +76,20 @@ const RhHistorico = () => {
     <Page className="rh-page">
       <PageHeader />
 
-      <section className="rh-page__panel">
-        <div className="rh-page__panel-header">
+      <section className="panel">
+        <div className="panel__header">
           <div>
             <h2>Eventos recentes</h2>
             <p>Admissoes, presencas, pagamentos e ocorrencias.</p>
           </div>
-          <span className="rh-page__panel-meta">{historyItems.length} eventos</span>
+          <span className="panel__meta">{historyItems.length} eventos</span>
         </div>
-        <div className="table-card rh-page__table">
+        <div className="table-card">
           <table className="table">
-            <thead>
+            <thead className="table__head table__head--mobile-hide">
               <tr>
-                <th>Data</th>
                 <th>Funcionario</th>
+                <th>Data</th>
                 <th>Evento</th>
               </tr>
             </thead>
@@ -103,9 +103,17 @@ const RhHistorico = () => {
               )}
               {historyItems.map((item) => (
                 <tr key={item.id}>
-                  <td>{formatDateShort(item.date)}</td>
-                  <td>{item.title}</td>
-                  <td>{item.description}</td>
+                  <td className="table__cell--truncate">
+                    <div className="table__stack">
+                      <strong>{item.title}</strong>
+                      <span className="table__sub table__sub--mobile">
+                        {formatDateShort(item.date)}
+                      </span>
+                      <span className="table__sub table__sub--mobile">{item.description}</span>
+                    </div>
+                  </td>
+                  <td className="table__cell--mobile-hide">{formatDateShort(item.date)}</td>
+                  <td className="table__cell--mobile-hide">{item.description}</td>
                 </tr>
               ))}
             </tbody>

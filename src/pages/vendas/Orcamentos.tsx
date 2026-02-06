@@ -772,6 +772,9 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
   const quoteToDelete = deleteId
     ? data.orcamentos.find((quote) => quote.id === deleteId)
     : null
+  const editingQuote = editingId
+    ? data.orcamentos.find((quote) => quote.id === editingId)
+    : null
 
   const handleDelete = () => {
     if (!deleteId) {
@@ -787,6 +790,8 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
       },
     })
     refresh()
+    setIsModalOpen(false)
+    resetForm()
     setStatus('Orcamento excluido.')
     setDeleteId(null)
   }
@@ -857,22 +862,22 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
       />
       {status && <p className="form__status">{status}</p>}
 
-      <div className="orcamentos__summary summary-card">
-        <article className="orcamentos__stat">
-          <span className="orcamentos__stat-label">Total</span>
-          <strong className="orcamentos__stat-value">{quoteSummary.total}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Total</span>
+          <strong className="summary__value">{quoteSummary.total}</strong>
         </article>
-        <article className="orcamentos__stat">
-          <span className="orcamentos__stat-label">Pendentes</span>
-          <strong className="orcamentos__stat-value">{quoteSummary.pending}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Pendentes</span>
+          <strong className="summary__value">{quoteSummary.pending}</strong>
         </article>
-        <article className="orcamentos__stat">
-          <span className="orcamentos__stat-label">Aprovados</span>
-          <strong className="orcamentos__stat-value">{quoteSummary.approved}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Aprovados</span>
+          <strong className="summary__value">{quoteSummary.approved}</strong>
         </article>
-        <article className="orcamentos__stat">
-          <span className="orcamentos__stat-label">Valor em aberto</span>
-          <strong className="orcamentos__stat-value">
+        <article className="summary__item">
+          <span className="summary__label">Valor em aberto</span>
+          <strong className="summary__value">
             {formatCurrency(quoteSummary.pendingValue)}
           </strong>
         </article>
@@ -884,29 +889,55 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
         title={editingId ? 'Editar orcamento' : 'Novo orcamento'}
         size="lg"
         actions={
-          <button
-            className="button button--primary"
-            type="submit"
-            form={quoteFormId}
-            disabled={!hasProducts}
-          >
-            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
-              save
-            </span>
-            <span className="modal__action-label">
-              {editingId ? 'Atualizar orcamento' : 'Salvar orcamento'}
-            </span>
-          </button>
+          <>
+            {editingQuote && (
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => handlePrint(editingQuote)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  print
+                </span>
+                <span className="modal__action-label">Imprimir</span>
+              </button>
+            )}
+            {editingId && (
+              <button
+                className="button button--danger"
+                type="button"
+                onClick={() => setDeleteId(editingId)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  delete
+                </span>
+                <span className="modal__action-label">Excluir</span>
+              </button>
+            )}
+            <button
+              className="button button--primary"
+              type="submit"
+              form={quoteFormId}
+              disabled={!hasProducts}
+            >
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar orcamento' : 'Salvar orcamento'}
+              </span>
+            </button>
+          </>
         }
       >
-        <form id={quoteFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__group">
-            <label className="form__label" htmlFor="quote-client-select">
+        <form id={quoteFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="quote-client-select">
               Cliente cadastrado
             </label>
             <select
               id="quote-client-select"
-              className="form__input"
+              className="modal__input"
               value={form.clientId}
               onChange={(event) => {
                 const value = event.target.value
@@ -931,13 +962,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
             </select>
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="quote-client">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="quote-client">
               Novo cliente
             </label>
             <input
               id="quote-client"
-              className="form__input"
+              className="modal__input"
               type="text"
               value={form.clientName}
               onChange={(event) => updateForm({ clientName: event.target.value })}
@@ -945,17 +976,17 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
               disabled={!!form.clientId}
             />
             {form.clientId && (
-              <p className="form__help">Limpe o cliente cadastrado para digitar outro.</p>
+              <p className="modal__help">Limpe o cliente cadastrado para digitar outro.</p>
             )}
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="quote-obra">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="quote-obra">
               Obra do cliente
             </label>
             <select
               id="quote-obra"
-              className="form__input"
+              className="modal__input"
               value={form.obraId}
               onChange={(event) => updateForm({ obraId: event.target.value })}
               disabled={!form.clientId || clientObras.length === 0}
@@ -968,7 +999,7 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
               ))}
             </select>
             {form.clientId && clientObras.length === 0 && (
-              <p className="form__help">Nenhuma obra cadastrada para este cliente.</p>
+              <p className="modal__help">Nenhuma obra cadastrada para este cliente.</p>
             )}
           </div>
 
@@ -989,15 +1020,15 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                 })
               : 0
             return (
-              <div key={`item-${index}`} className="form__section">
-                <div className="form__row">
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`quote-product-${index}`}>
+              <div key={`item-${index}`} className="modal__section">
+                <div className="modal__row">
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`quote-product-${index}`}>
                       Produto
                     </label>
                     <select
                       id={`quote-product-${index}`}
-                      className="form__input"
+                      className="modal__input"
                       value={item.productId}
                       onChange={(event) => handleProductChange(index, event.target.value)}
                       disabled={!hasProducts}
@@ -1011,13 +1042,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                     </select>
                   </div>
                   {isLinear ? (
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`quote-length-${index}`}>
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`quote-length-${index}`}>
                         Comprimento (cm)
                       </label>
                       <input
                         id={`quote-length-${index}`}
-                        className="form__input"
+                        className="modal__input"
                         type="number"
                         min="0"
                         step="1"
@@ -1029,13 +1060,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                       />
                     </div>
                   ) : usesVariants ? (
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`quote-variant-${index}`}>
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`quote-variant-${index}`}>
                         Variacao
                       </label>
                       <select
                         id={`quote-variant-${index}`}
-                        className="form__input"
+                        className="modal__input"
                         value={item.variantId}
                         onChange={(event) => handleVariantChange(index, event.target.value)}
                         disabled={!item.productId}
@@ -1051,10 +1082,10 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                       </select>
                     </div>
                   ) : (
-                    <div className="form__group">
-                      <label className="form__label">Variacao</label>
+                    <div className="modal__group">
+                      <label className="modal__label">Variacao</label>
                       <input
-                        className="form__input"
+                        className="modal__input"
                         type="text"
                         value="Produto sem variacoes"
                         disabled
@@ -1064,14 +1095,14 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                 </div>
 
                 {usesVariants && item.variantId === 'custom' && (
-                  <div className="form__row">
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`quote-length-${index}`}>
+                  <div className="modal__row">
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`quote-length-${index}`}>
                         Comprimento
                       </label>
                       <input
                         id={`quote-length-${index}`}
-                        className="form__input"
+                        className="modal__input"
                         type="number"
                         min="0"
                         step="0.01"
@@ -1081,13 +1112,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                         }
                       />
                     </div>
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`quote-width-${index}`}>
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`quote-width-${index}`}>
                         Largura
                       </label>
                       <input
                         id={`quote-width-${index}`}
-                        className="form__input"
+                        className="modal__input"
                         type="number"
                         min="0"
                         step="0.01"
@@ -1097,13 +1128,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                         }
                       />
                     </div>
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`quote-height-${index}`}>
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`quote-height-${index}`}>
                         Altura
                       </label>
                       <input
                         id={`quote-height-${index}`}
-                        className="form__input"
+                        className="modal__input"
                         type="number"
                         min="0"
                         step="0.01"
@@ -1116,14 +1147,14 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                   </div>
                 )}
 
-                <div className="form__row">
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`quote-quantity-${index}`}>
+                <div className="modal__row">
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`quote-quantity-${index}`}>
                       Quantidade
                     </label>
                     <input
                       id={`quote-quantity-${index}`}
-                      className="form__input"
+                      className="modal__input"
                       type="number"
                       min="1"
                       value={item.quantity}
@@ -1132,13 +1163,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                       }
                     />
                   </div>
-                  <div className="form__group">
-                    <label className="form__label" htmlFor={`quote-price-${index}`}>
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`quote-price-${index}`}>
                       Valor unitario
                     </label>
                     <input
                       id={`quote-price-${index}`}
-                      className="form__input"
+                      className="modal__input"
                       type="number"
                       min="0"
                       step="0.01"
@@ -1149,7 +1180,7 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                       disabled={isLinear}
                     />
                     {itemProduct && (
-                      <p className="form__help">
+                      <p className="modal__help">
                         Base {formatCurrency(basePrice)} | Min sem prejuizo{' '}
                         {formatCurrency(minPrice)}
                       </p>
@@ -1158,7 +1189,7 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                 </div>
 
                 {form.items.length > 1 && (
-                  <div className="form__actions">
+                  <div className="modal__form-actions">
                     <button
                       className="button button--danger"
                       type="button"
@@ -1176,15 +1207,15 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
             Adicionar item
           </button>
 
-          <div className="form__section">
-            <div className="form__row">
-              <div className="form__group">
-                <label className="form__label" htmlFor="quote-discount-type">
+          <div className="modal__section">
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="quote-discount-type">
                   Desconto
                 </label>
                 <select
                   id="quote-discount-type"
-                  className="form__input"
+                  className="modal__input"
                   value={form.discountType}
                   onChange={(event) =>
                     updateForm({ discountType: event.target.value as QuoteForm['discountType'] })
@@ -1196,13 +1227,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                 </select>
               </div>
               {form.discountType === 'percent' && (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="quote-discount-percent">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor="quote-discount-percent">
                     Percentual
                   </label>
                   <input
                     id="quote-discount-percent"
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.1"
@@ -1213,13 +1244,13 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                 </div>
               )}
               {form.discountType === 'value' && (
-                <div className="form__group">
-                  <label className="form__label" htmlFor="quote-discount-value">
+                <div className="modal__group">
+                  <label className="modal__label" htmlFor="quote-discount-value">
                     Valor
                   </label>
                   <input
                     id="quote-discount-value"
-                    className="form__input"
+                    className="modal__input"
                     type="number"
                     min="0"
                     step="0.01"
@@ -1231,22 +1262,22 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
               )}
             </div>
             {subtotal > 0 ? (
-              <p className="form__help">
+              <p className="modal__help">
                 Desconto maximo sugerido: {formatCurrency(maxDiscountValue)} (
                 {maxDiscountPercent.toFixed(1)}%).
               </p>
             ) : (
-              <p className="form__help">Preencha os itens para calcular o desconto sugerido.</p>
+              <p className="modal__help">Preencha os itens para calcular o desconto sugerido.</p>
             )}
           </div>
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="quote-payment">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="quote-payment">
               Forma de pagamento
             </label>
             <select
               id="quote-payment"
-              className="form__input"
+              className="modal__input"
               value={form.paymentMethod}
               onChange={(event) => updateForm({ paymentMethod: event.target.value })}
             >
@@ -1262,19 +1293,19 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                 </option>
               ))}
             </select>
-            <p className="form__help">
+            <p className="modal__help">
               O pagamento escolhido direciona o caixa correto quando o pedido for pago.
             </p>
           </div>
 
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="quote-fulfillment">
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quote-fulfillment">
                 Atendimento
               </label>
               <select
                 id="quote-fulfillment"
-                className="form__input"
+                className="modal__input"
                 value={form.fulfillment}
                 onChange={(event) =>
                   updateForm({ fulfillment: event.target.value as FulfillmentMode })
@@ -1283,29 +1314,29 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                 <option value="producao">Enviar para producao</option>
                 <option value="estoque">Retirar do estoque</option>
               </select>
-              <p className="form__help">
+              <p className="modal__help">
                 Defina se o pedido vira producao ou sai direto do estoque.
               </p>
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="quote-valid">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quote-valid">
                 Validade
               </label>
               <input
                 id="quote-valid"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.validUntil}
                 onChange={(event) => updateForm({ validUntil: event.target.value })}
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="quote-status">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="quote-status">
                 Status
               </label>
               <select
                 id="quote-status"
-                className="form__input"
+                className="modal__input"
                 value={form.status}
                 onChange={(event) => updateForm({ status: event.target.value as Quote['status'] })}
               >
@@ -1318,41 +1349,41 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
             </div>
           </div>
 
-          <div className="form__row">
-            <div className="form__summary">
+          <div className="modal__row">
+            <div className="summary">
               <span>Subtotal</span>
               <strong>{formatCurrency(subtotal)}</strong>
             </div>
-            <div className="form__summary">
+            <div className="summary">
               <span>Desconto aplicado</span>
               <strong>{formatCurrency(appliedDiscount)}</strong>
             </div>
           </div>
 
-          <div className="form__summary">
+          <div className="summary">
             <span>Total do orcamento</span>
             <strong>{formatCurrency(total)}</strong>
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
           {!hasProducts && (
-            <p className="form__help">Cadastre produtos para liberar orcamentos.</p>
+            <p className="modal__help">Cadastre produtos para liberar orcamentos.</p>
           )}
         </form>
       </Modal>
 
       <div className="orcamentos__layout">
-        <section className="orcamentos__panel">
-          <div className="orcamentos__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
               <h2>Ultimos orcamentos</h2>
               <p>Atualize status e transforme em pedidos com 1 clique.</p>
             </div>
-            <span className="orcamentos__panel-meta">{quotes.length} registros</span>
+            <span className="panel__meta">{quotes.length} registros</span>
           </div>
-          <div className="table-card orcamentos__table">
+          <div className="table-card">
             <table className="table">
-              <thead>
+              <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Cliente</th>
                   <th>Itens</th>
@@ -1360,15 +1391,14 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                   <th>Desconto</th>
                   <th>Total</th>
                   <th>Validade</th>
-                  <th>Status</th>
                   <th>Pedido</th>
-                  <th>Acoes</th>
+                  <th className="table__actions table__actions--end">Status / Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {quotes.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="table__empty">
+                    <td colSpan={8} className="table__empty">
                       Nenhum orcamento cadastrado ainda.
                     </td>
                   </tr>
@@ -1377,53 +1407,58 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                   const discountInfo = getQuoteDiscountInfo(quote)
                   return (
                     <tr key={quote.id}>
-                      <td>{getClientName(quote.clientId)}</td>
-                      <td>{formatItemsSummary(quote.items)}</td>
-                      <td>
+                      <td className="table__cell--truncate">
+                        <div className="table__stack">
+                          <strong>{getClientName(quote.clientId)}</strong>
+                          <span className="table__sub table__sub--mobile">
+                            {formatCurrency(quote.total)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="table__cell--mobile-hide">{formatItemsSummary(quote.items)}</td>
+                      <td className="table__cell--mobile-hide">
                         {getPaymentMethodLabel(
                           quote.paymentMethod,
                           data.tabelas?.paymentMethods,
                         )}
                       </td>
-                      <td>
+                      <td className="table__cell--mobile-hide">
                         {discountInfo.discountValue > 0
                           ? `${formatCurrency(discountInfo.discountValue)} (${formatPercent(
                               discountInfo.discountPercent,
                             )}%)`
                           : '-'}
                       </td>
-                      <td>{formatCurrency(quote.total)}</td>
-                      <td>{formatDateShort(quote.validUntil)}</td>
-                      <td>
-                        <select
-                          className="table__select"
-                          value={quote.status}
-                          onChange={(event) =>
-                            handleInlineStatusChange(quote, event.target.value as Quote['status'])
-                          }
-                        >
-                          {Object.entries(statusLabels).map(([key, label]) => (
-                            <option key={key} value={key}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td>
+                      <td className="table__cell--mobile-hide">{formatCurrency(quote.total)}</td>
+                      <td className="table__cell--mobile-hide">{formatDateShort(quote.validUntil)}</td>
+                      <td className="table__cell--mobile-hide">
                         {quote.convertedOrderId ? `#${quote.convertedOrderId.slice(0, 6)}` : '-'}
                       </td>
-                      <td className="table__actions">
-                        <ActionMenu
-                          items={[
-                            { label: 'Editar', onClick: () => handleEdit(quote) },
-                            { label: 'Imprimir', onClick: () => handlePrint(quote) },
-                            {
-                              label: 'Excluir',
-                              onClick: () => setDeleteId(quote.id),
-                              variant: 'danger',
-                            },
-                          ]}
-                        />
+                      <td className="table__actions table__actions--end">
+                        <div className="table__end">
+                          <select
+                            className="table__select"
+                            data-status={quote.status}
+                            value={quote.status}
+                            onChange={(event) =>
+                              handleInlineStatusChange(
+                                quote,
+                                event.target.value as Quote['status'],
+                              )
+                            }
+                          >
+                            {Object.entries(statusLabels).map(([key, label]) => (
+                              <option key={key} value={key}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                          <ActionMenu
+                            items={[
+                              { label: 'Editar', onClick: () => handleEdit(quote) },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   )

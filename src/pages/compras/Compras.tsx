@@ -387,42 +387,42 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
 
       {status && <p className="form__status">{status}</p>}
 
-      <div className="compras__summary summary-card">
-        <article className="compras__stat">
-          <span className="compras__stat-label">Fornecedores ativos</span>
-          <strong className="compras__stat-value">{suppliers.length}</strong>
+      <div className="summary summary-card">
+        <article className="summary__item">
+          <span className="summary__label">Fornecedores ativos</span>
+          <strong className="summary__value">{suppliers.length}</strong>
         </article>
-        <article className="compras__stat">
-          <span className="compras__stat-label">Materiais cadastrados</span>
-          <strong className="compras__stat-value">{materials.length}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Materiais cadastrados</span>
+          <strong className="summary__value">{materials.length}</strong>
         </article>
-        <article className="compras__stat">
-          <span className="compras__stat-label">Saidas do mes</span>
-          <strong className="compras__stat-value">{formatCurrency(monthlyExpenses)}</strong>
+        <article className="summary__item">
+          <span className="summary__label">Saidas do mes</span>
+          <strong className="summary__value">{formatCurrency(monthlyExpenses)}</strong>
         </article>
-        <article className="compras__stat">
-          <span className="compras__stat-label">Solicitacoes em aberto</span>
-          <strong className="compras__stat-value">0</strong>
+        <article className="summary__item">
+          <span className="summary__label">Solicitacoes em aberto</span>
+          <strong className="summary__value">0</strong>
         </article>
       </div>
 
-      <div className="compras__grid">
-        <section className="compras__panel">
-          <div className="compras__panel-header">
+      <div className="grid grid--two">
+        <section className="panel">
+          <div className="panel__header">
             <div>
-              <h2 className="compras__panel-title">Ultimas despesas</h2>
-              <p className="compras__panel-subtitle">Saidas registradas no financeiro</p>
+              <h2 className="panel__title">Ultimas despesas</h2>
+              <p className="panel__subtitle">Saidas registradas no financeiro</p>
             </div>
           </div>
-          <div className="compras__list">
+          <div className="list">
             {recentExpenses.length === 0 && (
-              <div className="compras__empty">Nenhuma despesa registrada.</div>
+              <div className="list__empty">Nenhuma despesa registrada.</div>
             )}
             {recentExpenses.map((entry) => (
-              <div key={entry.id} className="compras__list-item">
+              <div key={entry.id} className="list__item">
                 <div>
                   <strong>{entry.description}</strong>
-                  <span className="compras__list-meta">{formatDateShort(entry.createdAt)}</span>
+                  <span className="list__meta">{formatDateShort(entry.createdAt)}</span>
                 </div>
                 <strong>{formatCurrency(entry.amount)}</strong>
               </div>
@@ -430,19 +430,19 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
           </div>
         </section>
 
-        <section className="compras__panel">
-          <div className="compras__panel-header">
+        <section className="panel">
+          <div className="panel__header">
             <div>
-              <h2 className="compras__panel-title">Fornecedores ativos</h2>
-              <p className="compras__panel-subtitle">Principais parceiros de compra</p>
+              <h2 className="panel__title">Fornecedores ativos</h2>
+              <p className="panel__subtitle">Principais parceiros de compra</p>
             </div>
           </div>
-          <div className="compras__list">
+          <div className="list">
             {suppliers.length === 0 && (
-              <div className="compras__empty">Nenhum fornecedor cadastrado.</div>
+              <div className="list__empty">Nenhum fornecedor cadastrado.</div>
             )}
             {suppliers.slice(0, 6).map((supplier) => (
-              <div key={supplier.id} className="compras__list-item">
+              <div key={supplier.id} className="list__item">
                 <span>{supplier.name}</span>
                 <strong>{supplier.city ?? '-'}</strong>
               </div>
@@ -451,19 +451,19 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
         </section>
       </div>
 
-      <section className="compras__panel compras__panel--full">
-        <div className="compras__panel-header">
+      <section className="panel panel--full">
+        <div className="panel__header">
           <div>
-            <h2 className="compras__panel-title">Materiais cadastrados</h2>
-            <p className="compras__panel-subtitle">Lista de insumos e unidades</p>
+            <h2 className="panel__title">Materiais cadastrados</h2>
+            <p className="panel__subtitle">Lista de insumos e unidades</p>
           </div>
         </div>
-        <div className="compras__list compras__list--compact">
+        <div className="list list--compact">
           {materials.length === 0 && (
-            <div className="compras__empty">Nenhum material cadastrado.</div>
+            <div className="list__empty">Nenhum material cadastrado.</div>
           )}
           {materials.slice(0, 8).map((material) => (
-            <div key={material.id} className="compras__list-item">
+            <div key={material.id} className="list__item">
               <span>{material.name}</span>
               <strong>
                 {getMaterialUnitLabel(material.unit, data.tabelas)}
@@ -474,14 +474,14 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
         </div>
       </section>
 
-      <section className="compras__panel compras__panel--full">
-        <div className="compras__panel-header">
+      <section className="panel panel--full">
+        <div className="panel__header">
           <div>
-            <h2 className="compras__panel-title">Historico de compras</h2>
-            <p className="compras__panel-subtitle">Filtro por fornecedor ou material</p>
+            <h2 className="panel__title">Historico de compras</h2>
+            <p className="panel__subtitle">Filtro por fornecedor ou material</p>
           </div>
         </div>
-        <div className="compras__filters">
+        <div className="filters">
           <div className="form__group">
             <label className="form__label" htmlFor="purchase-filter-supplier">
               Fornecedor
@@ -519,9 +519,9 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             </select>
           </div>
         </div>
-        <div className="table-card compras__table">
+        <div className="table-card">
           <table className="table">
-            <thead>
+            <thead className="table__head table__head--mobile-hide">
               <tr>
                 <th>Data</th>
                 <th>Fornecedor</th>
@@ -540,11 +540,22 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
               )}
               {filteredPurchases.map((purchase) => (
                 <tr key={purchase.id}>
-                  <td>{getPurchaseDate(purchase)}</td>
-                  <td>{getSupplierName(purchase.supplierId)}</td>
-                  <td>{buildPurchaseSummary(purchase)}</td>
-                  <td>{formatCurrency(purchase.total)}</td>
-                  <td>{purchase.notes ?? '-'}</td>
+                  <td className="table__cell--mobile-hide">{getPurchaseDate(purchase)}</td>
+                  <td className="table__cell--mobile-hide">
+                    {getSupplierName(purchase.supplierId)}
+                  </td>
+                  <td className="table__cell--truncate">
+                    <div className="table__stack">
+                      <strong>{buildPurchaseSummary(purchase)}</strong>
+                      <span className="table__sub table__sub--mobile">
+                        {formatCurrency(purchase.total)}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="table__cell--mobile-hide">
+                    {formatCurrency(purchase.total)}
+                  </td>
+                  <td className="table__cell--mobile-hide">{purchase.notes ?? '-'}</td>
                 </tr>
               ))}
             </tbody>
@@ -566,27 +577,27 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
           </button>
         }
       >
-        <form id={purchaseFormId} className="form" onSubmit={handleSubmit}>
-          <div className="form__row">
-            <div className="form__group">
-              <label className="form__label" htmlFor="purchase-date">
+        <form id={purchaseFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="purchase-date">
                 Data da compra
               </label>
               <input
                 id="purchase-date"
-                className="form__input"
+                className="modal__input"
                 type="date"
                 value={form.date}
                 onChange={(event) => updateForm({ date: event.target.value })}
               />
             </div>
-            <div className="form__group">
-              <label className="form__label" htmlFor="purchase-supplier">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="purchase-supplier">
                 Fornecedor
               </label>
               <select
                 id="purchase-supplier"
-                className="form__input"
+                className="modal__input"
                 value={form.supplierId}
                 onChange={(event) => updateForm({ supplierId: event.target.value })}
               >
@@ -600,7 +611,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             </div>
           </div>
 
-          <div className="form__actions">
+          <div className="modal__form-actions">
             <button className="button button--ghost" type="button" onClick={addMaterialItem}>
               Adicionar material
             </button>
@@ -617,8 +628,8 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
               : 'Lote sem tamanho definido'
             const lineTotal = getItemTotal(item)
             return (
-              <div key={item.id} className="form__section">
-                <div className="form__actions">
+              <div key={item.id} className="modal__section">
+                <div className="modal__form-actions">
                   <strong>{item.type === 'material' ? `Material ${index + 1}` : `Item livre ${index + 1}`}</strong>
                   <button
                     className="button button--ghost"
@@ -632,13 +643,13 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
 
                 {item.type === 'material' ? (
                   <>
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`purchase-material-${item.id}`}>
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`purchase-material-${item.id}`}>
                         Material
                       </label>
                       <select
                         id={`purchase-material-${item.id}`}
-                        className="form__input"
+                        className="modal__input"
                         value={item.materialId}
                         onChange={(event) => handleMaterialChange(item.id, event.target.value)}
                       >
@@ -651,14 +662,14 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                       </select>
                     </div>
 
-                    <div className="form__row">
-                      <div className="form__group">
-                        <label className="form__label" htmlFor={`purchase-quantity-${item.id}`}>
+                    <div className="modal__row">
+                      <div className="modal__group">
+                        <label className="modal__label" htmlFor={`purchase-quantity-${item.id}`}>
                           Quantidade
                         </label> 
                         <input
                           id={`purchase-quantity-${item.id}`}
-                          className="form__input"
+                          className="modal__input"
                           type="number"
                           min="0"
                           step="0.01"
@@ -668,13 +679,13 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                           }
                         />
                       </div>
-                      <div className="form__group">
-                        <label className="form__label" htmlFor={`purchase-mode-${item.id}`}>
+                      <div className="modal__group">
+                        <label className="modal__label" htmlFor={`purchase-mode-${item.id}`}>
                           Base de preco
                         </label>
                         <select
                           id={`purchase-mode-${item.id}`}
-                          className="form__input"
+                          className="modal__input"
                           value={item.pricingMode}
                           onChange={(event) =>
                             handlePricingModeChange(
@@ -687,19 +698,19 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                           <option value="lot">Por lote</option>
                         </select>
                         {item.pricingMode === 'lot' && (
-                          <p className="form__help">{lotLabel}</p>
+                          <p className="modal__help">{lotLabel}</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="form__row">
-                      <div className="form__group">
-                        <label className="form__label" htmlFor={`purchase-price-${item.id}`}>
+                    <div className="modal__row">
+                      <div className="modal__group">
+                        <label className="modal__label" htmlFor={`purchase-price-${item.id}`}>
                           Valor {item.pricingMode === 'lot' ? 'por lote' : `por ${unitLabel}`}
                         </label>
                         <input
                           id={`purchase-price-${item.id}`}
-                          className="form__input"
+                          className="modal__input"
                           type="number"
                           min="0"
                           step="0.01"
@@ -709,9 +720,9 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                           }
                         />
                       </div>
-                      <div className="form__group">
-                        <label className="form__label">Total do item</label>
-                        <div className="form__summary">
+                      <div className="modal__group">
+                        <label className="modal__label">Total do item</label>
+                        <div className="summary">
                           <strong>{formatCurrency(lineTotal)}</strong>
                         </div>
                       </div>
@@ -719,26 +730,26 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                   </>
                 ) : (
                   <>
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`purchase-extra-${item.id}`}>
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`purchase-extra-${item.id}`}>
                         Descricao do item
                       </label>
                       <input
                         id={`purchase-extra-${item.id}`}
-                        className="form__input"
+                        className="modal__input"
                         type="text"
                         value={item.description}
                         onChange={(event) => updateItem(item.id, { description: event.target.value })}
                         placeholder="Ex: Lanche equipe, etiquetas"
                       />
                     </div>
-                    <div className="form__group">
-                      <label className="form__label" htmlFor={`purchase-extra-total-${item.id}`}>
+                    <div className="modal__group">
+                      <label className="modal__label" htmlFor={`purchase-extra-total-${item.id}`}>
                         Valor total
                       </label>
                       <input
                         id={`purchase-extra-total-${item.id}`}
-                        className="form__input"
+                        className="modal__input"
                         type="number"
                         min="0"
                         step="0.01"
@@ -754,25 +765,25 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             )
           })}
 
-          <div className="form__group">
-            <label className="form__label" htmlFor="purchase-notes">
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="purchase-notes">
               Observacoes
             </label>
             <textarea
               id="purchase-notes"
-              className="form__input form__textarea"
+              className="modal__input modal__textarea"
               value={form.notes}
               onChange={(event) => updateForm({ notes: event.target.value })}
               placeholder="Detalhes adicionais da compra"
             />
           </div>
 
-          <div className="form__summary">
+          <div className="summary">
             <span>Total da compra</span>
             <strong>{formatCurrency(totalAmount)}</strong>
           </div>
 
-          {status && <p className="form__status">{status}</p>}
+          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
     </Page>
