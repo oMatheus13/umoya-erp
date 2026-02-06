@@ -9,7 +9,7 @@ import type { Product, ProductUnit, ProductVariant } from '../../types/erp'
 import { formatCurrency } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { getBaseCost, getLaborUnitCost, getMaxDiscountPercentForItem, getMinUnitPrice } from '../../utils/pricing'
-import { getProductUnitLabel, getProductUnitOptions } from '../../utils/units'
+import { getProductUnitOptions } from '../../utils/units'
 
 type ProductForm = {
   name: string
@@ -405,23 +405,6 @@ const Produtos = () => {
     )
     const maxValue = product.price * (maxPercent / 100)
     return { unitCost, minUnit, maxPercent, maxValue }
-  }
-
-  const formatPriceRule = (product: Product) => {
-    const summary = getProductPricingSummary(product)
-    const parts: string[] = []
-    if (summary.minUnit > 0) {
-      parts.push(`Min ${formatCurrency(summary.minUnit)}`)
-    }
-    if (summary.maxPercent > 0) {
-      parts.push(
-        `Desc max ${formatPercent(summary.maxPercent)}% (${formatCurrency(summary.maxValue)})`,
-      )
-    }
-    if (parts.length === 0) {
-      return '-'
-    }
-    return parts.join(' | ')
   }
 
   const formatVariantDimensions = (variant: ProductVariant, product?: Product) => {

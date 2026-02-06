@@ -315,7 +315,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
 
   const getRole = (id?: string) => roles.find((role) => role.id === id)
   const getLevel = (id?: string) => levels.find((level) => level.id === id)
-  const getEmployee = (id: string) => employees.find((employee) => employee.id === id)
+  const getEmployee = (id?: string) =>
+    id ? employees.find((employee) => employee.id === id) : undefined
   const getProduct = (id: string) => data.produtos.find((product) => product.id === id)
   const getEmployeeName = (id?: string) => (id ? getEmployee(id)?.name ?? '-' : '-')
   const getUser = (id: string) => users.find((user) => user.id === id)
