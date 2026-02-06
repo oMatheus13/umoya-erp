@@ -114,7 +114,8 @@
   border: none;
   padding: 0;
   cursor: pointer;
-  font: inherit;
+  font-family: inherit;
+  font-weight: inherit;
 }
 
 .login__forgot:hover {
@@ -244,7 +245,7 @@
   }
 
   .login__forgot {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-xs);
   }
 }
 
