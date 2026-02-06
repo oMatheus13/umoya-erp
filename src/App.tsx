@@ -441,6 +441,57 @@ function App() {
     if (currentUser.id === 'dev-user') {
       return
     }
+    const channel = supabase
+      .channel(`erp_states_${syncId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'erp_states',
+          filter: `user_id=eq.${syncId}`,
+        },
+        (payload) => {
+          if (payload.eventType === 'DELETE') {
+            return
+          }
+          const row = (payload.new as { payload?: ERPData; updated_at?: string | null } | null) ?? null
+          const remotePayload = (row?.payload as ERPData | null) ?? null
+          if (!remotePayload) {
+            return
+          }
+          const local = dataService.getAll()
+          const localHasData = hasMeaningfulData(local)
+          const remoteUpdatedAt = resolveUpdatedAt(remotePayload, row?.updated_at ?? undefined)
+          const localUpdatedAt = resolveUpdatedAt(local)
+          const handler = syncHandlerRef.current ?? createRemoteSync(syncId)
+          if (!syncHandlerRef.current) {
+            syncHandlerRef.current = handler
+            setRemoteSync(handler)
+          }
+          if (
+            !localHasData ||
+            (remoteUpdatedAt && (!localUpdatedAt || remoteUpdatedAt > localUpdatedAt))
+          ) {
+            setRemoteSync(null)
+            dataService.replaceAll(remotePayload, { touchMeta: false, skipSync: true })
+            setRemoteSync(handler)
+          }
+        },
+      )
+      .subscribe()
+    return () => {
+      void supabase.removeChannel(channel)
+    }
+  }, [isAuthenticated, currentUser?.id, syncId])
+
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser || !supabase || !syncId) {
+      return
+    }
+    if (currentUser.id === 'dev-user') {
+      return
+    }
     const interval = setInterval(async () => {
       const remote = await erpRemote.fetchState(syncId)
       if (remote.error) {
