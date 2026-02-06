@@ -189,7 +189,6 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
 
     const payload = dataService.getAll()
     const sanitizedAvatarUrl = sanitizeAvatarUrl(form.avatarUrl)
-    const sanitizedAvatarUrl = sanitizeAvatarUrl(form.avatarUrl)
     const nextUser: UserAccount = {
       ...resolvedUser,
       displayName: form.displayName.trim() || undefined,
