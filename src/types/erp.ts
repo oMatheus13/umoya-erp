@@ -574,6 +574,7 @@ export type UserAccount = {
   phone?: string
   avatarColor?: string
   avatarUrl?: string
+  avatarPath?: string
   passwordHash?: string
   role?: 'admin' | 'funcionario'
   createdAt: string

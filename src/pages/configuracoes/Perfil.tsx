@@ -6,6 +6,7 @@ import { useERPData } from '../../store/appStore'
 import type { UserAccount } from '../../types/erp'
 import { supabase } from '../../services/supabaseClient'
 import { erpRemote } from '../../services/erpRemote'
+import { createSignedAvatarUrl, uploadAvatar } from '../../services/storageFiles'
 
 const avatarOptions = [
   { value: 'lime', label: 'Lima', color: 'var(--color-lime)' },
@@ -29,15 +30,8 @@ type PerfilForm = {
   phone: string
   avatarColor: string
   avatarUrl: string
+  avatarPath: string
 }
-
-const readFileAsDataUrl = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(new Error('Falha ao ler o arquivo.'))
-    reader.readAsDataURL(file)
-  })
 
 const estimateDataUrlSize = (dataUrl: string) => {
   const base64 = dataUrl.split(',')[1] ?? ''
@@ -83,6 +77,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     phone: '',
     avatarColor: avatarOptions[0].value,
     avatarUrl: '',
+    avatarPath: '',
   })
 
   const resolvedUser = useMemo(() => {
@@ -117,6 +112,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       phone: resolvedUser.phone ?? '',
       avatarColor: resolvedUser.avatarColor ?? avatarOptions[0].value,
       avatarUrl: resolvedUser.avatarUrl ?? '',
+      avatarPath: resolvedUser.avatarPath ?? '',
     })
   }, [resolvedUser])
 
@@ -148,6 +144,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       phone: form.phone.trim() || undefined,
       avatarColor: form.avatarColor || undefined,
       avatarUrl: form.avatarUrl || undefined,
+      avatarPath: form.avatarPath || undefined,
     }
 
     if (payload.usuarios.some((user) => user.id === resolvedUser.id)) {
@@ -172,7 +169,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
           role: nextUser.role,
           phone: nextUser.phone,
           avatarColor: nextUser.avatarColor,
-          avatarUrl: nextUser.avatarUrl,
+          avatarPath: nextUser.avatarPath,
         },
       })
       if (error) {
@@ -204,14 +201,28 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       setStatus('Selecione um arquivo de imagem valido.')
       return
     }
+    if (!supabase) {
+      setStatus('Supabase nao configurado. Verifique as variaveis de ambiente.')
+      return
+    }
     try {
-      const dataUrl =
-        file.size > MAX_AVATAR_BYTES ? await downscaleImage(file) : await readFileAsDataUrl(file)
+      const dataUrl = await downscaleImage(file)
       if (estimateDataUrlSize(dataUrl) > MAX_AVATAR_BYTES) {
         setStatus('Imagem muito grande para sincronizar. Use uma foto menor.')
         return
       }
-      updateForm({ avatarUrl: dataUrl })
+      const blob = await (await fetch(dataUrl)).blob()
+      const uploadResult = await uploadAvatar(resolvedUser.id, blob)
+      if (uploadResult.error || !uploadResult.path) {
+        setStatus(`Falha ao enviar imagem. ${uploadResult.error ?? ''}`.trim())
+        return
+      }
+      const signed = await createSignedAvatarUrl(uploadResult.path)
+      if (!signed.url) {
+        setStatus(`Falha ao gerar link da imagem. ${signed.error ?? ''}`.trim())
+        return
+      }
+      updateForm({ avatarUrl: signed.url, avatarPath: uploadResult.path })
       setStatus(null)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Falha ao processar a imagem.'

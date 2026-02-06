@@ -73,3 +73,13 @@ https://sua-url/?setup=SEU_TOKEN
 ```
 
 Se o Supabase estiver com confirmacao de email ligada, confirme o email e faca login.
+
+## 5) Storage (avatars)
+
+Crie um bucket privado chamado `umoya-files` e rode o SQL de politicas em:
+
+```
+docs/supabase-storage.sql
+```
+
+Se quiser outro nome de bucket, defina `VITE_SUPABASE_BUCKET` no `.env` e na Vercel.
