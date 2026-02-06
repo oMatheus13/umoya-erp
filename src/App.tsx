@@ -134,7 +134,8 @@ function App() {
     payload.materiais.length > 0 ||
     payload.comprasHistorico.length > 0 ||
     payload.ordensProducao.length > 0 ||
-    payload.entregas.length > 0
+    payload.entregas.length > 0 ||
+    payload.funcionarios.length > 0
 
   const resolveUpdatedAt = (payload: ERPData | null, fallback?: string) =>
     payload?.meta?.updatedAt ?? fallback
@@ -256,7 +257,7 @@ function App() {
   const fetchRemoteState = async (syncId: string) => {
     type RemoteState = Awaited<ReturnType<typeof erpRemote.fetchState>>
     const timeout = new Promise<RemoteState>((resolve) => {
-      setTimeout(() => resolve({ data: null, error: 'timeout' }), 2500)
+      setTimeout(() => resolve({ data: null, error: 'timeout' }), 8000)
     })
     return Promise.race<RemoteState>([erpRemote.fetchState(syncId), timeout])
   }
@@ -288,6 +289,9 @@ function App() {
     const fallbackName = existing?.name ?? metadataName ?? user.email ?? 'Usuario'
     const metadataCpf = user.user_metadata?.cpf as string | undefined
     const metadataRole = user.user_metadata?.role as UserAccount['role'] | undefined
+    const metadataPhone = user.user_metadata?.phone as string | undefined
+    const metadataAvatarColor = user.user_metadata?.avatarColor as string | undefined
+    const metadataAvatarUrl = user.user_metadata?.avatarUrl as string | undefined
     const hasAdmin = payload.usuarios.some((item) => item.role === 'admin')
     const resolvedRole =
       existing?.role ?? metadataRole ?? (hasAdmin ? 'funcionario' : 'admin')
@@ -298,9 +302,9 @@ function App() {
       displayName: existing?.displayName ?? metadataDisplayName,
       email: user.email ?? existing?.email ?? '',
       cpf: resolvedCpf,
-      phone: existing?.phone,
-      avatarColor: existing?.avatarColor,
-      avatarUrl: existing?.avatarUrl,
+      phone: existing?.phone ?? metadataPhone,
+      avatarColor: existing?.avatarColor ?? metadataAvatarColor,
+      avatarUrl: existing?.avatarUrl ?? metadataAvatarUrl,
       createdAt: existing?.createdAt ?? new Date().toISOString(),
       active: existing?.active ?? true,
       role: resolvedRole,
