@@ -14,6 +14,10 @@ const avatarOptions = [
   { value: 'night', label: 'Night', color: '#1b1f2a' },
 ]
 
+const MAX_AVATAR_BYTES = 240 * 1024
+const MAX_AVATAR_DIMENSION = 512
+const AVATAR_QUALITY = 0.75
+
 type PerfilProps = {
   currentUser?: UserAccount | null
   onUpdate?: (user: UserAccount) => void
@@ -26,6 +30,49 @@ type PerfilForm = {
   avatarColor: string
   avatarUrl: string
 }
+
+const readFileAsDataUrl = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(new Error('Falha ao ler o arquivo.'))
+    reader.readAsDataURL(file)
+  })
+
+const estimateDataUrlSize = (dataUrl: string) => {
+  const base64 = dataUrl.split(',')[1] ?? ''
+  return Math.round((base64.length * 3) / 4)
+}
+
+const downscaleImage = (file: File) =>
+  new Promise<string>((resolve, reject) => {
+    const image = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    image.onload = () => {
+      const maxSide = Math.max(image.width, image.height)
+      const scale = maxSide > MAX_AVATAR_DIMENSION ? MAX_AVATAR_DIMENSION / maxSide : 1
+      const width = Math.max(1, Math.round(image.width * scale))
+      const height = Math.max(1, Math.round(image.height * scale))
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const context = canvas.getContext('2d')
+      if (!context) {
+        URL.revokeObjectURL(objectUrl)
+        reject(new Error('Falha ao processar a imagem.'))
+        return
+      }
+      context.drawImage(image, 0, 0, width, height)
+      const dataUrl = canvas.toDataURL('image/jpeg', AVATAR_QUALITY)
+      URL.revokeObjectURL(objectUrl)
+      resolve(dataUrl)
+    }
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      reject(new Error('Falha ao carregar a imagem.'))
+    }
+    image.src = objectUrl
+  })
 
 const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
   const { data, refresh } = useERPData()
@@ -115,6 +162,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     refresh()
     onUpdate?.(nextUser)
     let message = 'Perfil atualizado com sucesso.'
+    let authError: string | null = null
     if (supabase) {
       const { error } = await supabase.auth.updateUser({
         data: {
@@ -129,12 +177,16 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       })
       if (error) {
         message = 'Perfil salvo localmente, mas nao foi possivel atualizar o login.'
+        authError = error.message
       }
     }
     const syncId = data.meta?.workspaceId ?? resolvedUser.id
     const remoteResult = await erpRemote.upsertState(syncId, dataService.getAll())
+    if (authError) {
+      message = `${message} (${authError})`
+    }
     if (remoteResult.error) {
-      message = `${message} Falha ao salvar no servidor.`
+      message = `${message} Falha ao salvar no servidor (${remoteResult.error}).`
     }
     setStatus(message)
   }
@@ -143,7 +195,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     avatarOptions.find((option) => option.value === form.avatarColor)?.color ??
     avatarOptions[0].color
 
-  const handleAvatarChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) {
       return
@@ -152,12 +204,19 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       setStatus('Selecione um arquivo de imagem valido.')
       return
     }
-    const reader = new FileReader()
-    reader.onload = () => {
-      updateForm({ avatarUrl: reader.result as string })
+    try {
+      const dataUrl =
+        file.size > MAX_AVATAR_BYTES ? await downscaleImage(file) : await readFileAsDataUrl(file)
+      if (estimateDataUrlSize(dataUrl) > MAX_AVATAR_BYTES) {
+        setStatus('Imagem muito grande para sincronizar. Use uma foto menor.')
+        return
+      }
+      updateForm({ avatarUrl: dataUrl })
       setStatus(null)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha ao processar a imagem.'
+      setStatus(message)
     }
-    reader.readAsDataURL(file)
   }
 
   return (
