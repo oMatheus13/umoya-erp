@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -718,17 +719,14 @@ const Qualidade = () => {
               <label className="modal__label" htmlFor="quality-cost">
                 Custo estimado
               </label>
-              <input
+              <CurrencyInput
                 id="quality-cost"
                 className="modal__input"
-                type="number"
-                min="0"
-                step="0.01"
                 value={qualityForm.estimatedCost}
-                onChange={(event) =>
+                onValueChange={(value) =>
                   setQualityForm((prev) => ({
                     ...prev,
-                    estimatedCost: Number(event.target.value),
+                    estimatedCost: value ?? 0,
                   }))
                 }
               />
@@ -886,15 +884,12 @@ const Qualidade = () => {
             <label className="modal__label" htmlFor="maint-cost">
               Custo
             </label>
-            <input
+            <CurrencyInput
               id="maint-cost"
               className="modal__input"
-              type="number"
-              min="0"
-              step="0.01"
               value={maintenanceForm.cost}
-              onChange={(event) =>
-                setMaintenanceForm((prev) => ({ ...prev, cost: Number(event.target.value) }))
+              onValueChange={(value) =>
+                setMaintenanceForm((prev) => ({ ...prev, cost: value ?? 0 }))
               }
             />
           </div>

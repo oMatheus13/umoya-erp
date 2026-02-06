@@ -1,6 +1,5 @@
-import { useEffect, useId } from 'react'
+import { useEffect, useId, type FocusEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import type { ReactNode } from 'react'
 
 type ModalSize = 'sm' | 'md' | 'lg'
 
@@ -15,6 +14,16 @@ type ModalProps = {
 
 const Modal = ({ open, title, size = 'md', actions, onClose, children }: ModalProps) => {
   const titleId = useId()
+
+  const handleFocusCapture = (event: FocusEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement
+    if (!(target instanceof HTMLInputElement) || target.type !== 'number') {
+      return
+    }
+    if (target.value !== '' && Number(target.value) === 0) {
+      target.select()
+    }
+  }
 
   useEffect(() => {
     if (!open) {
@@ -52,6 +61,7 @@ const Modal = ({ open, title, size = 'md', actions, onClose, children }: ModalPr
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
+      onFocusCapture={handleFocusCapture}
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose()

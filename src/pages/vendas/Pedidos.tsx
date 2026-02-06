@@ -1,6 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import CurrencyInput from '../../components/CurrencyInput'
+import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import {
@@ -33,7 +35,7 @@ type OrderForm = {
   items: OrderItemForm[]
   paymentMethod: string
   discountType: '' | 'percent' | 'value'
-  discountValue: string
+  discountValue: number
   discountPercent: string
   status: Order['status']
   fulfillment: FulfillmentMode
@@ -56,12 +58,6 @@ const createEmptyItem = (): OrderItemForm => ({
   customHeight: 0,
 })
 
-const toMeters = (value: number) =>
-  Number.isFinite(value) ? Math.max(0, value / 100) : 0
-
-const toCentimeters = (value: number) =>
-  Number.isFinite(value) ? Math.max(0, value * 100) : 0
-
 const Pedidos = () => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
@@ -75,7 +71,7 @@ const Pedidos = () => {
     items: [createEmptyItem()],
     paymentMethod: 'a_definir',
     discountType: '',
-    discountValue: '',
+    discountValue: 0,
     discountPercent: '',
     status: 'aguardando_pagamento',
     fulfillment: 'producao',
@@ -118,13 +114,10 @@ const Pedidos = () => {
   )
   const maxDiscountPercent = discountSummary.maxDiscountPercent
   const maxDiscountValue = Math.min(discountSummary.maxDiscountValue, subtotal)
-  const parsedDiscountValue = form.discountValue.trim()
-    ? Number(form.discountValue.replace(',', '.'))
-    : 0
   const parsedDiscountPercent = form.discountPercent.trim()
     ? Number(form.discountPercent.replace(',', '.'))
     : 0
-  const safeDiscountValue = Number.isNaN(parsedDiscountValue) ? 0 : parsedDiscountValue
+  const safeDiscountValue = Number.isFinite(form.discountValue) ? form.discountValue : 0
   const safeDiscountPercent = Number.isNaN(parsedDiscountPercent) ? 0 : parsedDiscountPercent
   const rawDiscount =
     form.discountType === 'percent'
@@ -253,7 +246,7 @@ const Pedidos = () => {
       items: [createEmptyItem()],
       paymentMethod: 'a_definir',
       discountType: '',
-      discountValue: '',
+      discountValue: 0,
       discountPercent: '',
       status: 'aguardando_pagamento',
       fulfillment: 'producao',
@@ -409,9 +402,8 @@ const Pedidos = () => {
     })
   }
 
-  const handleLinearLengthChange = (index: number, lengthCm: number) => {
+  const handleLinearLengthChange = (index: number, lengthMeters: number) => {
     const product = data.produtos.find((item) => item.id === form.items[index]?.productId)
-    const lengthMeters = toMeters(lengthCm)
     updateItem(index, {
       customLength: lengthMeters,
       unitPrice: resolveUnitPrice(product ?? null, undefined, {
@@ -724,11 +716,11 @@ const Pedidos = () => {
       }
     }
     if (form.discountType === 'value') {
-      if (Number.isNaN(parsedDiscountValue)) {
+      if (!Number.isFinite(form.discountValue)) {
         setStatus('Informe um desconto em dinheiro valido.')
         return
       }
-      if (parsedDiscountValue < 0) {
+      if (form.discountValue < 0) {
         setStatus('O desconto nao pode ser negativo.')
         return
       }
@@ -933,7 +925,7 @@ const Pedidos = () => {
         order.paymentMethod ||
         'a_definir',
       discountType: inferredDiscountType as OrderForm['discountType'],
-      discountValue: order.discountValue !== undefined ? String(order.discountValue) : '',
+      discountValue: order.discountValue ?? 0,
       discountPercent:
         order.discountPercent !== undefined ? String(order.discountPercent) : '',
       status: order.status,
@@ -1185,18 +1177,15 @@ const Pedidos = () => {
               {isLinear ? (
                 <div className="modal__group">
                   <label className="modal__label" htmlFor={`order-length-${index}`}>
-                    Comprimento (cm)
+                    Comprimento
                   </label>
-                  <input
+                  <DimensionInput
                     id={`order-length-${index}`}
                     className="modal__input"
-                    type="number"
                     min="0"
-                    step="1"
-                    value={toCentimeters(item.customLength)}
-                    onChange={(event) =>
-                      handleLinearLengthChange(index, Number(event.target.value))
-                    }
+                    step={0.01}
+                    value={item.customLength}
+                    onValueChange={(value) => handleLinearLengthChange(index, value)}
                     disabled={!item.productId}
                   />
                 </div>
@@ -1241,48 +1230,39 @@ const Pedidos = () => {
                   <label className="modal__label" htmlFor={`order-length-${index}`}>
                     Comprimento
                   </label>
-                  <input
+                  <DimensionInput
                     id={`order-length-${index}`}
                     className="modal__input"
-                    type="number"
                     min="0"
-                    step="0.01"
                     value={item.customLength}
-                    onChange={(event) =>
-                      updateItem(index, { customLength: Number(event.target.value) })
-                    }
+                    step={0.01}
+                    onValueChange={(value) => updateItem(index, { customLength: value })}
                   />
                 </div>
                 <div className="modal__group">
                   <label className="modal__label" htmlFor={`order-width-${index}`}>
                     Largura
                   </label>
-                  <input
+                  <DimensionInput
                     id={`order-width-${index}`}
                     className="modal__input"
-                    type="number"
                     min="0"
-                    step="0.01"
                     value={item.customWidth}
-                    onChange={(event) =>
-                      updateItem(index, { customWidth: Number(event.target.value) })
-                    }
+                    step={0.01}
+                    onValueChange={(value) => updateItem(index, { customWidth: value })}
                   />
                 </div>
                 <div className="modal__group">
                   <label className="modal__label" htmlFor={`order-height-${index}`}>
                     Altura
                   </label>
-                  <input
+                  <DimensionInput
                     id={`order-height-${index}`}
                     className="modal__input"
-                    type="number"
                     min="0"
-                    step="0.01"
                     value={item.customHeight}
-                    onChange={(event) =>
-                      updateItem(index, { customHeight: Number(event.target.value) })
-                    }
+                    step={0.01}
+                    onValueChange={(value) => updateItem(index, { customHeight: value })}
                   />
                 </div>
               </div>
@@ -1308,16 +1288,11 @@ const Pedidos = () => {
                 <label className="modal__label" htmlFor={`order-price-${index}`}>
                   Valor unitario
                 </label>
-                <input
+                <CurrencyInput
                   id={`order-price-${index}`}
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={item.unitPrice}
-                  onChange={(event) =>
-                    updateItem(index, { unitPrice: Number(event.target.value) })
-                  }
+                  onValueChange={(value) => updateItem(index, { unitPrice: value ?? 0 })}
                   disabled={isLinear}
                 />
                 {itemProduct && (
@@ -1389,14 +1364,11 @@ const Pedidos = () => {
                   <label className="modal__label" htmlFor="order-discount-value">
                     Valor
                   </label>
-                  <input
+                  <CurrencyInput
                     id="order-discount-value"
                     className="modal__input"
-                    type="number"
-                    min="0"
-                    step="0.01"
                     value={form.discountValue}
-                    onChange={(event) => updateForm({ discountValue: event.target.value })}
+                    onValueChange={(value) => updateForm({ discountValue: value ?? 0 })}
                     placeholder={`Max ${formatCurrency(maxDiscountValue)}`}
                   />
                 </div>

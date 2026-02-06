@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -371,15 +372,12 @@ const RhPagamentos = () => {
               <label className="modal__label" htmlFor="pay-base">
                 Base (R$)
               </label>
-              <input
+              <CurrencyInput
                 id="pay-base"
                 className="modal__input"
-                type="number"
-                min="0"
-                step="0.01"
                 value={form.baseValue}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, baseValue: Number(event.target.value) }))
+                onValueChange={(value) =>
+                  setForm((prev) => ({ ...prev, baseValue: value ?? 0 }))
                 }
               />
             </div>
@@ -387,15 +385,12 @@ const RhPagamentos = () => {
               <label className="modal__label" htmlFor="pay-extras">
                 Extras (R$)
               </label>
-              <input
+              <CurrencyInput
                 id="pay-extras"
                 className="modal__input"
-                type="number"
-                min="0"
-                step="0.01"
                 value={form.extras}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, extras: Number(event.target.value) }))
+                onValueChange={(value) =>
+                  setForm((prev) => ({ ...prev, extras: value ?? 0 }))
                 }
               />
             </div>
@@ -403,15 +398,12 @@ const RhPagamentos = () => {
               <label className="modal__label" htmlFor="pay-discounts">
                 Descontos (R$)
               </label>
-              <input
+              <CurrencyInput
                 id="pay-discounts"
                 className="modal__input"
-                type="number"
-                min="0"
-                step="0.01"
                 value={form.discounts}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, discounts: Number(event.target.value) }))
+                onValueChange={(value) =>
+                  setForm((prev) => ({ ...prev, discounts: value ?? 0 }))
                 }
               />
             </div>

@@ -1,0 +1,270 @@
+.quote-print {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 22mm 6mm;
+  }
+
+  body {
+    background: var(--color-true-white);
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .app,
+  .app__main,
+  .app__content {
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+    padding: 0;
+    margin: 0;
+  }
+
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  .app__main {
+    grid-column: 1 / -1;
+  }
+
+  .app__sidebar,
+  .app__overlay,
+  .topbar {
+    display: none !important;
+  }
+
+  #quote-print,
+  #quote-print * {
+    visibility: visible;
+  }
+
+  #quote-print {
+    display: block !important;
+    position: relative;
+    padding: 0;
+    max-width: 180mm;
+    margin: 0 auto;
+    background: var(--color-true-white);
+    color: var(--color-true-black);
+    font-family: var(--font-family-secondary), sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  #quote-print .quote-print__copy {
+    padding-bottom: 28px;
+    page-break-after: always;
+  }
+
+  #quote-print .quote-print__copy:last-child {
+    page-break-after: auto;
+  }
+
+  #quote-print .quote-print__copy-tag {
+    display: inline-flex;
+    align-self: flex-end;
+    padding: 4px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 10px;
+    margin-top: 6px;
+  }
+
+  #quote-print .quote-print__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  #quote-print .quote-print__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  #quote-print .quote-print__logo {
+    width: 110px;
+    height: auto;
+  }
+
+  #quote-print .quote-print__company {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: rgba(0, 0, 0, 0.75);
+  }
+
+  #quote-print .quote-print__company strong {
+    font-size: 16px;
+    color: var(--color-true-black);
+  }
+
+  #quote-print .quote-print__meta {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 180px;
+    align-items: flex-end;
+  }
+
+  #quote-print .quote-print__client {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  }
+
+  #quote-print .quote-print__client-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  #quote-print .quote-print__client-block > span:first-child {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.55);
+    margin-bottom: 4px;
+  }
+
+  #quote-print .quote-print__dimension {
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.75);
+  }
+
+  #quote-print .quote-print__table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+  }
+
+  #quote-print .quote-print__table th,
+  #quote-print .quote-print__table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+    vertical-align: top;
+  }
+
+  #quote-print .quote-print__table th {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.65);
+    text-align: left;
+  }
+
+  #quote-print .quote-print__table th:nth-child(3),
+  #quote-print .quote-print__table td:nth-child(3) {
+    text-align: center;
+    width: 60px;
+  }
+
+  #quote-print .quote-print__table th:nth-child(2),
+  #quote-print .quote-print__table td:nth-child(2) {
+    width: 140px;
+  }
+
+  #quote-print .quote-print__table th:nth-child(4),
+  #quote-print .quote-print__table td:nth-child(4) {
+    text-align: center;
+    width: 80px;
+  }
+
+  #quote-print .quote-print__table th:nth-child(5),
+  #quote-print .quote-print__table th:nth-child(6),
+  #quote-print .quote-print__table td:nth-child(5),
+  #quote-print .quote-print__table td:nth-child(6) {
+    text-align: right;
+    width: 110px;
+  }
+
+  #quote-print .quote-print__table tr {
+    page-break-inside: avoid;
+  }
+
+  #quote-print .quote-print__total {
+    margin-top: 16px;
+    margin-left: auto;
+    width: min(280px, 100%);
+    break-inside: avoid;
+  }
+
+  #quote-print .quote-print__total-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+  }
+
+  #quote-print .quote-print__total-main {
+    border-top: 1px solid rgba(0, 0, 0, 0.2);
+    margin-top: 6px;
+    padding-top: 6px;
+    font-size: 14px;
+  }
+
+  #quote-print .quote-print__notes {
+    margin-top: 16px;
+    break-inside: avoid;
+  }
+
+  #quote-print .quote-print__notes > span:first-child {
+    display: block;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 10px;
+    color: rgba(0, 0, 0, 0.55);
+    margin-bottom: 6px;
+  }
+
+  #quote-print .quote-print__notes p {
+    margin: 0;
+    color: rgba(0, 0, 0, 0.8);
+  }
+
+  #quote-print .quote-print__notes-line {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.45);
+    height: 28px;
+  }
+
+  #quote-print .quote-print__signatures {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    break-inside: avoid;
+  }
+
+  #quote-print .quote-print__signature span {
+    display: block;
+  }
+
+  #quote-print .quote-print__line {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+    margin: 24px 0 8px;
+  }
+
+  [data-sensitive-hidden='true'] .sensitive-blur {
+    filter: none;
+    opacity: 1;
+  }
+}

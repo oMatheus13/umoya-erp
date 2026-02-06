@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import CurrencyInput from '../../components/CurrencyInput'
+import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -15,7 +17,7 @@ type ProductForm = {
   name: string
   sku: string
   price: number
-  priceMin: string
+  priceMin: number | null
   costPrice: number
   laborCost: number
   laborBasis: 'unidade' | 'metro'
@@ -36,8 +38,8 @@ type VariantForm = {
   width: number
   height: number
   stock: number
-  priceOverride: string
-  costOverride: string
+  priceOverride: number | null
+  costOverride: number | null
   active: boolean
 }
 
@@ -48,8 +50,8 @@ const createEmptyVariantForm = (): VariantForm => ({
   width: 0,
   height: 0,
   stock: 0,
-  priceOverride: '',
-  costOverride: '',
+  priceOverride: null,
+  costOverride: null,
   active: true,
 })
 
@@ -69,7 +71,7 @@ const Produtos = () => {
     name: '',
     sku: '',
     price: 0,
-    priceMin: '',
+    priceMin: null,
     costPrice: 0,
     laborCost: 0,
     laborBasis: 'unidade',
@@ -132,7 +134,7 @@ const Produtos = () => {
       name: '',
       sku: '',
       price: 0,
-      priceMin: '',
+      priceMin: null,
       costPrice: 0,
       laborCost: 0,
       laborBasis: 'unidade',
@@ -205,7 +207,7 @@ const Produtos = () => {
       name: product.name,
       sku: product.sku ?? '',
       price: product.price,
-      priceMin: product.priceMin !== undefined ? String(product.priceMin) : '',
+      priceMin: product.priceMin ?? null,
       costPrice: product.costPrice ?? 0,
       laborCost: product.laborCost ?? 0,
       laborBasis: product.laborBasis ?? 'unidade',
@@ -232,8 +234,8 @@ const Produtos = () => {
       width: variant.width ?? 0,
       height: variant.height ?? 0,
       stock: variant.stock ?? 0,
-      priceOverride: variant.priceOverride !== undefined ? String(variant.priceOverride) : '',
-      costOverride: variant.costOverride !== undefined ? String(variant.costOverride) : '',
+      priceOverride: variant.priceOverride ?? null,
+      costOverride: variant.costOverride ?? null,
       active: variant.active ?? true,
     })
     setVariantStatus(null)
@@ -262,10 +264,8 @@ const Produtos = () => {
       setStatus('O custo de mao de obra nao pode ser negativo.')
       return
     }
-    const priceMinValue = form.priceMin.trim()
-      ? Number(form.priceMin.replace(',', '.'))
-      : undefined
-    if (!form.hasVariants && priceMinValue !== undefined && Number.isNaN(priceMinValue)) {
+    const priceMinValue = form.priceMin ?? undefined
+    if (!form.hasVariants && priceMinValue !== undefined && !Number.isFinite(priceMinValue)) {
       setStatus('Informe um preco minimo valido.')
       return
     }
@@ -414,9 +414,7 @@ const Produtos = () => {
     return formatDimensions(length, width, height)
   }
 
-  const previewPriceMin = form.priceMin.trim()
-    ? Number(form.priceMin.replace(',', '.'))
-    : undefined
+  const previewPriceMin = form.priceMin ?? undefined
   const previewProduct: Product = {
     id: 'preview',
     name: 'preview',
@@ -449,10 +447,10 @@ const Produtos = () => {
       return
     }
 
-    const priceOverride = variantForm.priceOverride.trim()
-    const costOverride = variantForm.costOverride.trim()
+    const priceOverride = variantForm.priceOverride
+    const costOverride = variantForm.costOverride
 
-    if (selectedProduct.hasVariants && !priceOverride) {
+    if (selectedProduct.hasVariants && priceOverride === null) {
       setVariantStatus('Informe o preco da variacao.')
       return
     }
@@ -466,8 +464,8 @@ const Produtos = () => {
       height: variantForm.height || undefined,
       stock: variantForm.stock,
       sku: variantForm.sku.trim() || undefined,
-      priceOverride: priceOverride ? Number(priceOverride) : undefined,
-      costOverride: costOverride ? Number(costOverride) : undefined,
+      priceOverride: priceOverride ?? undefined,
+      costOverride: costOverride ?? undefined,
       active: variantForm.active,
       isCustom: false,
     }
@@ -701,14 +699,13 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="product-length">
                   Comprimento base
                 </label>
-                <input
+                <DimensionInput
                   id="product-length"
                   className="modal__input"
-                  type="number"
                   min="0"
-                  step="0.01"
                   value={form.length}
-                  onChange={(event) => updateForm({ length: Number(event.target.value) })}
+                  step={0.01}
+                  onValueChange={(value) => updateForm({ length: value })}
                   disabled={form.hasVariants}
                 />
               </div>
@@ -716,14 +713,13 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="product-width">
                   Largura base
                 </label>
-                <input
+                <DimensionInput
                   id="product-width"
                   className="modal__input"
-                  type="number"
                   min="0"
-                  step="0.01"
                   value={form.width}
-                  onChange={(event) => updateForm({ width: Number(event.target.value) })}
+                  step={0.01}
+                  onValueChange={(value) => updateForm({ width: value })}
                   disabled={form.hasVariants}
                 />
               </div>
@@ -731,14 +727,13 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="product-height">
                   Altura base
                 </label>
-                <input
+                <DimensionInput
                   id="product-height"
                   className="modal__input"
-                  type="number"
                   min="0"
-                  step="0.01"
                   value={form.height}
-                  onChange={(event) => updateForm({ height: Number(event.target.value) })}
+                  step={0.01}
+                  onValueChange={(value) => updateForm({ height: value })}
                   disabled={form.hasVariants}
                 />
               </div>
@@ -749,14 +744,11 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="product-price">
                   Preco base
                 </label>
-                <input
+                <CurrencyInput
                   id="product-price"
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={form.price}
-                  onChange={(event) => updateForm({ price: Number(event.target.value) })}
+                  onValueChange={(value) => updateForm({ price: value ?? 0 })}
                   disabled={form.hasVariants}
                 />
                 {form.hasVariants && (
@@ -767,14 +759,11 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="product-cost">
                   Preco de custo
                 </label>
-                <input
+                <CurrencyInput
                   id="product-cost"
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={form.costPrice}
-                  onChange={(event) => updateForm({ costPrice: Number(event.target.value) })}
+                  onValueChange={(value) => updateForm({ costPrice: value ?? 0 })}
                   disabled={form.hasVariants}
                 />
                 {form.hasVariants && (
@@ -788,14 +777,12 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="product-price-min">
                   Preco minimo (nao negociavel)
                 </label>
-                <input
+                <CurrencyInput
                   id="product-price-min"
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={form.priceMin}
-                  onChange={(event) => updateForm({ priceMin: event.target.value })}
+                  onValueChange={(value) => updateForm({ priceMin: value })}
+                  allowEmpty
                   placeholder={`Base: ${formatCurrency(form.price)}`}
                   disabled={form.hasVariants}
                 />
@@ -819,14 +806,11 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="product-labor">
                   Mao de obra (por {formatLaborBasis(form.laborBasis)})
                 </label>
-                <input
+                <CurrencyInput
                   id="product-labor"
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={form.laborCost}
-                  onChange={(event) => updateForm({ laborCost: Number(event.target.value) })}
+                  onValueChange={(value) => updateForm({ laborCost: value ?? 0 })}
                 />
               </div>
               <div className="modal__group">
@@ -1141,42 +1125,39 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="variant-length">
                   Comprimento
                 </label>
-                <input
+                <DimensionInput
                   id="variant-length"
                   className="modal__input"
-                  type="number"
                   min="0"
-                  step="0.01"
                   value={variantForm.length}
-                  onChange={(event) => updateVariantForm({ length: Number(event.target.value) })}
+                  step={0.01}
+                  onValueChange={(value) => updateVariantForm({ length: value })}
                 />
               </div>
               <div className="modal__group">
                 <label className="modal__label" htmlFor="variant-width">
                   Largura
                 </label>
-                <input
+                <DimensionInput
                   id="variant-width"
                   className="modal__input"
-                  type="number"
                   min="0"
-                  step="0.01"
                   value={variantForm.width}
-                  onChange={(event) => updateVariantForm({ width: Number(event.target.value) })}
+                  step={0.01}
+                  onValueChange={(value) => updateVariantForm({ width: value })}
                 />
               </div>
               <div className="modal__group">
                 <label className="modal__label" htmlFor="variant-height">
                   Altura
                 </label>
-                <input
+                <DimensionInput
                   id="variant-height"
                   className="modal__input"
-                  type="number"
                   min="0"
-                  step="0.01"
                   value={variantForm.height}
-                  onChange={(event) => updateVariantForm({ height: Number(event.target.value) })}
+                  step={0.01}
+                  onValueChange={(value) => updateVariantForm({ height: value })}
                 />
               </div>
             </div>
@@ -1216,16 +1197,12 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="variant-price">
                   Preco sobrescrito
                 </label>
-                <input
+                <CurrencyInput
                   id="variant-price"
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={variantForm.priceOverride}
-                  onChange={(event) =>
-                    updateVariantForm({ priceOverride: event.target.value })
-                  }
+                  onValueChange={(value) => updateVariantForm({ priceOverride: value })}
+                  allowEmpty
                   placeholder={`Base: ${formatCurrency(selectedProduct.price)}`}
                 />
               </div>
@@ -1233,16 +1210,12 @@ const Produtos = () => {
                 <label className="modal__label" htmlFor="variant-cost">
                   Custo sobrescrito
                 </label>
-                <input
+                <CurrencyInput
                   id="variant-cost"
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={variantForm.costOverride}
-                  onChange={(event) =>
-                    updateVariantForm({ costOverride: event.target.value })
-                  }
+                  onValueChange={(value) => updateVariantForm({ costOverride: value })}
+                  allowEmpty
                   placeholder={
                     selectedProduct.costPrice
                       ? `Base: ${formatCurrency(selectedProduct.costPrice)}`

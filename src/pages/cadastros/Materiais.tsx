@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -337,14 +338,11 @@ const Materiais = () => {
               <label className="modal__label" htmlFor="material-cost">
                 Custo interno
               </label>
-              <input
+              <CurrencyInput
                 id="material-cost"
                 className="modal__input"
-                type="number"
-                min="0"
-                step="0.01"
                 value={form.cost}
-                onChange={(event) => updateForm({ cost: Number(event.target.value) })}
+                onValueChange={(value) => updateForm({ cost: value ?? 0 })}
                 placeholder="0.00"
               />
             </div>
@@ -378,15 +376,12 @@ const Materiais = () => {
               <label className="modal__label" htmlFor="material-market-unit">
                 Valor de mercado ({selectedUnitLabel})
               </label>
-              <input
+              <CurrencyInput
                 id="material-market-unit"
                 className="modal__input"
-                type="number"
-                min="0"
-                step="0.01"
                 value={form.marketUnitPrice}
-                onChange={(event) =>
-                  updateForm({ marketUnitPrice: Number(event.target.value) })
+                onValueChange={(value) =>
+                  updateForm({ marketUnitPrice: value ?? 0 })
                 }
                 placeholder="0.00"
               />
@@ -395,15 +390,12 @@ const Materiais = () => {
               <label className="modal__label" htmlFor="material-market-lot">
                 Valor de mercado (lote)
               </label>
-              <input
+              <CurrencyInput
                 id="material-market-lot"
                 className="modal__input"
-                type="number"
-                min="0"
-                step="0.01"
                 value={form.marketLotPrice}
-                onChange={(event) =>
-                  updateForm({ marketLotPrice: Number(event.target.value) })
+                onValueChange={(value) =>
+                  updateForm({ marketLotPrice: value ?? 0 })
                 }
                 placeholder="0.00"
               />

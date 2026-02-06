@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import CurrencyInput from '../../components/CurrencyInput'
+import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import logotipo from '../../assets/brand/logotipo.svg'
@@ -38,7 +40,7 @@ type QuoteForm = {
   fulfillment: FulfillmentMode
   items: QuoteItemForm[]
   discountType: '' | 'percent' | 'value'
-  discountValue: string
+  discountValue: number
   discountPercent: string
 }
 
@@ -65,12 +67,6 @@ const createEmptyItem = (): QuoteItemForm => ({
   customHeight: 0,
 })
 
-const toMeters = (value: number) =>
-  Number.isFinite(value) ? Math.max(0, value / 100) : 0
-
-const toCentimeters = (value: number) =>
-  Number.isFinite(value) ? Math.max(0, value * 100) : 0
-
 type OrcamentosProps = {
   pageIntent?: PageIntentAction
   onConsumeIntent?: () => void
@@ -93,7 +89,7 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
     fulfillment: 'producao',
     items: [createEmptyItem()],
     discountType: '',
-    discountValue: '',
+    discountValue: 0,
     discountPercent: '',
   })
   const quoteFormId = 'orcamento-form'
@@ -134,13 +130,10 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
   )
   const maxDiscountPercent = discountSummary.maxDiscountPercent
   const maxDiscountValue = Math.min(discountSummary.maxDiscountValue, subtotal)
-  const parsedDiscountValue = form.discountValue.trim()
-    ? Number(form.discountValue.replace(',', '.'))
-    : 0
   const parsedDiscountPercent = form.discountPercent.trim()
     ? Number(form.discountPercent.replace(',', '.'))
     : 0
-  const safeDiscountValue = Number.isNaN(parsedDiscountValue) ? 0 : parsedDiscountValue
+  const safeDiscountValue = Number.isFinite(form.discountValue) ? form.discountValue : 0
   const safeDiscountPercent = Number.isNaN(parsedDiscountPercent) ? 0 : parsedDiscountPercent
   const rawDiscount =
     form.discountType === 'percent'
@@ -212,7 +205,7 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
       fulfillment: 'producao',
       items: [createEmptyItem()],
       discountType: '',
-      discountValue: '',
+      discountValue: 0,
       discountPercent: '',
     })
   }
@@ -373,9 +366,8 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
     })
   }
 
-  const handleLinearLengthChange = (index: number, lengthCm: number) => {
+  const handleLinearLengthChange = (index: number, lengthMeters: number) => {
     const product = data.produtos.find((item) => item.id === form.items[index]?.productId)
-    const lengthMeters = toMeters(lengthCm)
     updateItem(index, {
       customLength: lengthMeters,
       unitPrice: resolveUnitPrice(product ?? null, undefined, {
@@ -464,11 +456,11 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
       }
     }
     if (form.discountType === 'value') {
-      if (Number.isNaN(parsedDiscountValue)) {
+      if (!Number.isFinite(form.discountValue)) {
         setStatus('Informe um desconto em dinheiro valido.')
         return
       }
-      if (parsedDiscountValue < 0) {
+      if (form.discountValue < 0) {
         setStatus('O desconto nao pode ser negativo.')
         return
       }
@@ -624,23 +616,33 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
       data.tabelas,
     )
 
-  const formatLengthLabel = (meters?: number) => {
-    if (!meters || meters <= 0) {
-      return ''
+  const formatMeasurement = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
+
+  const buildDimensionLabel = (values: number[]) => {
+    const filtered = values.filter((value) => Number.isFinite(value) && value > 0)
+    if (filtered.length === 0) {
+      return null
     }
-    const cm = toCentimeters(meters)
-    return cm % 1 === 0 ? `${cm.toFixed(0)} cm` : `${cm.toFixed(1)} cm`
+    const m = filtered.map((value) => formatMeasurement(value)).join(' x ')
+    return `${m} m`
+  }
+
+  const getItemDimensions = (item: Quote['items'][number]) => {
+    const product = data.produtos.find((entry) => entry.id === item.productId)
+    const variant = item.variantId ? getVariant(item.productId, item.variantId) : undefined
+    const length = item.customLength ?? variant?.length ?? product?.length ?? 0
+    const width = item.customWidth ?? variant?.width ?? product?.width ?? 0
+    const height = item.customHeight ?? variant?.height ?? product?.height ?? 0
+    if (product?.unit === 'metro_linear') {
+      return buildDimensionLabel([length])
+    }
+    return buildDimensionLabel([length, width, height])
   }
 
   const getProductNameLabel = (item: Quote['items'][number]) => {
     const product = data.produtos.find((entry) => entry.id === item.productId)
     const productName = getProductName(item.productId)
-    if (product?.unit === 'metro_linear') {
-      const lengthLabel = formatLengthLabel(
-        item.customLength ?? product.length ?? 0,
-      )
-      return lengthLabel ? `${productName} - ${lengthLabel}` : productName
-    }
     if (product && !product.hasVariants) {
       return productName
     }
@@ -654,24 +656,55 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
   const printQuote = printId ? data.orcamentos.find((quote) => quote.id === printId) : null
   const printDiscountInfo = printQuote ? getQuoteDiscountInfo(printQuote) : null
   const company = data.empresa
-  const companyName = company.tradeName?.trim() || company.name || 'Umoya'
-  const companyLegal =
-    company.tradeName && company.name && company.tradeName !== company.name ? company.name : ''
+  const companyName = company.name?.trim() || company.tradeName?.trim() || ''
   const companyDocument = company.document?.trim() || ''
   const addressLine = [company.street, company.number, company.neighborhood]
     .filter(Boolean)
     .join(', ')
   const cityLine = [company.city, company.state, company.zip].filter(Boolean).join(' - ')
   const contactLine = [company.phone, company.email, company.website].filter(Boolean).join(' • ')
+  const companyLines = [companyName, companyDocument, addressLine, cityLine, contactLine].filter(
+    (value) => value && value.trim().length > 0,
+  )
+  const printClient = printQuote
+    ? data.clientes.find((client) => client.id === printQuote.clientId)
+    : null
+  const printObra =
+    printQuote && printClient?.obras
+      ? printClient.obras.find((obra) => obra.id === printQuote.obraId)
+      : null
+  const clientDocument = printClient?.document?.trim() || ''
+  const clientContactLine = [printClient?.phone, printClient?.email].filter(Boolean).join(' • ')
+  const clientAddressLine = [printObra?.address, printObra?.city ?? printClient?.city]
+    .filter(Boolean)
+    .join(' - ')
+  const clientNotes = [printObra?.notes, printClient?.notes].filter(Boolean).join(' • ')
+  const seller =
+    data.usuarios.find((user) => user.active !== false) ?? data.usuarios[0]
+  const sellerName = seller?.displayName?.trim() || seller?.name?.trim() || ''
 
   useEffect(() => {
     if (!printId || typeof window === 'undefined') {
       return
     }
-    const timer = window.setTimeout(() => {
-      window.print()
-    }, 50)
-    return () => window.clearTimeout(timer)
+    let cancelled = false
+    const runPrint = async () => {
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve())
+        })
+      })
+      if (document.fonts?.ready) {
+        await document.fonts.ready
+      }
+      if (!cancelled) {
+        window.print()
+      }
+    }
+    void runPrint()
+    return () => {
+      cancelled = true
+    }
   }, [printId])
 
   useEffect(() => {
@@ -760,7 +793,7 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
         }
       }),
       discountType: inferredDiscountType as QuoteForm['discountType'],
-      discountValue: quote.discountValue !== undefined ? String(quote.discountValue) : '',
+      discountValue: quote.discountValue ?? 0,
       discountPercent:
         quote.discountPercent !== undefined ? String(quote.discountPercent) : '',
       fulfillment: quote.fulfillment ?? 'producao',
@@ -844,6 +877,144 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
 
   return (
     <Page className="orcamentos">
+      {printQuote && (
+        <div id="quote-print" className="quote-print">
+          {[
+            { id: 'cliente', label: 'Via do cliente' },
+            { id: 'empresa', label: 'Via da empresa' },
+          ].map((copy) => (
+            <section key={copy.id} className="quote-print__copy">
+              <header className="quote-print__header">
+                <div className="quote-print__brand">
+                  <img className="quote-print__logo" src={logotipo} alt={companyName} />
+                  {companyLines.length > 0 && (
+                    <div className="quote-print__company">
+                      {companyLines.map((line, index) => {
+                        const isNameLine = index === 0 && companyName && line === companyName
+                        return isNameLine ? (
+                          <strong key={`${copy.id}-company-${index}`}>{line}</strong>
+                        ) : (
+                          <span key={`${copy.id}-company-${index}`}>{line}</span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="quote-print__meta">
+                  <span>Emissao: {formatDateShort(printQuote.createdAt)}</span>
+                  <span>Validade: {formatDateShort(printQuote.validUntil)}</span>
+                  <span>Status: {statusLabels[printQuote.status]}</span>
+                  {printQuote.paymentMethod && (
+                    <span>
+                      Pagamento:{' '}
+                      {getPaymentMethodLabel(
+                        printQuote.paymentMethod,
+                        data.tabelas?.paymentMethods,
+                      )}
+                    </span>
+                  )}
+                  <span>Vendedor: {sellerName || '________________'}</span>
+                  <span>Orcamento #{printQuote.id.slice(0, 8)}</span>
+                  <span className="quote-print__copy-tag">{copy.label}</span>
+                </div>
+              </header>
+
+              <section className="quote-print__client">
+                <div className="quote-print__client-block">
+                  <span>Cliente</span>
+                  <strong>{getClientName(printQuote.clientId)}</strong>
+                  {clientDocument && <span>Documento: {clientDocument}</span>}
+                  {clientContactLine && <span>{clientContactLine}</span>}
+                </div>
+                <div className="quote-print__client-block">
+                  <span>Obra / Endereco</span>
+                  <strong>{printObra?.name || '—'}</strong>
+                  <span>{clientAddressLine || '—'}</span>
+                </div>
+              </section>
+
+              <table className="quote-print__table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Medidas (m)</th>
+                    <th>Qtd</th>
+                    <th>Unidade</th>
+                    <th>Valor unitario</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {printQuote.items.map((item, index) => {
+                    const dimensions = getItemDimensions(item)
+                    return (
+                      <tr key={`${printQuote.id}-${copy.id}-item-${index}`}>
+                        <td>{getProductNameLabel(item)}</td>
+                        <td>
+                          {dimensions ? (
+                            <span className="quote-print__dimension">{dimensions}</span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td>{item.quantity}</td>
+                        <td>{getProductUnit(item.productId) || '-'}</td>
+                        <td>{formatCurrency(item.unitPrice)}</td>
+                        <td>{formatCurrency(item.quantity * item.unitPrice)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+
+              <div className="quote-print__total">
+                {printDiscountInfo && (
+                  <div className="quote-print__total-row">
+                    <span>Subtotal</span>
+                    <strong>{formatCurrency(printDiscountInfo.subtotalValue)}</strong>
+                  </div>
+                )}
+                {printDiscountInfo && printDiscountInfo.discountValue > 0 && (
+                  <div className="quote-print__total-row">
+                    <span>
+                      Desconto ({formatPercent(printDiscountInfo.discountPercent)}%)
+                    </span>
+                    <strong>-{formatCurrency(printDiscountInfo.discountValue)}</strong>
+                  </div>
+                )}
+                <div className="quote-print__total-row quote-print__total-main">
+                  <span>Total do orcamento</span>
+                  <strong>{formatCurrency(printQuote.total)}</strong>
+                </div>
+              </div>
+
+              <section className="quote-print__notes">
+                <span>Observacoes</span>
+                {clientNotes ? (
+                  <p>{clientNotes}</p>
+                ) : (
+                  <div className="quote-print__notes-line" />
+                )}
+              </section>
+
+              <section className="quote-print__signatures">
+                <div className="quote-print__signature">
+                  <span>Assinatura do cliente</span>
+                  <div className="quote-print__line" />
+                  <span>Data: ____/____/______</span>
+                </div>
+                <div className="quote-print__signature">
+                  <span>
+                    {companyName ? `Responsavel ${companyName}` : 'Responsavel'}
+                  </span>
+                  <div className="quote-print__line" />
+                  <span>Data: ____/____/______</span>
+                </div>
+              </section>
+            </section>
+          ))}
+        </div>
+      )}
       <PageHeader
         actions={
           <button
@@ -1044,18 +1215,15 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                   {isLinear ? (
                     <div className="modal__group">
                       <label className="modal__label" htmlFor={`quote-length-${index}`}>
-                        Comprimento (cm)
+                        Comprimento
                       </label>
-                      <input
+                      <DimensionInput
                         id={`quote-length-${index}`}
                         className="modal__input"
-                        type="number"
                         min="0"
-                        step="1"
-                        value={toCentimeters(item.customLength)}
-                        onChange={(event) =>
-                          handleLinearLengthChange(index, Number(event.target.value))
-                        }
+                        step={0.01}
+                        value={item.customLength}
+                        onValueChange={(value) => handleLinearLengthChange(index, value)}
                         disabled={!item.productId}
                       />
                     </div>
@@ -1100,48 +1268,39 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                       <label className="modal__label" htmlFor={`quote-length-${index}`}>
                         Comprimento
                       </label>
-                      <input
+                      <DimensionInput
                         id={`quote-length-${index}`}
                         className="modal__input"
-                        type="number"
                         min="0"
-                        step="0.01"
                         value={item.customLength}
-                        onChange={(event) =>
-                          updateItem(index, { customLength: Number(event.target.value) })
-                        }
+                        step={0.01}
+                        onValueChange={(value) => updateItem(index, { customLength: value })}
                       />
                     </div>
                     <div className="modal__group">
                       <label className="modal__label" htmlFor={`quote-width-${index}`}>
                         Largura
                       </label>
-                      <input
+                      <DimensionInput
                         id={`quote-width-${index}`}
                         className="modal__input"
-                        type="number"
                         min="0"
-                        step="0.01"
                         value={item.customWidth}
-                        onChange={(event) =>
-                          updateItem(index, { customWidth: Number(event.target.value) })
-                        }
+                        step={0.01}
+                        onValueChange={(value) => updateItem(index, { customWidth: value })}
                       />
                     </div>
                     <div className="modal__group">
                       <label className="modal__label" htmlFor={`quote-height-${index}`}>
                         Altura
                       </label>
-                      <input
+                      <DimensionInput
                         id={`quote-height-${index}`}
                         className="modal__input"
-                        type="number"
                         min="0"
-                        step="0.01"
                         value={item.customHeight}
-                        onChange={(event) =>
-                          updateItem(index, { customHeight: Number(event.target.value) })
-                        }
+                        step={0.01}
+                        onValueChange={(value) => updateItem(index, { customHeight: value })}
                       />
                     </div>
                   </div>
@@ -1167,16 +1326,11 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                     <label className="modal__label" htmlFor={`quote-price-${index}`}>
                       Valor unitario
                     </label>
-                    <input
+                    <CurrencyInput
                       id={`quote-price-${index}`}
                       className="modal__input"
-                      type="number"
-                      min="0"
-                      step="0.01"
                       value={item.unitPrice}
-                      onChange={(event) =>
-                        updateItem(index, { unitPrice: Number(event.target.value) })
-                      }
+                      onValueChange={(value) => updateItem(index, { unitPrice: value ?? 0 })}
                       disabled={isLinear}
                     />
                     {itemProduct && (
@@ -1248,14 +1402,11 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
                   <label className="modal__label" htmlFor="quote-discount-value">
                     Valor
                   </label>
-                  <input
+                  <CurrencyInput
                     id="quote-discount-value"
                     className="modal__input"
-                    type="number"
-                    min="0"
-                    step="0.01"
                     value={form.discountValue}
-                    onChange={(event) => updateForm({ discountValue: event.target.value })}
+                    onValueChange={(value) => updateForm({ discountValue: value ?? 0 })}
                     placeholder={`Max ${formatCurrency(maxDiscountValue)}`}
                   />
                 </div>
@@ -1479,108 +1630,6 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
       />
-      {printQuote && (
-        <div id="quote-print" className="quote-print">
-          <header className="quote-print__header">
-            <div className="quote-print__brand">
-              <img className="quote-print__logo" src={logotipo} alt={companyName} />
-              <div className="quote-print__brand-info">
-                <strong>{companyName}</strong>
-                {companyLegal && <span>{companyLegal}</span>}
-                <span>Orcamento #{printQuote.id.slice(0, 8)}</span>
-                <div className="quote-print__company">
-                  {companyDocument && <span>CNPJ/CPF: {companyDocument}</span>}
-                  {addressLine && <span>{addressLine}</span>}
-                  {cityLine && <span>{cityLine}</span>}
-                  {contactLine && <span>{contactLine}</span>}
-                </div>
-              </div>
-            </div>
-            <div className="quote-print__meta">
-              <span>Emissao: {formatDateShort(printQuote.createdAt)}</span>
-              <span>Validade: {formatDateShort(printQuote.validUntil)}</span>
-              <span>Status: {statusLabels[printQuote.status]}</span>
-              {printQuote.paymentMethod && (
-                <span>
-                  Pagamento:{' '}
-                  {getPaymentMethodLabel(
-                    printQuote.paymentMethod,
-                    data.tabelas?.paymentMethods,
-                  )}
-                </span>
-              )}
-            </div>
-          </header>
-
-          <section className="quote-print__client">
-            <div>
-              <span>Cliente:</span>
-              <strong>{getClientName(printQuote.clientId)}</strong>
-            </div>
-            <div>
-              <span>Contato:</span>
-              <span>______________________________________</span>
-            </div>
-          </section>
-
-          <table className="quote-print__table">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Qtd</th>
-                <th>Unidade</th>
-                <th>Valor unitario</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {printQuote.items.map((item, index) => (
-                <tr key={`${printQuote.id}-item-${index}`}>
-                  <td>{getProductNameLabel(item)}</td>
-                  <td>{item.quantity}</td>
-                  <td>{getProductUnit(item.productId) || '-'}</td>
-                  <td>{formatCurrency(item.unitPrice)}</td>
-                  <td>{formatCurrency(item.quantity * item.unitPrice)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div className="quote-print__total">
-            {printDiscountInfo && (
-              <div className="quote-print__total-row">
-                <span>Subtotal</span>
-                <strong>{formatCurrency(printDiscountInfo.subtotalValue)}</strong>
-              </div>
-            )}
-            {printDiscountInfo && printDiscountInfo.discountValue > 0 && (
-              <div className="quote-print__total-row">
-                <span>
-                  Desconto ({formatPercent(printDiscountInfo.discountPercent)}%)
-                </span>
-                <strong>-{formatCurrency(printDiscountInfo.discountValue)}</strong>
-              </div>
-            )}
-            <div className="quote-print__total-row quote-print__total-main">
-              <span>Total do orcamento</span>
-              <strong>{formatCurrency(printQuote.total)}</strong>
-            </div>
-          </div>
-
-          <section className="quote-print__signatures">
-            <div className="quote-print__signature">
-              <span>Assinatura do cliente</span>
-              <div className="quote-print__line" />
-              <span>Data: ____/____/______</span>
-            </div>
-            <div className="quote-print__signature">
-              <span>Responsavel {companyName}</span>
-              <div className="quote-print__line" />
-              <span>Data: ____/____/______</span>
-            </div>
-          </section>
-        </div>
-      )}
     </Page>
   )
 }

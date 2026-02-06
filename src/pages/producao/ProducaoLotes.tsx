@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -469,18 +470,15 @@ const ProducaoLotes = () => {
             'metro_linear' && (
             <div className="modal__group">
               <label className="modal__label" htmlFor="lote-length">
-                Comprimento base (m)
+                Comprimento base
               </label>
-              <input
+              <DimensionInput
                 id="lote-length"
                 className="modal__input"
-                type="number"
-                step="0.01"
                 min="0"
+                step={0.01}
                 value={form.customLength}
-                onChange={(event) =>
-                  updateForm({ customLength: Number(event.target.value) })
-                }
+                onValueChange={(value) => updateForm({ customLength: value })}
               />
             </div>
           )}

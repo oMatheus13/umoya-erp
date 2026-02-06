@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -708,15 +709,12 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                         <label className="modal__label" htmlFor={`purchase-price-${item.id}`}>
                           Valor {item.pricingMode === 'lot' ? 'por lote' : `por ${unitLabel}`}
                         </label>
-                        <input
+                        <CurrencyInput
                           id={`purchase-price-${item.id}`}
                           className="modal__input"
-                          type="number"
-                          min="0"
-                          step="0.01"
                           value={item.unitPrice}
-                          onChange={(event) =>
-                            updateItem(item.id, { unitPrice: Number(event.target.value) })
+                          onValueChange={(value) =>
+                            updateItem(item.id, { unitPrice: value ?? 0 })
                           }
                         />
                       </div>
@@ -747,15 +745,12 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                       <label className="modal__label" htmlFor={`purchase-extra-total-${item.id}`}>
                         Valor total
                       </label>
-                      <input
+                      <CurrencyInput
                         id={`purchase-extra-total-${item.id}`}
                         className="modal__input"
-                        type="number"
-                        min="0"
-                        step="0.01"
                         value={item.total}
-                        onChange={(event) =>
-                          updateItem(item.id, { total: Number(event.target.value) })
+                        onValueChange={(value) =>
+                          updateItem(item.id, { total: value ?? 0 })
                         }
                       />
                     </div>

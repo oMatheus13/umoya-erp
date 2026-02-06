@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -568,14 +569,11 @@ const Financeiro = () => {
                 <label className="modal__label" htmlFor="finance-amount">
                   Valor
                 </label>
-                <input
+                <CurrencyInput
                   id="finance-amount"
                   className="modal__input"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   value={form.amount}
-                  onChange={(event) => updateForm({ amount: Number(event.target.value) })}
+                  onValueChange={(value) => updateForm({ amount: value ?? 0 })}
                 />
               </div>
               <div className="modal__group">

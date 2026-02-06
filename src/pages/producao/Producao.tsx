@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -16,9 +17,6 @@ const statusLabels: Record<ProductionOrder['status'], string> = {
   em_producao: 'Em producao',
   finalizada: 'Finalizada',
 }
-
-const toMeters = (value: number) =>
-  Number.isFinite(value) ? Math.max(0, value / 100) : 0
 
 const toCentimeters = (value: number) =>
   Number.isFinite(value) ? Math.max(0, value * 100) : 0
@@ -688,19 +686,18 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
             {manualIsLinear ? (
               <div className="modal__group">
                 <label className="modal__label" htmlFor="manual-length">
-                  Comprimento (cm)
+                  Comprimento
                 </label>
-                <input
+                <DimensionInput
                   id="manual-length"
                   className="modal__input"
-                  type="number"
                   min="0"
-                  step="1"
-                  value={toCentimeters(manualForm.customLength)}
-                  onChange={(event) =>
+                  step={0.01}
+                  value={manualForm.customLength}
+                  onValueChange={(value) =>
                     setManualForm((prev) => ({
                       ...prev,
-                      customLength: toMeters(Number(event.target.value)),
+                      customLength: value,
                     }))
                   }
                   disabled={!manualForm.productId}

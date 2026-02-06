@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -336,42 +337,39 @@ const EstoqueFormas = () => {
               <label className="modal__label" htmlFor="mold-length">
                 Comprimento
               </label>
-              <input
+              <DimensionInput
                 id="mold-length"
                 className="modal__input"
-                type="number"
                 min="0"
-                step="0.01"
                 value={form.length}
-                onChange={(event) => updateForm({ length: Number(event.target.value) })}
+                step={0.01}
+                onValueChange={(value) => updateForm({ length: value })}
               />
             </div>
             <div className="modal__group">
               <label className="modal__label" htmlFor="mold-width">
                 Largura
               </label>
-              <input
+              <DimensionInput
                 id="mold-width"
                 className="modal__input"
-                type="number"
                 min="0"
-                step="0.01"
                 value={form.width}
-                onChange={(event) => updateForm({ width: Number(event.target.value) })}
+                step={0.01}
+                onValueChange={(value) => updateForm({ width: value })}
               />
             </div>
             <div className="modal__group">
               <label className="modal__label" htmlFor="mold-height">
                 Altura
               </label>
-              <input
+              <DimensionInput
                 id="mold-height"
                 className="modal__input"
-                type="number"
                 min="0"
-                step="0.01"
                 value={form.height}
-                onChange={(event) => updateForm({ height: Number(event.target.value) })}
+                step={0.01}
+                onValueChange={(value) => updateForm({ height: value })}
               />
             </div>
           </div>
