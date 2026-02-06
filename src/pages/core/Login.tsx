@@ -400,8 +400,8 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
 
         <div className="login__auth">
           <div className="login__brand">
-            <img className="login__logo" src={logotipo} alt={`Umoya ${appLabel}`} />
             <span className="login__app-badge">{appLabel}</span>
+            <img className="login__logo" src={logotipo} alt={`Umoya ${appLabel}`} />
           </div>
 
           {!supabaseEnabled ? (
