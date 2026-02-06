@@ -46,10 +46,29 @@
   z-index: 2;
 }
 
+.login__brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-xs);
+  align-self: flex-end;
+}
+
 .login__logo {
   height: 24px;
   width: auto;
-  align-self: flex-end;
+}
+
+.login__app-badge {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 0.1rem 0.45rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .login__form {

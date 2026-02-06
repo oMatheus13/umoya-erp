@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import logotipo from '../../assets/brand/logotipo.svg'
-import loginMock from '../../assets/brand/login-mock-3.webp'
+import loginMockErp from '../../assets/brand/login-mock-3.webp'
+import loginMockPdv from '../../assets/brand/login-mock-2.webp'
 import { supabase } from '../../services/supabaseClient'
+import { resolveAppKind } from '../../utils/appContext'
 
 type ResetPasswordProps = {
   onDone: () => void
@@ -14,6 +16,9 @@ const ResetPassword = ({ onDone }: ResetPasswordProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [done, setDone] = useState(false)
+  const appKind = resolveAppKind()
+  const appLabel = appKind === 'pdv' ? 'PDV' : 'ERP'
+  const appMock = appKind === 'pdv' ? loginMockPdv : loginMockErp
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -52,11 +57,14 @@ const ResetPassword = ({ onDone }: ResetPasswordProps) => {
     <div className="login">
       <div className="login__panel">
         <div className="login__mock">
-          <img src={loginMock} alt="" />
+          <img src={appMock} alt="" />
         </div>
 
         <div className="login__auth">
-          <img className="login__logo" src={logotipo} alt="Umoya ERP" />
+          <div className="login__brand">
+            <img className="login__logo" src={logotipo} alt={`Umoya ${appLabel}`} />
+            <span className="login__app-badge">{appLabel}</span>
+          </div>
 
           <form className="login__form" onSubmit={handleSubmit}>
             <div className="login__password">

@@ -1,6 +1,7 @@
 import { useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
 import logotipo from '../../assets/brand/logotipo.svg'
-import loginMock from '../../assets/brand/login-mock-3.webp'
+import loginMockErp from '../../assets/brand/login-mock-3.webp'
+import loginMockPdv from '../../assets/brand/login-mock-2.webp'
 import { dataService } from '../../services/dataService'
 import {
   getAuthPersistence,
@@ -8,6 +9,7 @@ import {
   isSupabaseEnabled,
   setAuthPersistence,
 } from '../../services/supabaseClient'
+import { resolveAppKind } from '../../utils/appContext'
 import type { User } from '@supabase/supabase-js'
 
 type LoginProps = {
@@ -89,6 +91,9 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
   const autoVerifyTokenRef = useRef('')
   const supabaseEnabled = isSupabaseEnabled()
   const recoveryToken = recoveryCode.join('')
+  const appKind = resolveAppKind()
+  const appLabel = appKind === 'pdv' ? 'PDV' : 'ERP'
+  const appMock = appKind === 'pdv' ? loginMockPdv : loginMockErp
 
   const updateLoginForm = (patch: Partial<LoginForm>) => {
     setLoginForm((prev) => ({ ...prev, ...patch }))
@@ -390,11 +395,14 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
     <div className="login">
       <div className="login__panel">
         <div className="login__mock">
-          <img src={loginMock} alt="" />
+          <img src={appMock} alt="" />
         </div>
 
         <div className="login__auth">
-          <img className="login__logo" src={logotipo} alt="Umoya ERP" />
+          <div className="login__brand">
+            <img className="login__logo" src={logotipo} alt={`Umoya ${appLabel}`} />
+            <span className="login__app-badge">{appLabel}</span>
+          </div>
 
           {!supabaseEnabled ? (
             <p className="login__status">
