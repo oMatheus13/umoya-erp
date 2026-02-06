@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import logotipo from '../../assets/brand/logotipo.svg'
+import loginMock from '../../assets/brand/login-mock-3.webp'
 import { dataService } from '../../services/dataService'
 import { isSupabaseEnabled, supabase } from '../../services/supabaseClient'
 import type { User } from '@supabase/supabase-js'
@@ -97,7 +98,7 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
     <div className="login">
       <div className="login__panel">
         <div className="login__mock">
-          <img src="src/assets/brand/login-mock-3.webp" alt="" />
+          <img src={loginMock} alt="" />
         </div>
 
         <div className="login__auth">
