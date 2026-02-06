@@ -435,13 +435,14 @@ function App() {
   }, [isRecoveryMode])
 
   useEffect(() => {
-    if (!isAuthenticated || !currentUser || !supabase || !syncId) {
+    const supabaseClient = supabase
+    if (!isAuthenticated || !currentUser || !supabaseClient || !syncId) {
       return
     }
     if (currentUser.id === 'dev-user') {
       return
     }
-    const channel = supabase
+    const channel = supabaseClient
       .channel(`erp_states_${syncId}`)
       .on(
         'postgres_changes',
@@ -481,7 +482,7 @@ function App() {
       )
       .subscribe()
     return () => {
-      void supabase.removeChannel(channel)
+      void supabaseClient.removeChannel(channel)
     }
   }, [isAuthenticated, currentUser?.id, syncId])
 
