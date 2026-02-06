@@ -2,7 +2,12 @@ import { useState, type FormEvent } from 'react'
 import logotipo from '../../assets/brand/logotipo.svg'
 import loginMock from '../../assets/brand/login-mock-3.webp'
 import { dataService } from '../../services/dataService'
-import { isSupabaseEnabled, supabase } from '../../services/supabaseClient'
+import {
+  getAuthPersistence,
+  getSupabaseClient,
+  isSupabaseEnabled,
+  setAuthPersistence,
+} from '../../services/supabaseClient'
 import type { User } from '@supabase/supabase-js'
 
 type LoginProps = {
@@ -27,8 +32,11 @@ const buildCpfEmail = (cpf: string) => `${cpf}@umoya.cpf`
 const Login = ({ onLogin, onDevLogin }: LoginProps) => {
   const [status, setStatus] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState<LoginForm>(createEmptyLogin())
-  const [rememberMe, setRememberMe] = useState(false)
+  const [rememberMe, setRememberMe] = useState(() => getAuthPersistence())
   const [showPassword, setShowPassword] = useState(false)
+  const [recoveryOpen, setRecoveryOpen] = useState(false)
+  const [recoveryIdentifier, setRecoveryIdentifier] = useState('')
+  const [recoveryStatus, setRecoveryStatus] = useState<string | null>(null)
   const supabaseEnabled = isSupabaseEnabled()
 
   const updateLoginForm = (patch: Partial<LoginForm>) => {
@@ -42,7 +50,9 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
       return
     }
 
-    if (!supabase) {
+    setAuthPersistence(rememberMe)
+    const client = getSupabaseClient()
+    if (!client) {
       setStatus('Supabase nao configurado. Verifique as variaveis de ambiente.')
       return
     }
@@ -77,7 +87,7 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
       }
     }
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await client.auth.signInWithPassword({
         email: normalizedEmail,
         password: loginForm.password,
       })
@@ -100,6 +110,52 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Falha de rede.'
       setStatus(`Falha ao conectar no Supabase. ${message}`)
+    }
+  }
+
+  const handleRecoveryToggle = () => {
+    setRecoveryOpen((prev) => !prev)
+    setRecoveryStatus(null)
+    if (!recoveryIdentifier && loginForm.identifier.trim()) {
+      setRecoveryIdentifier(loginForm.identifier.trim())
+    }
+  }
+
+  const handleRecoverySubmit = async () => {
+    if (!recoveryIdentifier.trim()) {
+      setRecoveryStatus('Informe email ou CPF para recuperar.')
+      return
+    }
+    const client = getSupabaseClient()
+    if (!client) {
+      setRecoveryStatus('Supabase nao configurado. Verifique as variaveis de ambiente.')
+      return
+    }
+    const identifier = recoveryIdentifier.trim()
+    let email = ''
+    if (identifier.includes('@')) {
+      email = normalizeEmail(identifier)
+    } else {
+      const cpf = normalizeCpf(identifier)
+      if (!cpf || cpf.length !== 11) {
+        setRecoveryStatus('Informe um CPF valido com 11 digitos.')
+        return
+      }
+      email = normalizeEmail(buildCpfEmail(cpf))
+    }
+    setRecoveryStatus('Enviando link de recuperacao...')
+    try {
+      const redirectTo =
+        typeof window !== 'undefined' ? window.location.origin : undefined
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo })
+      if (error) {
+        setRecoveryStatus(error.message)
+        return
+      }
+      setRecoveryStatus('Enviamos um link para redefinir sua senha.')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha de rede.'
+      setRecoveryStatus(`Falha ao enviar email. ${message}`)
     }
   }
 
@@ -151,12 +207,45 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
                     </span>
                   </button>
                 </div>
-                <a className="login__forgot" href="#">
+                <button className="login__forgot" type="button" onClick={handleRecoveryToggle}>
                   Esqueceu sua senha?
-                </a>
+                </button>
               </div>
 
               {status && <p className="login__status">{status}</p>}
+
+              {recoveryOpen && (
+                <div className="login__recovery">
+                  <input
+                    id="login-recovery"
+                    className="form__input"
+                    type="text"
+                    value={recoveryIdentifier}
+                    onChange={(event) => setRecoveryIdentifier(event.target.value)}
+                    placeholder="Email ou CPF do acesso"
+                  />
+                  <div className="login__recovery-actions">
+                    <button
+                      className="button button--primary button--sm"
+                      type="button"
+                      onClick={handleRecoverySubmit}
+                    >
+                      Enviar link
+                    </button>
+                    <button
+                      className="button button--ghost button--sm"
+                      type="button"
+                      onClick={() => {
+                        setRecoveryOpen(false)
+                        setRecoveryStatus(null)
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                  {recoveryStatus && <p className="login__status">{recoveryStatus}</p>}
+                </div>
+              )}
 
               <div className="login__actions">
                 <label className="toggle login__remember">

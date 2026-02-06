@@ -4,6 +4,7 @@ import Dashboard from './pages/core/Dashboard'
 import DataTools from './pages/configuracoes/DataTools'
 import Login from './pages/core/Login'
 import SetupAdmin from './pages/core/SetupAdmin'
+import ResetPassword from './pages/core/ResetPassword'
 import Produtos from './pages/cadastros/Produtos'
 import Orcamentos from './pages/vendas/Orcamentos'
 import Pedidos from './pages/vendas/Pedidos'
@@ -56,6 +57,13 @@ import { PAGE_META } from './data/navigation'
 import { isPermissionKey } from './data/permissions'
 
 function App() {
+  const [isRecoveryMode, setIsRecoveryMode] = useState(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+    const params = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    return params.get('type') === 'recovery'
+  })
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [currentUser, setCurrentUser] = useState<UserAccount | null>(null)
   const [syncId, setSyncId] = useState<string | null>(null)
@@ -420,11 +428,11 @@ function App() {
     }
     supabase.auth.getSession().then(({ data }) => {
       const user = data.session?.user
-      if (user) {
+      if (user && !isRecoveryMode) {
         void startSession(user)
       }
     })
-  }, [])
+  }, [isRecoveryMode])
 
   useEffect(() => {
     if (!isAuthenticated || !currentUser || !supabase || !syncId) {
@@ -464,6 +472,14 @@ function App() {
     }, 30000)
     return () => clearInterval(interval)
   }, [isAuthenticated, currentUser?.id, syncId])
+
+  const exitRecoveryMode = () => {
+    setIsRecoveryMode(false)
+  }
+
+  if (isRecoveryMode) {
+    return <ResetPassword onDone={exitRecoveryMode} />
+  }
 
   if (!isAuthenticated) {
     if (allowSetup) {
