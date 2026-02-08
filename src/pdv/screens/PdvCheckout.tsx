@@ -246,7 +246,7 @@ const PdvCheckout = ({
   const resolveStockStatus = (product: Product, item: CartItem) => {
     const variant = item.variantId ? resolveVariant(product, item.variantId) : undefined
     const stock = variant?.stock ?? product.stock
-    if (!Number.isFinite(stock)) {
+    if (typeof stock !== 'number' || !Number.isFinite(stock)) {
       return null
     }
     if (stock <= 0) {

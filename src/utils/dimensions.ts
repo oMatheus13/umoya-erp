@@ -6,7 +6,7 @@ type FormatDimensionsOptions = {
 }
 
 const toMillimeters = (value?: number) => {
-  if (!Number.isFinite(value) || value <= 0) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
     return 0
   }
   return Math.round(value * 1000)

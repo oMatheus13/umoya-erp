@@ -432,13 +432,17 @@ const PdvApp = () => {
   }, [isDevMode, isRecoveryMode])
 
   useEffect(() => {
-    if (!isAuthenticated || !currentUser || !supabase || !syncId) {
+    if (!isAuthenticated || !currentUser || !syncId) {
+      return
+    }
+    const supabaseClient = supabase
+    if (!supabaseClient) {
       return
     }
     if (currentUser.id === 'dev-user') {
       return
     }
-    const channel = supabase
+    const channel = supabaseClient
       .channel(`erp_states_${syncId}`)
       .on(
         'postgres_changes',
@@ -480,7 +484,7 @@ const PdvApp = () => {
       )
       .subscribe()
     return () => {
-      void supabase.removeChannel(channel)
+      void supabaseClient.removeChannel(channel)
     }
   }, [currentUser, isAuthenticated, syncId])
 
