@@ -191,6 +191,9 @@ function App() {
 
   const handleNavigate = (page: string, intentAction?: PageIntentAction) => {
     if (page === activePage) {
+      if (intentAction) {
+        setPageIntent({ page, action: intentAction })
+      }
       return
     }
     if (intentAction) {
@@ -614,7 +617,12 @@ function App() {
       return <Pedidos />
     }
     if (activePage === 'produtos') {
-      return <Produtos />
+      return (
+        <Produtos
+          pageIntent={pageIntent?.page === 'produtos' ? pageIntent.action : undefined}
+          onConsumeIntent={consumePageIntent}
+        />
+      )
     }
     if (activePage === 'producao') {
       return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
@@ -17,7 +17,11 @@ import type { Client, FulfillmentMode, ProductVariant, Quote } from '../../types
 import type { PageIntentAction } from '../../types/ui'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
-import { getBasePrice, getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
+import { getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
+import {
+  resolveUnitPrice as resolveUnitPriceBase,
+  resolveVariantPrice as resolveVariantPriceBase,
+} from '../../utils/sales'
 import { getProductUnitLabel } from '../../utils/units'
 
 type QuoteItemForm = {
@@ -70,9 +74,16 @@ const createEmptyItem = (): QuoteItemForm => ({
 type OrcamentosProps = {
   pageIntent?: PageIntentAction
   onConsumeIntent?: () => void
+  openQuoteId?: string
+  onConsumeOpen?: () => void
 }
 
-const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
+const Orcamentos = ({
+  pageIntent,
+  onConsumeIntent,
+  openQuoteId,
+  onConsumeOpen,
+}: OrcamentosProps) => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -193,7 +204,7 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
     }))
   }
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setEditingId(null)
     setForm({
       clientId: '',
@@ -208,27 +219,28 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
       discountValue: 0,
       discountPercent: '',
     })
-  }
+  }, [])
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setIsModalOpen(false)
     setStatus(null)
     resetForm()
-  }
+  }, [resetForm])
 
-  const openNewModal = () => {
+  const openNewModal = useCallback(() => {
     setStatus(null)
     resetForm()
     setIsModalOpen(true)
-  }
+  }, [resetForm])
 
   useEffect(() => {
-    if (pageIntent !== 'new') {
+    if (pageIntent?.type !== 'new') {
       return
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- abrir modal via intent de navegacao.
     openNewModal()
     onConsumeIntent?.()
-  }, [pageIntent, onConsumeIntent])
+  }, [pageIntent, onConsumeIntent, openNewModal])
 
   const normalize = (value: string) => value.trim().toLowerCase()
 
@@ -246,40 +258,16 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
     return next
   }
 
-  const resolveVariantPrice = (product: (typeof data.produtos)[number] | null, variantId: string) => {
-    if (!product) {
-      return 0
-    }
-    const variant = product.variants?.find((item) => item.id === variantId)
-    if (product.hasVariants) {
-      return variant?.priceOverride ?? 0
-    }
-    return getBasePrice(product, variant)
-  }
-
-  const resolveLinearLength = (
-    product: (typeof data.produtos)[number],
-    customLength?: number,
-  ) => {
-    const length = customLength && customLength > 0 ? customLength : product.length ?? 1
-    return length > 0 ? length : 1
-  }
+  const resolveVariantPrice = (
+    product: (typeof data.produtos)[number] | null,
+    variantId: string,
+  ) => resolveVariantPriceBase(product, variantId)
 
   const resolveUnitPrice = (
     product: (typeof data.produtos)[number] | null,
     variant?: ProductVariant,
     item?: QuoteItemForm,
-  ) => {
-    if (!product) {
-      return 0
-    }
-    const basePrice = getBasePrice(product, variant)
-    if (product.unit === 'metro_linear') {
-      const length = resolveLinearLength(product, item?.customLength)
-      return basePrice * length
-    }
-    return basePrice
-  }
+  ) => resolveUnitPriceBase(product, variant, item)
 
   const validatePriceRules = (
     item: QuoteItemForm,
@@ -801,6 +789,18 @@ const Orcamentos = ({ pageIntent, onConsumeIntent }: OrcamentosProps) => {
     setStatus(null)
     setIsModalOpen(true)
   }
+
+  useEffect(() => {
+    if (!openQuoteId) {
+      return
+    }
+    const quote = data.orcamentos.find((item) => item.id === openQuoteId)
+    if (quote) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- abrir modal via historico/busca.
+      handleEdit(quote)
+    }
+    onConsumeOpen?.()
+  }, [data.orcamentos, handleEdit, onConsumeOpen, openQuoteId])
 
   const quoteToDelete = deleteId
     ? data.orcamentos.find((quote) => quote.id === deleteId)

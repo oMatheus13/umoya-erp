@@ -8,12 +8,23 @@ type ModalProps = {
   title?: string
   size?: ModalSize
   actions?: ReactNode
+  closeLabel?: string
   onClose: () => void
   children: ReactNode
 }
 
-const Modal = ({ open, title, size = 'md', actions, onClose, children }: ModalProps) => {
+const Modal = ({
+  open,
+  title,
+  size = 'md',
+  actions,
+  closeLabel,
+  onClose,
+  children,
+}: ModalProps) => {
   const titleId = useId()
+  const hasActions = actions !== undefined && actions !== null && actions !== false
+  const resolvedCloseLabel = closeLabel ?? (hasActions ? 'Cancelar' : 'Fechar')
 
   const handleFocusCapture = (event: FocusEvent<HTMLElement>) => {
     const target = event.target as HTMLElement
@@ -87,7 +98,7 @@ const Modal = ({ open, title, size = 'md', actions, onClose, children }: ModalPr
               >
                 close
               </span>
-              <span className="modal__action-label">Cancelar</span>
+              <span className="modal__action-label">{resolvedCloseLabel}</span>
             </button>
           </div>
         </div>

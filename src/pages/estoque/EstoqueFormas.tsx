@@ -7,6 +7,7 @@ import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Mold } from '../../types/erp'
+import { formatDimensionsMm } from '../../utils/dimensions'
 import { createId } from '../../utils/ids'
 
 type MoldForm = {
@@ -158,16 +159,6 @@ const EstoqueFormas = () => {
     setDeleteId(null)
   }
 
-  const formatDimensions = (mold: Mold) => {
-    const values = [mold.length, mold.width, mold.height].map((value) =>
-      value && value > 0 ? value : 0,
-    )
-    if (values.every((value) => value === 0)) {
-      return '-'
-    }
-    return `${values[0] || 0} x ${values[1] || 0} x ${values[2] || 0}`
-  }
-
   return (
     <Page className="moldes">
       <PageHeader
@@ -216,7 +207,7 @@ const EstoqueFormas = () => {
                 <tr>
                   <th>Forma</th>
                   <th>Codigo</th>
-                  <th>Medidas (C x L x A)</th>
+                  <th>Medidas (mm)</th>
                   <th>Estoque</th>
                   <th className="table__actions table__actions--end">Editar</th>
                 </tr>
@@ -240,7 +231,9 @@ const EstoqueFormas = () => {
                       </div>
                     </td>
                     <td className="table__cell--mobile-hide">{mold.code ?? '-'}</td>
-                    <td className="table__cell--mobile-hide">{formatDimensions(mold)}</td>
+                    <td className="table__cell--mobile-hide">
+                      {formatDimensionsMm([mold.length, mold.width, mold.height])}
+                    </td>
                     <td className="table__cell--mobile-hide">{mold.stock ?? 0}</td>
                     <td className="table__actions table__actions--end">
                       <ActionMenu

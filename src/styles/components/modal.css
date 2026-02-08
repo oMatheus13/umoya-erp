@@ -3,7 +3,7 @@
   /* Ajuste tamanhos aqui (ex: 80vw/90vw e 90vh). */
   --modal-width-sm: 420px;
   --modal-width-md: 640px;
-  --modal-width-lg: 70vw;
+  --modal-width-lg: 80vw;
   --modal-max-height: 80vh;
 
   position: fixed;

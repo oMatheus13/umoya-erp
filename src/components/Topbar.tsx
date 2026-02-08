@@ -1,9 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
+import { NAVIGATION_GROUPS } from '../data/navigation'
 import { useERPData } from '../store/appStore'
+import type { PageIntentAction } from '../types/ui'
+import { formatSkuWithVariant } from '../utils/sku'
+
+export type TopbarSearchItemInput = {
+  id: string
+  title: string
+  subtitle?: string
+  page?: string
+  category: string
+  intent?: PageIntentAction
+  keywords?: Array<string | undefined>
+}
+
+export type TopbarSearchItem = Omit<TopbarSearchItemInput, 'keywords'> & {
+  keywords: string
+}
 
 type TopbarProps = {
   breadcrumbs: string[]
+  brand?: ReactNode
   userName?: string
   userRoleLabel?: string
   userAvatarUrl?: string
@@ -15,22 +33,16 @@ type TopbarProps = {
   isSensitiveHidden?: boolean
   onSensitiveToggle?: () => void
   onProfileOpen?: () => void
-  onNavigate?: (pageId: string) => void
+  onNavigate?: (pageId: string, intent?: PageIntentAction) => void
   canView?: (pageId: string) => boolean
+  searchItems?: TopbarSearchItemInput[]
+  onSearchSelect?: (item: TopbarSearchItem) => void
+  searchPlaceholder?: string
+  showSensitiveToggle?: boolean
+  showNotifications?: boolean
 }
 
-type SearchItem = {
-  id: string
-  title: string
-  subtitle?: string
-  page: string
-  category: string
-  keywords: string
-}
-
-type SearchInput = Omit<SearchItem, 'keywords'> & {
-  keywords?: Array<string | undefined>
-}
+type SearchItem = TopbarSearchItem
 
 type NotificationItem = {
   id: string
@@ -41,7 +53,7 @@ type NotificationItem = {
 }
 
 const Topbar = ({
-  breadcrumbs: _breadcrumbs,
+  brand,
   userName,
   userRoleLabel,
   userAvatarUrl,
@@ -55,6 +67,11 @@ const Topbar = ({
   onProfileOpen,
   onNavigate,
   canView,
+  searchItems: searchItemsOverride,
+  onSearchSelect,
+  searchPlaceholder = 'Pesquisar',
+  showSensitiveToggle = true,
+  showNotifications = true,
 }: TopbarProps) => {
   const { data } = useERPData()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -109,8 +126,8 @@ const Topbar = ({
   const searchItems = useMemo<SearchItem[]>(() => {
     const items: SearchItem[] = []
     const allowPage = (page: string) => (canView ? canView(page) : true)
-    const pushItem = (item: SearchInput) => {
-      if (!allowPage(item.page)) {
+    const pushItem = (item: TopbarSearchItemInput) => {
+      if (item.page && !allowPage(item.page)) {
         return
       }
       const keywords = [item.title, item.subtitle, ...(item.keywords ?? [])]
@@ -119,6 +136,44 @@ const Topbar = ({
         .toLowerCase()
       items.push({ ...item, keywords })
     }
+
+    const navigationKeywords: Record<string, string[]> = {
+      financeiro: ['caixa', 'caixas', 'fluxo de caixa'],
+    }
+
+    if (searchItemsOverride) {
+      searchItemsOverride.forEach((item) => pushItem(item))
+      return items
+    }
+
+    NAVIGATION_GROUPS.forEach((group) => {
+      if (group.type === 'section') {
+        pushItem({
+          id: `nav-${group.id}`,
+          title: group.label,
+          subtitle: 'Seção',
+          page: group.id,
+          category: 'Sistema',
+          keywords: [group.label, group.id, ...(navigationKeywords[group.id] ?? [])],
+        })
+        return
+      }
+      group.items.forEach((item) => {
+        pushItem({
+          id: `nav-${item.id}`,
+          title: item.label,
+          subtitle: group.label,
+          page: item.id,
+          category: 'Sistema',
+          keywords: [
+            item.label,
+            item.id,
+            group.label,
+            ...(navigationKeywords[item.id] ?? []),
+          ],
+        })
+      })
+    })
 
     data.clientes.forEach((client) => {
       pushItem({
@@ -149,6 +204,44 @@ const Topbar = ({
         page: 'produtos',
         category: 'Produtos',
         keywords: [product.dimensions, product.sku],
+      })
+      product.variants?.forEach((variant) => {
+        const variantSku = variant.sku?.trim() ?? ''
+        const combinedSku = variantSku ? formatSkuWithVariant(product.sku, variantSku) : '-'
+        const variantTitle =
+          variant.name?.trim() || (combinedSku !== '-' ? combinedSku : 'Variação')
+        const variantSubtitle =
+          combinedSku !== '-' ? `${product.name} • SKU ${combinedSku}` : product.name
+        pushItem({
+          id: `variant-${product.id}-${variant.id}`,
+          title: variantTitle,
+          subtitle: variantSubtitle,
+          page: 'produtos',
+          category: 'Variações',
+          intent: {
+            type: 'open-variant',
+            productId: product.id,
+            variantId: variant.id,
+          },
+          keywords: [
+            variant.name,
+            product.name,
+            product.sku,
+            variantSku,
+            combinedSku !== '-' ? combinedSku : undefined,
+          ],
+        })
+      })
+    })
+
+    data.caixas.forEach((cashbox) => {
+      pushItem({
+        id: `cashbox-${cashbox.id}`,
+        title: cashbox.name,
+        subtitle: 'Caixa',
+        page: 'financeiro',
+        category: 'Caixas',
+        keywords: [cashbox.id, cashbox.name, 'caixa', 'caixas'],
       })
     })
 
@@ -233,6 +326,7 @@ const Topbar = ({
 
     return items
   }, [
+    data.caixas,
     data.clientes,
     data.entregas,
     data.fornecedores,
@@ -243,21 +337,32 @@ const Topbar = ({
     data.pedidos,
     data.produtos,
     canView,
+    searchItemsOverride,
   ])
 
   const normalizedQuery = query.trim().toLowerCase()
   const hasQuery = query.trim().length > 0
-  const searchResults = useMemo(
+  const matchedSearchItems = useMemo(
     () =>
       normalizedQuery
-        ? searchItems
-            .filter((item) => item.keywords.includes(normalizedQuery))
-            .slice(0, 8)
+        ? searchItems.filter((item) => item.keywords.includes(normalizedQuery))
         : [],
     [normalizedQuery, searchItems],
   )
+  const searchResults = useMemo(
+    () => matchedSearchItems.slice(0, 8),
+    [matchedSearchItems],
+  )
+  const overlayResults = useMemo(
+    () => matchedSearchItems.slice(0, 20),
+    [matchedSearchItems],
+  )
+  const searchResultsCount = matchedSearchItems.length
 
   const notifications = useMemo<NotificationItem[]>(() => {
+    if (!showNotifications) {
+      return []
+    }
     const items: NotificationItem[] = []
     const allowPage = (page: string) => (canView ? canView(page) : true)
     const today = new Date()
@@ -364,6 +469,7 @@ const Topbar = ({
     data.pedidos,
     data.qualidadeChecks,
     canView,
+    showNotifications,
   ])
   const hasUrgentNotifications = notifications.some((item) => item.tone === 'alert')
   const notificationIcon =
@@ -374,8 +480,10 @@ const Topbar = ({
         : 'notifications'
 
   const handleResultSelect = (item: SearchItem) => {
-    if (onNavigate) {
-      onNavigate(item.page)
+    if (onSearchSelect) {
+      onSearchSelect(item)
+    } else if (item.page && onNavigate) {
+      onNavigate(item.page, item.intent)
     }
     setQuery('')
     setIsSearchOpen(false)
@@ -393,6 +501,9 @@ const Topbar = ({
     if (!normalizedQuery) {
       return null
     }
+    const items = variant === 'overlay' ? overlayResults : searchResults
+    const hasResults = searchResultsCount > 0
+    const hasMore = variant === 'overlay' && searchResultsCount > items.length
     return (
       <div
         className={`topbar__search-results ${
@@ -400,10 +511,17 @@ const Topbar = ({
         }`}
         onMouseDown={(event) => event.preventDefault()}
       >
-        {searchResults.length === 0 ? (
+        {hasResults && (
+          <div className="topbar__search-results-header">
+            <span>Resultados</span>
+            <span className="topbar__search-results-count">{searchResultsCount}</span>
+          </div>
+        )}
+        {!hasResults ? (
           <div className="topbar__search-empty">Nenhum resultado encontrado.</div>
         ) : (
-          searchResults.map((item) => (
+          <>
+            {items.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -418,7 +536,13 @@ const Topbar = ({
               </div>
               <span className="topbar__search-result-tag">{item.category}</span>
             </button>
-          ))
+            ))}
+            {hasMore && (
+              <div className="topbar__search-empty">
+                Mostrando {items.length} de {searchResultsCount}. Refine sua busca.
+              </div>
+            )}
+          </>
         )}
       </div>
     )
@@ -439,6 +563,7 @@ const Topbar = ({
             </span>
           </button>
         )}
+        {brand && <div className="topbar__brand">{brand}</div>}
         <button
           className="topbar__search-toggle"
           type="button"
@@ -458,8 +583,8 @@ const Topbar = ({
           </span>
           <input
             type="search"
-            placeholder="Pesquisar"
-            aria-label="Pesquisar"
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onFocus={() => setIsSearchFocused(true)}
@@ -484,37 +609,41 @@ const Topbar = ({
       </div>
       <div className="topbar__right">
         {readOnly && <span className="topbar__badge">Somente leitura</span>}
-        <button
-          className="topbar__icon"
-          type="button"
-          onClick={onSensitiveToggle}
-          aria-label={isSensitiveHidden ? 'Mostrar informações' : 'Ocultar informações'}
-        >
-          <span className="material-symbols-outlined" aria-hidden="true">
-            {isSensitiveHidden ? 'visibility_off' : 'visibility'}
-          </span>
-        </button>
-        <div className="topbar__notifications">
+        {showSensitiveToggle && (
           <button
             className="topbar__icon"
             type="button"
-            aria-label={
-              notifications.length > 0
-                ? `Notificações (${notifications.length})`
-                : 'Notificações'
-            }
-            onClick={() => {
-              setIsNotificationsOpen((prev) => !prev)
-              setIsSearchOpen(false)
-            }}
-            ref={notificationsButtonRef}
+            onClick={onSensitiveToggle}
+            aria-label={isSensitiveHidden ? 'Mostrar informações' : 'Ocultar informações'}
           >
             <span className="material-symbols-outlined" aria-hidden="true">
-              {notificationIcon}
+              {isSensitiveHidden ? 'visibility_off' : 'visibility'}
             </span>
           </button>
-        </div>
-        {isNotificationsOpen && (
+        )}
+        {showNotifications && (
+          <div className="topbar__notifications">
+            <button
+              className="topbar__icon"
+              type="button"
+              aria-label={
+                notifications.length > 0
+                  ? `Notificações (${notifications.length})`
+                  : 'Notificações'
+              }
+              onClick={() => {
+                setIsNotificationsOpen((prev) => !prev)
+                setIsSearchOpen(false)
+              }}
+              ref={notificationsButtonRef}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                {notificationIcon}
+              </span>
+            </button>
+          </div>
+        )}
+        {showNotifications && isNotificationsOpen && (
           <div
             className="topbar__notifications-overlay"
             role="dialog"
@@ -608,8 +737,8 @@ const Topbar = ({
             </span>
             <input
               type="search"
-              placeholder="Buscar no ERP"
-              aria-label="Buscar no ERP"
+              placeholder={searchPlaceholder}
+              aria-label={searchPlaceholder}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={handleSearchKeyDown}

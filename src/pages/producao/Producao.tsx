@@ -403,7 +403,7 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   }
 
   useEffect(() => {
-    if (pageIntent !== 'new') {
+    if (pageIntent?.type !== 'new') {
       return
     }
     handleManualOrder()

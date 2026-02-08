@@ -127,7 +127,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
   }
 
   useEffect(() => {
-    if (pageIntent !== 'new') {
+    if (pageIntent?.type !== 'new') {
       return
     }
     openModal()

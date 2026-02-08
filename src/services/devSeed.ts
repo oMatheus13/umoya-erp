@@ -304,6 +304,8 @@ export const createDevSeed = (userId: string): ERPData => {
       cashboxId: 'caixa_operacional',
     },
   ]
+  seed.pdvCaixas = []
+  seed.pdvMovimentacoes = []
 
   seed.comprasHistorico = [
     {

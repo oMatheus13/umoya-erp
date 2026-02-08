@@ -2,6 +2,8 @@ import type {
   ERPData,
   FinanceEntry,
   Order,
+  PdvCashMovement,
+  PdvCashSession,
   Product,
   ProductMaterialUsage,
   ProductUnit,
@@ -42,8 +44,8 @@ const stripAvatarUrls = (data: ERPData) => {
   }
   let changed = false
   const usuarios = data.usuarios.map((user) => {
-    if (typeof user.avatarUrl !== 'undefined') {
-      const { avatarUrl, ...rest } = user
+    const { avatarUrl, ...rest } = user
+    if (typeof avatarUrl !== 'undefined') {
       changed = true
       return rest
     }
@@ -101,6 +103,8 @@ export type DataService = {
   upsertOrder: (order: Order, options?: SaveOptions) => void
   addReceipt: (receipt: Receipt, options?: SaveOptions) => void
   addFinanceEntry: (entry: FinanceEntry, options?: SaveOptions) => void
+  upsertPdvCashSession: (session: PdvCashSession, options?: SaveOptions) => void
+  addPdvCashMovement: (movement: PdvCashMovement, options?: SaveOptions) => void
 }
 
 const upsert = <T extends { id: string }>(items: T[], next: T) => {
@@ -577,6 +581,8 @@ const normalizeData = (data: ERPData) => {
   })
   const caixas = ensureArray(data.caixas, DEFAULT_CASHBOXES.map((cashbox) => ({ ...cashbox })))
   const conferenciasCaixaFisico = ensureArray(data.conferenciasCaixaFisico, [])
+  const pdvCaixas = ensureArray(data.pdvCaixas, [])
+  const pdvMovimentacoes = ensureArray(data.pdvMovimentacoes, [])
   const tabelasRaw =
     data.tabelas && typeof data.tabelas === 'object' ? data.tabelas : undefined
   if (!tabelasRaw) {
@@ -641,8 +647,8 @@ const normalizeData = (data: ERPData) => {
   const ocorrenciasRH = ensureArray(data.ocorrenciasRH, [])
   const usuariosRaw = ensureArray(data.usuarios, [])
   const usuarios = usuariosRaw.map((user) => {
-    if (typeof user.avatarUrl !== 'undefined') {
-      const { avatarUrl, ...rest } = user
+    const { avatarUrl, ...rest } = user
+    if (typeof avatarUrl !== 'undefined') {
       changed = true
       return rest
     }
@@ -686,6 +692,8 @@ const normalizeData = (data: ERPData) => {
     financeiro,
     caixas,
     conferenciasCaixaFisico,
+    pdvCaixas,
+    pdvMovimentacoes,
     tabelas,
     empresa: { ...DEFAULT_COMPANY, ...empresa },
     integracoes,
@@ -734,6 +742,16 @@ export const dataService: DataService = {
   addFinanceEntry: (entry, options) => {
     const data = getStorage() ?? createEmptyState()
     data.financeiro = [...data.financeiro, entry]
+    saveAndSync(applyAudit(data, options), options)
+  },
+  upsertPdvCashSession: (session, options) => {
+    const data = getStorage() ?? createEmptyState()
+    data.pdvCaixas = upsert(data.pdvCaixas, session)
+    saveAndSync(applyAudit(data, options), options)
+  },
+  addPdvCashMovement: (movement, options) => {
+    const data = getStorage() ?? createEmptyState()
+    data.pdvMovimentacoes = [...data.pdvMovimentacoes, movement]
     saveAndSync(applyAudit(data, options), options)
   },
 }

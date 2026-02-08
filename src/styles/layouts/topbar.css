@@ -24,6 +24,17 @@
   flex: 1;
 }
 
+.topbar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.topbar__logo {
+  height: 32px;
+  width: auto;
+}
+
 .topbar__menu {
   display: none;
   align-items: center;
@@ -283,6 +294,22 @@
   border: 1px solid rgba(15, 17, 22, 0.08);
   box-shadow: var(--box-shadow-md);
   z-index: var(--z-index-popover);
+}
+
+.topbar__search-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px 2px;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(15, 17, 22, 0.6);
+}
+
+.topbar__search-results-count {
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
 }
 
 .topbar__search-results--overlay {

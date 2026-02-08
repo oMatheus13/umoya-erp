@@ -1,6 +1,13 @@
-import { useMemo, useState, type ChangeEvent, type InputHTMLAttributes } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FocusEvent,
+  type InputHTMLAttributes,
+} from 'react'
 
-type DimensionUnit = 'cm' | 'm'
+type DimensionUnit = 'mm' | 'cm' | 'm'
 
 type DimensionInputProps = Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -14,8 +21,58 @@ type DimensionInputProps = Omit<
   showPreview?: boolean
 }
 
-const formatMeasurement = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
+const numberFormatter = new Intl.NumberFormat('pt-BR', {
+  maximumFractionDigits: 2,
+  useGrouping: false,
+})
+
+const unitFactors: Record<DimensionUnit, number> = {
+  mm: 1000,
+  cm: 100,
+  m: 1,
+}
+
+const formatMeasurement = (value: number) => numberFormatter.format(value)
+
+const formatDisplayValue = (value: number, unit: DimensionUnit) => {
+  if (!Number.isFinite(value)) {
+    return ''
+  }
+  const normalized = value * unitFactors[unit]
+  return Number.isFinite(normalized) ? formatMeasurement(normalized) : ''
+}
+
+const parseLocaleNumber = (raw: string, allowTrailingSeparator = false) => {
+  let sanitized = raw.trim()
+  if (!sanitized) {
+    return undefined
+  }
+  if (allowTrailingSeparator && /[.,]$/.test(sanitized)) {
+    sanitized = sanitized.slice(0, -1)
+  }
+  if (!sanitized || sanitized === '-' || sanitized === '+') {
+    return undefined
+  }
+  if (!allowTrailingSeparator && /[.,]$/.test(sanitized)) {
+    return undefined
+  }
+  sanitized = sanitized.replace(/\s/g, '')
+  const hasComma = sanitized.includes(',')
+  const hasDot = sanitized.includes('.')
+  if (hasComma && hasDot) {
+    if (sanitized.lastIndexOf(',') > sanitized.lastIndexOf('.')) {
+      sanitized = sanitized.replace(/\./g, '').replace(',', '.')
+    } else {
+      sanitized = sanitized.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    sanitized = sanitized.replace(/\./g, '').replace(',', '.')
+  } else if (hasDot) {
+    sanitized = sanitized.replace(/,/g, '')
+  }
+  const parsed = Number(sanitized)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
 
 const toNumber = (value: string | number | undefined) => {
   if (value === undefined) {
@@ -39,24 +96,29 @@ const DimensionInput = ({
   disabled,
   ...props
 }: DimensionInputProps) => {
+  const { onBlur, onFocus, ...inputProps } = props
+  const initialUnit = unit ?? defaultUnit
   const [localUnit, setLocalUnit] = useState<DimensionUnit>(defaultUnit)
+  const [isFocused, setIsFocused] = useState(false)
   const activeUnit = unit ?? localUnit
   const handleUnitChange = onUnitChange ?? setLocalUnit
   const baseStep = toNumber(step) ?? 0.01
   const baseMin = toNumber(min)
   const baseMax = toNumber(max)
 
-  const displayValue = useMemo(() => {
-    if (!Number.isFinite(value)) {
-      return ''
+  const [inputValue, setInputValue] = useState(() =>
+    formatDisplayValue(value, initialUnit),
+  )
+
+  useEffect(() => {
+    if (isFocused) {
+      return
     }
-    const normalized = activeUnit === 'cm' ? value * 100 : value
-    const rounded = Math.round(normalized * 100) / 100
-    return Number.isFinite(rounded) ? String(rounded) : ''
-  }, [activeUnit, value])
+    setInputValue(formatDisplayValue(value, activeUnit))
+  }, [activeUnit, isFocused, value])
 
   const displayStep = useMemo(() => {
-    const converted = activeUnit === 'cm' ? baseStep * 100 : baseStep
+    const converted = baseStep * unitFactors[activeUnit]
     return Number.isFinite(converted) ? converted : undefined
   }, [activeUnit, baseStep])
 
@@ -64,7 +126,7 @@ const DimensionInput = ({
     if (baseMin === undefined) {
       return undefined
     }
-    const converted = activeUnit === 'cm' ? baseMin * 100 : baseMin
+    const converted = baseMin * unitFactors[activeUnit]
     return Number.isFinite(converted) ? converted : undefined
   }, [activeUnit, baseMin])
 
@@ -72,19 +134,38 @@ const DimensionInput = ({
     if (baseMax === undefined) {
       return undefined
     }
-    const converted = activeUnit === 'cm' ? baseMax * 100 : baseMax
+    const converted = baseMax * unitFactors[activeUnit]
     return Number.isFinite(converted) ? converted : undefined
   }, [activeUnit, baseMax])
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const raw = Number(event.target.value)
-    const normalized = Number.isFinite(raw) ? raw : 0
-    const nextValue = activeUnit === 'cm' ? normalized / 100 : normalized
+    const nextInput = event.target.value
+    setInputValue(nextInput)
+    const raw = parseLocaleNumber(nextInput)
+    if (raw === undefined) {
+      return
+    }
+    const nextValue = raw / unitFactors[activeUnit]
     onValueChange(Number.isFinite(nextValue) ? nextValue : 0)
   }
 
+  const handleFocus = (event: FocusEvent<HTMLInputElement>) => {
+    setIsFocused(true)
+    onFocus?.(event)
+  }
+
+  const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
+    setIsFocused(false)
+    onBlur?.(event)
+    const raw = parseLocaleNumber(inputValue, true)
+    const normalized = raw ?? 0
+    const nextValue = normalized / unitFactors[activeUnit]
+    onValueChange(Number.isFinite(nextValue) ? nextValue : 0)
+    setInputValue(formatDisplayValue(Number.isFinite(nextValue) ? nextValue : 0, activeUnit))
+  }
+
   const preview =
-    showPreview && activeUnit === 'cm' && Number.isFinite(value) && value > 0
+    showPreview && activeUnit !== 'm' && Number.isFinite(value) && value > 0
       ? `= ${formatMeasurement(value)} m`
       : null
 
@@ -92,14 +173,18 @@ const DimensionInput = ({
     <div className="modal__input-unit">
       <div className="modal__input-row">
         <input
-          {...props}
+          {...inputProps}
           className={className}
-          type="number"
+          type="text"
+          inputMode="decimal"
+          pattern="[0-9]*[.,]?[0-9]*"
           min={displayMin}
           max={displayMax}
           step={displayStep}
-          value={displayValue}
+          value={inputValue}
           onChange={handleChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           disabled={disabled}
         />
         <select
@@ -109,6 +194,7 @@ const DimensionInput = ({
           disabled={disabled}
           aria-label="Unidade de medida"
         >
+          <option value="mm">mm</option>
           <option value="cm">cm</option>
           <option value="m">m</option>
         </select>

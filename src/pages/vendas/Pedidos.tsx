@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
@@ -16,7 +16,11 @@ import { useERPData } from '../../store/appStore'
 import type { Client, FulfillmentMode, Order, ProductVariant, ProductionOrder } from '../../types/erp'
 import { formatCurrency } from '../../utils/format'
 import { createId } from '../../utils/ids'
-import { getBasePrice, getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
+import { getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
+import {
+  resolveUnitPrice as resolveUnitPriceBase,
+  resolveVariantPrice as resolveVariantPriceBase,
+} from '../../utils/sales'
 
 type OrderItemForm = {
   productId: string
@@ -58,7 +62,12 @@ const createEmptyItem = (): OrderItemForm => ({
   customHeight: 0,
 })
 
-const Pedidos = () => {
+type PedidosProps = {
+  openOrderId?: string
+  onConsumeOpen?: () => void
+}
+
+const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -282,40 +291,16 @@ const Pedidos = () => {
     return next
   }
 
-  const resolveVariantPrice = (product: (typeof data.produtos)[number] | null, variantId: string) => {
-    if (!product) {
-      return 0
-    }
-    const variant = product.variants?.find((item) => item.id === variantId)
-    if (product.hasVariants) {
-      return variant?.priceOverride ?? 0
-    }
-    return getBasePrice(product, variant)
-  }
-
-  const resolveLinearLength = (
-    product: (typeof data.produtos)[number],
-    customLength?: number,
-  ) => {
-    const length = customLength && customLength > 0 ? customLength : product.length ?? 1
-    return length > 0 ? length : 1
-  }
+  const resolveVariantPrice = (
+    product: (typeof data.produtos)[number] | null,
+    variantId: string,
+  ) => resolveVariantPriceBase(product, variantId)
 
   const resolveUnitPrice = (
     product: (typeof data.produtos)[number] | null,
     variant?: ProductVariant,
     item?: OrderItemForm,
-  ) => {
-    if (!product) {
-      return 0
-    }
-    const basePrice = getBasePrice(product, variant)
-    if (product.unit === 'metro_linear') {
-      const length = resolveLinearLength(product, item?.customLength)
-      return basePrice * length
-    }
-    return basePrice
-  }
+  ) => resolveUnitPriceBase(product, variant, item)
 
   const validatePriceRules = (
     item: OrderItemForm,
@@ -934,6 +919,18 @@ const Pedidos = () => {
     setStatus(null)
     setIsModalOpen(true)
   }
+
+  useEffect(() => {
+    if (!openOrderId) {
+      return
+    }
+    const order = data.pedidos.find((item) => item.id === openOrderId)
+    if (order) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- abrir modal via historico/busca.
+      handleEdit(order)
+    }
+    onConsumeOpen?.()
+  }, [data.pedidos, handleEdit, onConsumeOpen, openOrderId])
 
   const orderToDelete = deleteId
     ? data.pedidos.find((order) => order.id === deleteId)

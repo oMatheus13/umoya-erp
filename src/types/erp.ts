@@ -438,6 +438,34 @@ export type CashDailyCheck = {
   createdAt: string
 }
 
+export type PdvCashSessionStatus = 'aberto' | 'fechado'
+
+export type PdvCashSession = {
+  id: UUID
+  userId?: UUID
+  userName?: string
+  openingBalance: number
+  closingBalance?: number
+  status: PdvCashSessionStatus
+  openedAt: string
+  closedAt?: string
+}
+
+export type PdvCashMovementType = 'entrada' | 'saida'
+export type PdvCashMovementSource = 'venda' | 'sangria' | 'reforco' | 'ajuste'
+
+export type PdvCashMovement = {
+  id: UUID
+  cashSessionId: UUID
+  type: PdvCashMovementType
+  method: string
+  amount: number
+  source: PdvCashMovementSource
+  createdAt: string
+  orderId?: UUID
+  description?: string
+}
+
 export type TableEntry = {
   id: UUID
   label: string
@@ -603,6 +631,8 @@ export type ERPData = {
   financeiro: FinanceEntry[]
   caixas: Cashbox[]
   conferenciasCaixaFisico: CashDailyCheck[]
+  pdvCaixas: PdvCashSession[]
+  pdvMovimentacoes: PdvCashMovement[]
   tabelas: SystemTables
   empresa: CompanyProfile
   integracoes: IntegrationConfig[]

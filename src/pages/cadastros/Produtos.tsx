@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
@@ -8,9 +8,12 @@ import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Product, ProductUnit, ProductVariant } from '../../types/erp'
+import type { PageIntentAction } from '../../types/ui'
 import { formatCurrency } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { formatDimensionsMm } from '../../utils/dimensions'
 import { getBaseCost, getLaborUnitCost, getMaxDiscountPercentForItem, getMinUnitPrice } from '../../utils/pricing'
+import { formatSkuWithVariant } from '../../utils/sku'
 import { getProductUnitOptions } from '../../utils/units'
 
 type ProductForm = {
@@ -43,6 +46,11 @@ type VariantForm = {
   active: boolean
 }
 
+type ProdutosProps = {
+  pageIntent?: PageIntentAction
+  onConsumeIntent?: () => void
+}
+
 const createEmptyVariantForm = (): VariantForm => ({
   name: '',
   sku: '',
@@ -55,7 +63,7 @@ const createEmptyVariantForm = (): VariantForm => ({
   active: true,
 })
 
-const Produtos = () => {
+const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
   const { data, refresh } = useERPData()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
@@ -67,6 +75,8 @@ const Produtos = () => {
   const [isVariantListOpen, setIsVariantListOpen] = useState(false)
   const [deleteProductId, setDeleteProductId] = useState<string | null>(null)
   const [deleteVariantId, setDeleteVariantId] = useState<string | null>(null)
+  const productSubmitModeRef = useRef<'close' | 'keep'>('close')
+  const variantSubmitModeRef = useRef<'close' | 'keep'>('close')
   const [form, setForm] = useState<ProductForm>({
     name: '',
     sku: '',
@@ -157,6 +167,7 @@ const Produtos = () => {
   }
 
   const closeProductModal = () => {
+    productSubmitModeRef.current = 'close'
     setIsProductModalOpen(false)
     setStatus(null)
     resetForm()
@@ -165,6 +176,7 @@ const Produtos = () => {
   const openProductModal = () => {
     setStatus(null)
     resetForm()
+    productSubmitModeRef.current = 'close'
     setIsProductModalOpen(true)
   }
 
@@ -182,6 +194,7 @@ const Produtos = () => {
   }
 
   const closeVariantModal = () => {
+    variantSubmitModeRef.current = 'close'
     setIsVariantModalOpen(false)
     resetVariantForm()
   }
@@ -197,15 +210,16 @@ const Produtos = () => {
     }
     setVariantStatus(null)
     resetVariantForm()
-    setIsVariantListOpen(false)
+    variantSubmitModeRef.current = 'close'
     setIsVariantModalOpen(true)
   }
 
-  const handleEdit = (product: Product) => {
+  const handleEdit = useCallback((product: Product) => {
+    productSubmitModeRef.current = 'close'
     setEditingId(product.id)
     setForm({
       name: product.name,
-      sku: product.sku ?? '',
+      sku: product.sku?.toUpperCase() ?? '',
       price: product.price,
       priceMin: product.priceMin ?? null,
       costPrice: product.costPrice ?? 0,
@@ -222,14 +236,14 @@ const Produtos = () => {
     })
     setStatus(null)
     setIsProductModalOpen(true)
-  }
+  }, [productSubmitModeRef, setEditingId, setForm, setStatus, setIsProductModalOpen])
 
-  const handleVariantEdit = (variant: ProductVariant) => {
-    setIsVariantListOpen(false)
+  const handleVariantEdit = useCallback((variant: ProductVariant) => {
+    variantSubmitModeRef.current = 'close'
     setEditingVariantId(variant.id)
     setVariantForm({
       name: variant.name,
-      sku: variant.sku ?? '',
+      sku: variant.sku?.toUpperCase() ?? '',
       length: variant.length ?? 0,
       width: variant.width ?? 0,
       height: variant.height ?? 0,
@@ -240,7 +254,46 @@ const Produtos = () => {
     })
     setVariantStatus(null)
     setIsVariantModalOpen(true)
-  }
+  }, [setEditingVariantId, setIsVariantModalOpen, setVariantForm, setVariantStatus, variantSubmitModeRef])
+
+  useEffect(() => {
+    if (!pageIntent) {
+      return
+    }
+    if (pageIntent.type === 'open-product') {
+      const product = data.produtos.find((item) => item.id === pageIntent.productId)
+      if (!product) {
+        setStatus('Produto nao encontrado.')
+        onConsumeIntent?.()
+        return
+      }
+      setSelectedProductId(product.id)
+      handleEdit(product)
+      onConsumeIntent?.()
+      return
+    }
+    if (pageIntent.type === 'open-variant') {
+      const product = data.produtos.find((item) => item.id === pageIntent.productId)
+      const variant = product?.variants?.find((item) => item.id === pageIntent.variantId)
+      if (!product || !variant) {
+        setVariantStatus('Variacao nao encontrada.')
+        onConsumeIntent?.()
+        return
+      }
+      setSelectedProductId(product.id)
+      handleVariantEdit(variant)
+      onConsumeIntent?.()
+    }
+  }, [
+    data.produtos,
+    handleEdit,
+    handleVariantEdit,
+    onConsumeIntent,
+    pageIntent,
+    setSelectedProductId,
+    setStatus,
+    setVariantStatus,
+  ])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -277,6 +330,8 @@ const Produtos = () => {
       setStatus('O preco minimo nao pode ser maior que o preco base.')
       return
     }
+    const shouldClose = productSubmitModeRef.current !== 'keep'
+    productSubmitModeRef.current = 'close'
 
     const payload = dataService.getAll()
     const existingProduct = editingId
@@ -285,7 +340,7 @@ const Produtos = () => {
     const next: Product = {
       id: editingId ?? createId(),
       name: form.name.trim(),
-      sku: form.sku.trim() || undefined,
+      sku: form.sku.trim().toUpperCase() || undefined,
       price: form.price,
       priceMin: form.hasVariants ? undefined : priceMinValue,
       maxDiscountPercent: existingProduct?.maxDiscountPercent,
@@ -317,16 +372,26 @@ const Produtos = () => {
     dataService.replaceAll(payload)
     refresh()
     setStatus(editingId ? 'Produto atualizado.' : 'Produto cadastrado.')
-    setIsProductModalOpen(false)
-    resetForm()
+    if (shouldClose) {
+      setIsProductModalOpen(false)
+      resetForm()
+      return
+    }
+    if (!editingId) {
+      resetForm()
+    }
   }
 
   const buildVariantLabel = (variant: VariantForm) => {
     if (variant.name.trim()) {
       return variant.name.trim()
     }
-    if (variant.length || variant.width || variant.height) {
-      return `${variant.length || 0}x${variant.width || 0}x${variant.height || 0}`
+    const dimensions = formatDimensionsMm(
+      [variant.length, variant.width, variant.height],
+      { separator: 'x', emptyLabel: '' },
+    )
+    if (dimensions) {
+      return dimensions
     }
     return 'Variacao'
   }
@@ -341,13 +406,8 @@ const Produtos = () => {
     return 0
   }
 
-  const formatDimensions = (length?: number, width?: number, height?: number) => {
-    const values = [length, width, height].map((value) => (value && value > 0 ? value : 0))
-    if (values.every((value) => value === 0)) {
-      return '-'
-    }
-    return `${values[0] || 0} x ${values[1] || 0} x ${values[2] || 0}`
-  }
+  const formatDimensions = (length?: number, width?: number, height?: number) =>
+    formatDimensionsMm([length, width, height])
 
   const resolveCostForDisplay = (product: Product, variant?: ProductVariant) => {
     const isLinear = product.unit === 'metro_linear'
@@ -454,6 +514,8 @@ const Produtos = () => {
       setVariantStatus('Informe o preco da variacao.')
       return
     }
+    const shouldClose = variantSubmitModeRef.current !== 'keep'
+    variantSubmitModeRef.current = 'close'
 
     const nextVariant: ProductVariant = {
       id: editingVariantId ?? createId(),
@@ -463,7 +525,7 @@ const Produtos = () => {
       width: variantForm.width || undefined,
       height: variantForm.height || undefined,
       stock: variantForm.stock,
-      sku: variantForm.sku.trim() || undefined,
+      sku: variantForm.sku.trim().toUpperCase() || undefined,
       priceOverride: priceOverride ?? undefined,
       costOverride: costOverride ?? undefined,
       active: variantForm.active,
@@ -490,8 +552,15 @@ const Produtos = () => {
     dataService.replaceAll(payload)
     refresh()
     setVariantStatus(editingVariantId ? 'Variacao atualizada.' : 'Variacao cadastrada.')
-    setIsVariantModalOpen(false)
-    resetVariantForm()
+    if (shouldClose) {
+      setIsVariantModalOpen(false)
+      resetVariantForm()
+      return
+    }
+    if (!editingVariantId) {
+      setVariantForm(createEmptyVariantForm())
+      setEditingVariantId(null)
+    }
   }
 
   const products = useMemo(
@@ -523,6 +592,7 @@ const Produtos = () => {
       const nextProduct = payload.produtos[0]
       setSelectedProductId(nextProduct ? nextProduct.id : null)
     }
+    productSubmitModeRef.current = 'close'
     setIsProductModalOpen(false)
     resetForm()
     setStatus('Produto excluido.')
@@ -544,6 +614,7 @@ const Produtos = () => {
     }
     dataService.replaceAll(payload)
     refresh()
+    variantSubmitModeRef.current = 'close'
     setIsVariantModalOpen(false)
     resetVariantForm()
     setVariantStatus('Variacao excluida.')
@@ -602,7 +673,29 @@ const Produtos = () => {
                 <span className="modal__action-label">Excluir</span>
               </button>
             )}
-            <button className="button button--primary" type="submit" form={productFormId}>
+            <button
+              className="button button--secondary"
+              type="submit"
+              form={productFormId}
+              onClick={() => {
+                productSubmitModeRef.current = 'keep'
+              }}
+            >
+              <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                save_as
+              </span>
+              <span className="modal__action-label">
+                {editingId ? 'Atualizar e continuar' : 'Salvar e novo'}
+              </span>
+            </button>
+            <button
+              className="button button--primary"
+              type="submit"
+              form={productFormId}
+              onClick={() => {
+                productSubmitModeRef.current = 'close'
+              }}
+            >
               <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
                 save
               </span>
@@ -637,8 +730,12 @@ const Produtos = () => {
                   id="product-sku"
                   className="modal__input"
                   type="text"
+                  autoCapitalize="characters"
+                  spellCheck={false}
                   value={form.sku}
-                  onChange={(event) => updateForm({ sku: event.target.value })}
+                  onChange={(event) =>
+                    updateForm({ sku: event.target.value.toUpperCase() })
+                  }
                   placeholder="SKU opcional"
                 />
               </div>
@@ -877,7 +974,7 @@ const Produtos = () => {
                 <tr className="table__row">
                   <th>Produto</th>
                   <th className="table__cell--tight table__cell--mobile-hide">SKU</th>
-                  <th className="table__cell--mobile-hide">Medidas base</th>
+                  <th className="table__cell--mobile-hide">Medidas base (mm)</th>
                   <th className="table__cell--mobile-hide">Preco base</th>
                   <th className="table__cell--mobile-hide">Custo unitario</th>
                   <th className="table__actions table__actions--end">Status / Editar</th>
@@ -963,6 +1060,7 @@ const Produtos = () => {
         onClose={closeVariantList}
         title={selectedProduct ? `Variacoes: ${selectedProduct.name}` : 'Variacoes do produto'}
         size="lg"
+        closeLabel="Fechar"
         actions={
           selectedProduct?.hasVariants ? (
             <button className="button button--primary" type="button" onClick={openVariantModal}>
@@ -984,7 +1082,7 @@ const Produtos = () => {
                     <tr>
                       <th>Variacao</th>
                       <th className="table__cell--tight table__cell--mobile-hide">SKU</th>
-                      <th className="table__cell--mobile-hide">Medidas (C x L x A)</th>
+                      <th className="table__cell--mobile-hide">Medidas (mm)</th>
                       <th className="table__cell--mobile-hide">Preco</th>
                       <th className="table__cell--mobile-hide">Custo</th>
                       <th className="table__actions table__actions--end">Status / Editar</th>
@@ -1020,7 +1118,7 @@ const Produtos = () => {
                             </div>
                           </td>
                           <td className="table__cell--tight table__cell--mobile-hide">
-                            {variant.sku ?? '-'}
+                            {formatSkuWithVariant(selectedProduct?.sku, variant.sku)}
                           </td>
                           <td className="table__cell--mobile-hide">
                             {formatVariantDimensions(variant, selectedProduct ?? undefined)}
@@ -1092,7 +1190,29 @@ const Produtos = () => {
                   <span className="modal__action-label">Excluir</span>
                 </button>
               )}
-              <button className="button button--primary" type="submit" form={variantFormId}>
+              <button
+                className="button button--secondary"
+                type="submit"
+                form={variantFormId}
+                onClick={() => {
+                  variantSubmitModeRef.current = 'keep'
+                }}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  save_as
+                </span>
+                <span className="modal__action-label">
+                  {editingVariantId ? 'Atualizar e continuar' : 'Salvar e novo'}
+                </span>
+              </button>
+              <button
+                className="button button--primary"
+                type="submit"
+                form={variantFormId}
+                onClick={() => {
+                  variantSubmitModeRef.current = 'close'
+                }}
+              >
                 <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
                   save
                 </span>
@@ -1185,8 +1305,12 @@ const Produtos = () => {
                   id="variant-sku"
                   className="modal__input"
                   type="text"
+                  autoCapitalize="characters"
+                  spellCheck={false}
                   value={variantForm.sku}
-                  onChange={(event) => updateVariantForm({ sku: event.target.value })}
+                  onChange={(event) =>
+                    updateVariantForm({ sku: event.target.value.toUpperCase() })
+                  }
                   placeholder="Opcional"
                 />
               </div>

@@ -94,6 +94,8 @@ export const createEmptyState = (): ERPData => ({
   financeiro: [],
   caixas: DEFAULT_CASHBOXES.map((cashbox) => ({ ...cashbox })),
   conferenciasCaixaFisico: [],
+  pdvCaixas: [],
+  pdvMovimentacoes: [],
   tabelas: {
     units: DEFAULT_TABLES.units.map((item) => ({ ...item })),
     categories: DEFAULT_TABLES.categories.map((item) => ({ ...item })),

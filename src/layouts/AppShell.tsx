@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Sidebar from '../components/Sidebar'
 import Topbar from '../components/Topbar'
 import { PageProvider } from '../components/ui/PageContext'
-import type { SidebarMode } from '../types/ui'
+import type { PageIntentAction, SidebarMode } from '../types/ui'
 
 type AppShellProps = {
   children: ReactNode
   activePage: string
-  onNavigate: (page: string) => void
+  onNavigate: (page: string, intent?: PageIntentAction) => void
   breadcrumbs: string[]
   sidebarMode: SidebarMode
   userName?: string
@@ -130,8 +130,8 @@ const AppShell = ({
     return () => window.cancelAnimationFrame(id)
   }, [isSensitiveHidden, activePage])
 
-  const handleNavigate = (page: string) => {
-    onNavigate(page)
+  const handleNavigate = (page: string, intent?: PageIntentAction) => {
+    onNavigate(page, intent)
     setIsMobileSidebarOpen(false)
   }
 

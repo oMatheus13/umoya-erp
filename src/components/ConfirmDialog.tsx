@@ -19,7 +19,7 @@ const ConfirmDialog = ({
   onConfirm,
   onClose,
 }: ConfirmDialogProps) => (
-  <Modal open={open} title={title} onClose={onClose} size="sm">
+  <Modal open={open} title={title} onClose={onClose} size="sm" closeLabel={cancelLabel}>
     {description && <p className="modal__description">{description}</p>}
     <div className="form__actions">
       <button className="button button--ghost" type="button" onClick={onClose}>
