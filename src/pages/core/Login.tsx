@@ -455,8 +455,9 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
                   {status && <p className="login__status">{status}</p>}
 
                   <div className="login__actions">
-                    <label className="toggle login__remember">
+                    <label className="toggle login__remember" htmlFor="login-remember">
                       <input
+                        id="login-remember"
                         type="checkbox"
                         checked={rememberMe}
                         onChange={(event) => setRememberMe(event.target.checked)}

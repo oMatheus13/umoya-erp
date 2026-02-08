@@ -5,6 +5,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 const AUTH_STORAGE_KEY = 'umoya-erp-auth'
 const AUTH_PERSIST_KEY = 'umoya_auth_persist'
+const STORAGE_TEST_KEY = '__umoya_storage_test__'
 
 const createMemoryStorage = (): Storage => {
   const store = new Map<string, string>()
@@ -26,12 +27,37 @@ const createMemoryStorage = (): Storage => {
   }
 }
 
-const getPersistPreference = () => {
+const getBrowserStorage = (kind: 'local' | 'session'): Storage | null => {
   if (typeof window === 'undefined') {
+    return null
+  }
+  try {
+    return kind === 'local' ? window.localStorage : window.sessionStorage
+  } catch {
+    return null
+  }
+}
+
+const canUseStorage = (storage: Storage | null) => {
+  if (!storage) {
     return false
   }
   try {
-    return window.localStorage.getItem(AUTH_PERSIST_KEY) === 'true'
+    storage.setItem(STORAGE_TEST_KEY, '1')
+    storage.removeItem(STORAGE_TEST_KEY)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const getPersistPreference = () => {
+  const storage = getBrowserStorage('local')
+  if (!canUseStorage(storage)) {
+    return false
+  }
+  try {
+    return storage?.getItem(AUTH_PERSIST_KEY) === 'true'
   } catch {
     return false
   }
@@ -41,7 +67,17 @@ const getAuthStorage = (persist: boolean) => {
   if (typeof window === 'undefined') {
     return createMemoryStorage()
   }
-  return persist ? window.localStorage : window.sessionStorage
+  const localStorage = getBrowserStorage('local')
+  const sessionStorage = getBrowserStorage('session')
+  const canUseLocal = canUseStorage(localStorage)
+  const canUseSession = canUseStorage(sessionStorage)
+  if (persist && canUseLocal) {
+    return localStorage as Storage
+  }
+  if (canUseSession) {
+    return sessionStorage as Storage
+  }
+  return createMemoryStorage()
 }
 
 const createSupabaseClient = (persist: boolean) =>
@@ -63,21 +99,23 @@ export const getSupabaseClient = () => supabase
 export const getAuthPersistence = () => getPersistPreference()
 
 export const setAuthPersistence = (persist: boolean) => {
-  if (typeof window !== 'undefined') {
+  const localStorage = getBrowserStorage('local')
+  const canPersist = canUseStorage(localStorage)
+  if (localStorage && canPersist) {
     try {
-      window.localStorage.setItem(AUTH_PERSIST_KEY, persist ? 'true' : 'false')
+      localStorage.setItem(AUTH_PERSIST_KEY, persist ? 'true' : 'false')
     } catch {
       // ignore
     }
     if (!persist) {
       try {
-        window.localStorage.removeItem(AUTH_STORAGE_KEY)
+        localStorage.removeItem(AUTH_STORAGE_KEY)
       } catch {
         // ignore
       }
     }
   }
-  supabase = createSupabaseClient(persist)
+  supabase = createSupabaseClient(persist && canPersist)
 }
 
 export const supabaseNoPersist =

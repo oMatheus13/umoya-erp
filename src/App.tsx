@@ -441,6 +441,20 @@ function App() {
         void startSession(user)
       }
     })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user ?? null
+      if (!user || isRecoveryMode) {
+        setCurrentUser(null)
+        setIsAuthenticated(false)
+        return
+      }
+      void startSession(user)
+    })
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [isRecoveryMode])
 
   useEffect(() => {
