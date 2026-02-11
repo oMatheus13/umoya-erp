@@ -400,6 +400,10 @@ const PdvApp = () => {
       await erpRemote.upsertState(resolvedSyncId, latest)
       await runBackup(resolvedSyncId, latest)
     }
+    if (!remoteError) {
+      const latest = dataService.getAll()
+      void trackingRemote.upsertOrders(resolvedSyncId, buildTrackingPayloads(latest))
+    }
 
     setCurrentUser(nextUser)
     setIsAuthenticated(true)

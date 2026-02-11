@@ -12,6 +12,8 @@ import {
   getPaymentMethodOptions,
 } from '../../data/paymentMethods'
 import { dataService } from '../../services/dataService'
+import { buildTrackingPayloads } from '../../services/trackingPayload'
+import { trackingRemote } from '../../services/trackingRemote'
 import { useERPData } from '../../store/appStore'
 import type { Client, FulfillmentMode, Order, ProductVariant, ProductionOrder } from '../../types/erp'
 import { formatCurrency } from '../../utils/format'
@@ -181,6 +183,16 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
   const copyTrackingLink = async (orderId: string) => {
     const link = buildTrackingLink(orderId)
     setTrackingLink(link)
+    const workspaceId = data.meta?.workspaceId
+    if (workspaceId) {
+      const snapshot = dataService.getAll()
+      const trackingPayload = buildTrackingPayloads(snapshot).find(
+        (entry) => entry.orderId === orderId,
+      )
+      if (trackingPayload) {
+        void trackingRemote.upsertOrders(workspaceId, [trackingPayload])
+      }
+    }
     if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
       try {
         await navigator.clipboard.writeText(link)
