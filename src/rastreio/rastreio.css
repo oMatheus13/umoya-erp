@@ -486,9 +486,4 @@
   .rastreio-card__title {
     font-size: var(--font-size-xl);
   }
-
-  .rastreio-steps {
-    grid-template-columns: repeat(var(--step-count), minmax(90px, 1fr));
-    min-width: 400px;
-  }
 }
