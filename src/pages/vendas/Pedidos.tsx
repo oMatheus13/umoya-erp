@@ -52,6 +52,13 @@ const statusLabels: Record<Order['status'], string> = {
   entregue: 'Entregue',
 }
 
+const TRACKING_BASE_URL =
+  (import.meta.env.VITE_TRACKING_BASE_URL as string | undefined) ||
+  'https://rastreio.umoya.omatheus.com'
+
+const buildTrackingLink = (orderId: string) =>
+  `${TRACKING_BASE_URL.replace(/\/+$/, '')}/${orderId}`
+
 const createEmptyItem = (): OrderItemForm => ({
   productId: '',
   variantId: '',
@@ -70,6 +77,7 @@ type PedidosProps = {
 const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
+  const [trackingLink, setTrackingLink] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -168,6 +176,21 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
 
   const updateForm = (patch: Partial<OrderForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
+  }
+
+  const copyTrackingLink = async (orderId: string) => {
+    const link = buildTrackingLink(orderId)
+    setTrackingLink(link)
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(link)
+        setStatus('Link de rastreio copiado.')
+        return
+      } catch {
+        // fallback below
+      }
+    }
+    setStatus('Link de rastreio gerado. Copie abaixo.')
   }
 
   const toLengthCmLabel = (lengthMeters: number) => {
@@ -1003,6 +1026,14 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
         }
       />
       {status && <p className="form__status">{status}</p>}
+      {trackingLink && (
+        <p className="form__status">
+          Link de rastreio:{' '}
+          <a href={trackingLink} target="_blank" rel="noreferrer">
+            {trackingLink}
+          </a>
+        </p>
+      )}
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -1568,6 +1599,10 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
                           <ActionMenu
                             items={[
                               { label: 'Editar', onClick: () => handleEdit(order) },
+                              {
+                                label: 'Copiar link de rastreio',
+                                onClick: () => void copyTrackingLink(order.id),
+                              },
                             ]}
                           />
                         </div>
