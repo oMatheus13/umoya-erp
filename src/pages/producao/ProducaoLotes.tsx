@@ -263,7 +263,7 @@ const ProducaoLotes = () => {
         const hasDelivery = payload.entregas.some(
           (delivery) => delivery.productionOrderId === production.id,
         )
-        if (linkedOrder && linkedClient && !hasDelivery) {
+        if (linkedOrder && !hasDelivery) {
           const matchedItem = linkedOrder.items.find(
             (item) =>
               item.productId === production.productId &&

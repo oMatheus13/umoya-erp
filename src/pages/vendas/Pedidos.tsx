@@ -983,6 +983,9 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
         description: orderToDelete ? getClientName(orderToDelete.clientId) : undefined,
       },
     })
+    if (payload.meta?.workspaceId) {
+      void trackingRemote.deleteOrders(payload.meta.workspaceId, [deleteId])
+    }
     refresh()
     setIsModalOpen(false)
     resetForm()

@@ -420,6 +420,52 @@
   }
 }
 
+@media (max-width: 640px) {
+  .rastreio-steps-scroll {
+    overflow-x: visible;
+    padding-bottom: 0;
+  }
+
+  .rastreio-steps {
+    grid-template-columns: 1fr;
+    min-width: 0;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) 0;
+  }
+
+  .rastreio-steps::before,
+  .rastreio-steps::after {
+    top: 8px;
+    bottom: 8px;
+    left: 10px;
+    right: auto;
+    width: 2px;
+    height: auto;
+  }
+
+  .rastreio-steps::after {
+    bottom: auto;
+    height: calc((var(--step-progress)) / (var(--step-count) - 1) * (100% - 16px));
+  }
+
+  .rastreio-step {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .rastreio-step__dot {
+    width: 10px;
+    height: 10px;
+    justify-self: center;
+  }
+
+  .rastreio-step__label {
+    font-size: var(--font-size-xs);
+  }
+}
+
 @media (max-width: 480px) {
   .rastreio-app {
     padding: var(--spacing-xl) var(--spacing-md);

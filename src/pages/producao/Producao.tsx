@@ -409,13 +409,13 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     const linkedClient = linkedOrder
       ? payload.clientes.find((client) => client.id === linkedOrder.clientId)
       : undefined
-    const linkedObra = linkedOrder?.obraId
-      ? linkedClient?.obras?.find((obra) => obra.id === linkedOrder.obraId)
-      : undefined
     const hasDelivery = payload.entregas.some(
       (delivery) => delivery.productionOrderId === order.id,
     )
-    if (linkedOrder && linkedObra && !hasDelivery) {
+    const linkedObra = linkedOrder?.obraId
+      ? linkedClient?.obras?.find((obra) => obra.id === linkedOrder.obraId)
+      : undefined
+    if (linkedOrder && !hasDelivery) {
       const matchedItem = linkedOrder.items.find(
         (item) =>
           item.productId === order.productId &&
@@ -438,8 +438,8 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
           orderId: linkedOrder.id,
           productionOrderId: order.id,
           clientId: linkedOrder.clientId,
-          obraId: linkedObra.id,
-          address: linkedObra.address,
+          obraId: linkedObra?.id,
+          address: linkedObra?.address,
           status: 'pendente',
           items: [deliveryItem],
           createdAt: new Date().toISOString(),
