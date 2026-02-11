@@ -608,11 +608,28 @@ const normalizeData = (data: ERPData) => {
     ...quote,
     items: normalizeItems(quote.items),
   }))
-  const pedidos = ensureArray(data.pedidos, []).map((order) => ({
+  const pedidosRaw = ensureArray(data.pedidos, []).map((order) => ({
     ...order,
     paymentMethod: order.paymentMethod?.trim() || 'a_definir',
     items: normalizeItems(order.items),
   }))
+  const pedidos = (() => {
+    const indexById = new Map<string, number>()
+    const unique: typeof pedidosRaw = []
+    pedidosRaw.forEach((order) => {
+      const existingIndex = indexById.get(order.id)
+      if (existingIndex === undefined) {
+        indexById.set(order.id, unique.length)
+        unique.push(order)
+        return
+      }
+      unique[existingIndex] = order
+    })
+    if (unique.length !== pedidosRaw.length) {
+      changed = true
+    }
+    return unique
+  })()
   const recibos = ensureArray(data.recibos, [])
   const comprasHistorico = ensureArray(data.comprasHistorico, []).map((purchase) => {
     if (!Array.isArray(purchase.items)) {

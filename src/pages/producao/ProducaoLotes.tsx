@@ -6,11 +6,12 @@ import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
-import type { ProductionLot, ProductionLotStatus } from '../../types/erp'
+import type { ProductionLot, ProductionLotStatus, ProductionOrder } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 
 type LotForm = {
+  productionOrderId: string
   productId: string
   variantId: string
   quantity: number
@@ -38,6 +39,7 @@ const ProducaoLotes = () => {
   const [filterStatus, setFilterStatus] = useState<ProductionLotStatus | 'all'>('all')
   const [filterProductId, setFilterProductId] = useState('')
   const [form, setForm] = useState<LotForm>({
+    productionOrderId: '',
     productId: '',
     variantId: '',
     quantity: 1,
@@ -53,6 +55,14 @@ const ProducaoLotes = () => {
     () => [...data.produtos].filter((item) => item.active !== false),
     [data.produtos],
   )
+
+  const productionOrders = useMemo(() => {
+    return [...data.ordensProducao].sort((a, b) => {
+      const aDate = a.finishedAt ?? a.plannedAt ?? ''
+      const bDate = b.finishedAt ?? b.plannedAt ?? ''
+      return bDate.localeCompare(aDate)
+    })
+  }, [data.ordensProducao])
 
   const lots = useMemo(
     () => [...data.lotesProducao].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -85,6 +95,7 @@ const ProducaoLotes = () => {
     const firstProduct = products[0]
     const firstVariant = firstProduct?.variants?.[0]
     setForm({
+      productionOrderId: '',
       productId: firstProduct?.id ?? '',
       variantId:
         firstProduct?.unit === 'metro_linear' || !firstProduct?.hasVariants
@@ -122,10 +133,44 @@ const ProducaoLotes = () => {
     setForm((prev) => ({ ...prev, ...patch }))
   }
 
+  const handleProductionChange = (productionOrderId: string) => {
+    if (!productionOrderId) {
+      updateForm({ productionOrderId: '' })
+      return
+    }
+    const production = productionOrders.find((item) => item.id === productionOrderId)
+    if (!production) {
+      updateForm({ productionOrderId: '' })
+      return
+    }
+    const product = products.find((item) => item.id === production.productId)
+    const shouldUseVariant =
+      product?.unit !== 'metro_linear' && (product?.hasVariants ?? false)
+    const fallbackVariantId = shouldUseVariant ? product?.variants?.[0]?.id : ''
+    updateForm({
+      productionOrderId,
+      productId: production.productId,
+      variantId: shouldUseVariant ? production.variantId ?? fallbackVariantId ?? '' : '',
+      quantity: production.quantity,
+      customLength:
+        product?.unit === 'metro_linear'
+          ? production.customLength ?? product.length ?? 0
+          : 0,
+    })
+  }
+
   const handleProductChange = (productId: string) => {
     const product = products.find((item) => item.id === productId)
     const firstVariant = product?.variants?.[0]
+    const currentProduction = productionOrders.find(
+      (item) => item.id === form.productionOrderId,
+    )
+    const productionOrderId =
+      currentProduction && currentProduction.productId === productId
+        ? form.productionOrderId
+        : ''
     updateForm({
+      productionOrderId,
       productId,
       variantId:
         product?.unit === 'metro_linear' || !product?.hasVariants
@@ -144,6 +189,7 @@ const ProducaoLotes = () => {
     setEditingId(lot.id)
     setEditingCreatedAt(lot.createdAt)
     setForm({
+      productionOrderId: lot.productionOrderId ?? '',
       productId: lot.productId,
       variantId: lot.variantId ?? '',
       quantity: lot.quantity,
@@ -172,6 +218,7 @@ const ProducaoLotes = () => {
     const isLinear = product?.unit === 'metro_linear'
     const next: ProductionLot = {
       id: editingId ?? createId(),
+      productionOrderId: form.productionOrderId || undefined,
       productId: form.productId,
       variantId:
         isLinear || !product?.hasVariants ? undefined : form.variantId || undefined,
@@ -186,12 +233,70 @@ const ProducaoLotes = () => {
     }
 
     const payload = dataService.getAll()
+    const previousLot = editingId
+      ? payload.lotesProducao.find((item) => item.id === editingId)
+      : undefined
     if (editingId) {
       payload.lotesProducao = payload.lotesProducao.map((item) =>
         item.id === editingId ? next : item,
       )
     } else {
       payload.lotesProducao = [...payload.lotesProducao, next]
+    }
+    const shouldCreateDelivery =
+      next.status === 'pronto' &&
+      (!previousLot || previousLot.status !== 'pronto') &&
+      next.productionOrderId
+    if (shouldCreateDelivery) {
+      const production = payload.ordensProducao.find(
+        (item) => item.id === next.productionOrderId,
+      )
+      if (production) {
+        const linkedOrderId = production.linkedOrderId ?? production.orderId
+        const linkedOrder = payload.pedidos.find((item) => item.id === linkedOrderId)
+        const linkedClient = linkedOrder
+          ? payload.clientes.find((client) => client.id === linkedOrder.clientId)
+          : undefined
+        const linkedObra = linkedOrder?.obraId
+          ? linkedClient?.obras?.find((obra) => obra.id === linkedOrder.obraId)
+          : undefined
+        const hasDelivery = payload.entregas.some(
+          (delivery) => delivery.productionOrderId === production.id,
+        )
+        if (linkedOrder && linkedClient && !hasDelivery) {
+          const matchedItem = linkedOrder.items.find(
+            (item) =>
+              item.productId === production.productId &&
+              (item.variantId ?? '') === (production.variantId ?? '') &&
+              (item.customLength ?? 0) === (production.customLength ?? 0),
+          )
+          payload.entregas = [
+            ...payload.entregas,
+            {
+              id: createId(),
+              orderId: linkedOrder.id,
+              productionOrderId: production.id,
+              clientId: linkedOrder.clientId,
+              obraId: linkedObra?.id,
+              address: linkedObra?.address,
+              status: 'pendente',
+              items: [
+                {
+                  productId: production.productId,
+                  variantId: production.variantId,
+                  customLength: production.customLength ?? matchedItem?.customLength,
+                  customWidth: matchedItem?.customWidth,
+                  customHeight: matchedItem?.customHeight,
+                  unitPrice: matchedItem?.unitPrice,
+                  quantity: production.quantity,
+                },
+              ],
+              createdAt: new Date().toISOString(),
+              scheduledAt: new Date().toISOString().slice(0, 10),
+            },
+          ]
+        }
+      }
     }
     const lengthLabel =
       next.customLength && next.customLength > 0 ? ` · ${next.customLength.toFixed(2)} m` : ''
@@ -237,6 +342,20 @@ const ProducaoLotes = () => {
     data.produtos
       .find((product) => product.id === productId)
       ?.variants?.find((variant) => variant.id === variantId)?.name ?? '-'
+  const getOrderCode = (orderId: string) => orderId.slice(0, 6)
+  const getProductionLabel = (production: ProductionOrder) => {
+    const productName = getProductName(production.productId)
+    const variantName = production.variantId
+      ? getVariantName(production.productId, production.variantId)
+      : ''
+    const linkedOrderId = production.linkedOrderId ?? production.orderId
+    const linkedOrder = data.pedidos.find((item) => item.id === linkedOrderId)
+    const sourceLabel = linkedOrder
+      ? `Pedido #${getOrderCode(linkedOrder.id)}`
+      : 'Ordem interna'
+    const variantLabel = variantName && variantName !== '-' ? ` · ${variantName}` : ''
+    return `${productName}${variantLabel} · ${sourceLabel}`
+  }
 
   return (
     <Page className="lotes">
@@ -423,6 +542,25 @@ const ProducaoLotes = () => {
         }
       >
         <form id={lotFormId} className="modal__form" onSubmit={handleSubmit}>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="lote-production">
+              Ordem de producao
+            </label>
+            <select
+              id="lote-production"
+              className="modal__input"
+              value={form.productionOrderId}
+              onChange={(event) => handleProductionChange(event.target.value)}
+            >
+              <option value="">Nao associar</option>
+              {productionOrders.map((production) => (
+                <option key={production.id} value={production.id}>
+                  {getProductionLabel(production)}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="modal__row">
             <div className="modal__group">
               <label className="modal__label" htmlFor="lote-product">

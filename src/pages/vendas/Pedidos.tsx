@@ -829,12 +829,6 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
       sourceQuoteId: existingOrder?.sourceQuoteId,
     }
 
-    if (!existingOrder) {
-      payload.pedidos = [...payload.pedidos, order]
-    } else {
-      payload.pedidos = payload.pedidos.map((item) => (item.id === order.id ? order : item))
-    }
-
     const result = applyOrderUpdate(payload, order, existingOrder)
     if (result.error) {
       setStatus(result.error)
@@ -1541,6 +1535,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
               <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Cliente</th>
+                  <th className="table__cell--mobile-hide">Codigo</th>
                   <th>Itens</th>
                   <th>Desconto</th>
                   <th>Total</th>
@@ -1551,22 +1546,26 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
               <tbody>
                 {orders.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="table__empty">
+                    <td colSpan={7} className="table__empty">
                       Nenhum pedido cadastrado ainda.
                     </td>
                   </tr>
                 )}
                 {orders.map((order) => {
                   const discountInfo = getOrderDiscountInfo(order)
+                  const orderCode = order.id.slice(0, 6)
                   return (
                     <tr key={order.id}>
                       <td className="table__cell--truncate">
                         <div className="table__stack">
                           <strong>{getClientName(order.clientId)}</strong>
                           <span className="table__sub table__sub--mobile">
-                            {formatCurrency(order.total)}
+                            Pedido #{orderCode} • {formatCurrency(order.total)}
                           </span>
                         </div>
+                      </td>
+                      <td className="table__cell--mobile-hide">
+                        <span className="table__sub">#{orderCode}</span>
                       </td>
                       <td className="table__cell--mobile-hide">
                         {formatItemsSummary(order.items)}

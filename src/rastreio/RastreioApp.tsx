@@ -50,7 +50,7 @@ const parseTrackingCode = () => {
   const params = new URLSearchParams(window.location.search)
   const paramCode = params.get('pedido') || params.get('codigo')
   if (paramCode) {
-    return paramCode.trim()
+    return paramCode.trim().replace(/^#/, '').toLowerCase()
   }
   const path = window.location.pathname.replace(/^\/+|\/+$/g, '')
   if (!path) {
@@ -58,9 +58,9 @@ const parseTrackingCode = () => {
   }
   const parts = path.split('/')
   if (parts[0] === 'rastreio') {
-    return parts[1] ?? ''
+    return (parts[1] ?? '').replace(/^#/, '').toLowerCase()
   }
-  return parts[0] ?? ''
+  return (parts[0] ?? '').replace(/^#/, '').toLowerCase()
 }
 
 const buildTrackingPath = (code: string) => {
@@ -158,7 +158,7 @@ const RastreioApp = () => {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const trimmed = input.trim()
+    const trimmed = input.trim().replace(/^#/, '').toLowerCase()
     if (!trimmed) {
       setMessage('Informe o codigo do pedido para rastrear.')
       setStatus('idle')

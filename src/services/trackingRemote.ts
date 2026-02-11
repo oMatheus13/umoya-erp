@@ -15,11 +15,21 @@ export const trackingRemote = {
       return { data: true }
     }
     try {
-      const rows = payloads.map((payload) => ({
-        order_id: payload.orderId,
-        workspace_id: workspaceId,
-        payload,
-      }))
+      const rows: Array<{ order_id: string; workspace_id: string; payload: TrackingOrderPayload }> =
+        []
+      const seen = new Set<string>()
+      payloads.forEach((payload) => {
+        const fullId = payload.orderId
+        if (fullId && !seen.has(fullId)) {
+          rows.push({ order_id: fullId, workspace_id: workspaceId, payload })
+          seen.add(fullId)
+        }
+        const shortId = fullId.slice(0, 6)
+        if (shortId && !seen.has(shortId)) {
+          rows.push({ order_id: shortId, workspace_id: workspaceId, payload })
+          seen.add(shortId)
+        }
+      })
       const { error } = await supabase.from('tracking_orders').upsert(rows, {
         onConflict: 'order_id',
       })
