@@ -5,7 +5,12 @@ import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
-import type { MaterialConsumption, ProductionOrder, ProductMaterialUsage } from '../../types/erp'
+import type {
+  MaterialConsumption,
+  ProductionLot,
+  ProductionOrder,
+  ProductMaterialUsage,
+} from '../../types/erp'
 import type { PageIntentAction } from '../../types/ui'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
@@ -163,6 +168,22 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const toLengthCmLabel = (lengthMeters: number) => {
     const cm = Math.round(lengthMeters * 100)
     return cm > 0 ? cm : 0
+  }
+
+  const toDateInputValue = (value?: string) =>
+    value ? value.slice(0, 10) : new Date().toISOString().slice(0, 10)
+
+  const addDaysToDate = (value: string, days: number) => {
+    if (!value) {
+      return ''
+    }
+    const safeDays = Number.isFinite(days) ? days : 0
+    if (safeDays <= 0) {
+      return value
+    }
+    const base = new Date(`${value}T00:00:00Z`)
+    const next = new Date(base.getTime() + safeDays * 24 * 60 * 60 * 1000)
+    return next.toISOString().slice(0, 10)
   }
 
   const upsertLinearStockVariant = (
@@ -347,10 +368,44 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
             stock: (current.stock ?? 0) + order.quantity,
           }
         }
+
+        const alreadyTracked = payload.lotesProducao.some(
+          (lot) => lot.productionOrderId === order.id,
+        )
+        if (!alreadyTracked) {
+          const moldedAt = toDateInputValue(nextOrder.finishedAt)
+          const demoldTimeDays = Number.isFinite(current.demoldTimeDays)
+            ? current.demoldTimeDays ?? 0
+            : 0
+          const demoldedAt =
+            demoldTimeDays > 0 ? addDaysToDate(moldedAt, demoldTimeDays) : undefined
+          const lotStatus: ProductionLot['status'] =
+            demoldTimeDays > 0 ? 'curando' : 'pronto'
+          const shouldUseVariant =
+            current.unit !== 'metro_linear' && (current.hasVariants ?? false)
+          const fallbackVariantId = shouldUseVariant ? current.variants?.[0]?.id : undefined
+          const lotVariantId = shouldUseVariant ? order.variantId ?? fallbackVariantId : undefined
+          const lot: ProductionLot = {
+            id: createId(),
+            productId: order.productId,
+            variantId: lotVariantId,
+            productionOrderId: order.id,
+            quantity: order.quantity,
+            customLength:
+              current.unit === 'metro_linear' ? order.customLength ?? current.length : undefined,
+            status: lotStatus,
+            moldedAt,
+            demoldedAt,
+            curingUntil: demoldedAt,
+            createdAt: new Date().toISOString(),
+          }
+          payload.lotesProducao = [...payload.lotesProducao, lot]
+        }
       }
     }
     const consumptionResult = applyMaterialConsumption(payload, nextOrder)
-    const linkedOrder = payload.pedidos.find((item) => item.id === order.orderId)
+    const linkedOrderId = order.linkedOrderId ?? order.orderId
+    const linkedOrder = payload.pedidos.find((item) => item.id === linkedOrderId)
     const linkedClient = linkedOrder
       ? payload.clientes.find((client) => client.id === linkedOrder.clientId)
       : undefined
@@ -361,6 +416,21 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       (delivery) => delivery.productionOrderId === order.id,
     )
     if (linkedOrder && linkedObra && !hasDelivery) {
+      const matchedItem = linkedOrder.items.find(
+        (item) =>
+          item.productId === order.productId &&
+          (item.variantId ?? '') === (order.variantId ?? '') &&
+          (item.customLength ?? 0) === (order.customLength ?? 0),
+      )
+      const deliveryItem = {
+        productId: order.productId,
+        variantId: order.variantId,
+        customLength: order.customLength ?? matchedItem?.customLength,
+        customWidth: matchedItem?.customWidth,
+        customHeight: matchedItem?.customHeight,
+        unitPrice: matchedItem?.unitPrice,
+        quantity: order.quantity,
+      }
       payload.entregas = [
         ...payload.entregas,
         {
@@ -371,6 +441,7 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
           obraId: linkedObra.id,
           address: linkedObra.address,
           status: 'pendente',
+          items: [deliveryItem],
           createdAt: new Date().toISOString(),
           scheduledAt: new Date().toISOString().slice(0, 10),
         },
@@ -508,6 +579,11 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
         )
       }
     }
+    if (target) {
+      payload.lotesProducao = payload.lotesProducao.filter(
+        (lot) => lot.productionOrderId !== target.id,
+      )
+    }
     payload.ordensProducao = payload.ordensProducao.filter((order) => order.id !== deleteId)
     payload.entregas = payload.entregas.filter(
       (delivery) => delivery.productionOrderId !== deleteId,
@@ -573,7 +649,8 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
             </div>
           )}
           {productionOrders.map((order) => {
-            const pedido = getOrder(order.orderId)
+            const orderLinkId = order.linkedOrderId ?? order.orderId
+            const pedido = getOrder(orderLinkId)
             const item = pedido?.items[0]
             const productId = item?.productId ?? order.productId
             const product = productId
@@ -597,11 +674,15 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                 : pedido
                   ? getClientName(pedido.clientId)
                   : 'Pedido'
+            const originLabel = order.originProductionOrderId
+              ? `Retrabalho de OP #${order.originProductionOrderId.slice(0, 6)}`
+              : ''
             return (
               <div key={order.id} className="list__item">
                 <div>
                   <strong>Ordem #{order.id.slice(0, 6)}</strong>
                   <span className="list__meta">{sourceLabel}</span>
+                  {originLabel && <span className="list__meta">{originLabel}</span>}
                   <span className="list__meta">
                     {productId ? getProductName(productId) : 'Produto'}
                     {variant ? ` • ${variant.name}` : ''}

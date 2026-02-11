@@ -4,8 +4,9 @@ import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
-import type { Delivery } from '../../types/erp'
+import type { Delivery, DeliveryItem, Order } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
+import { buildItemKey, formatItemLabel } from '../../utils/tracking'
 
 type ProofOption = 'nenhum' | 'foto' | 'assinatura'
 
@@ -15,6 +16,7 @@ type DeliveryForm = {
   vehicle: string
   driver: string
   isPartial: boolean
+  items: DeliveryItem[]
   proofType: ProofOption
   proofNote: string
   occurrence: string
@@ -38,6 +40,7 @@ const defaultForm: DeliveryForm = {
   vehicle: '',
   driver: '',
   isPartial: false,
+  items: [],
   proofType: 'nenhum',
   proofNote: '',
   occurrence: '',
@@ -62,6 +65,27 @@ const Entregas = () => {
       }),
     [data.entregas],
   )
+
+  const editingDelivery = useMemo(
+    () => (editingId ? data.entregas.find((delivery) => delivery.id === editingId) : null),
+    [data.entregas, editingId],
+  )
+
+  const orderItemTotals = useMemo(() => {
+    if (!editingDelivery) {
+      return new Map<string, number>()
+    }
+    const order = data.pedidos.find((item) => item.id === editingDelivery.orderId)
+    if (!order) {
+      return new Map<string, number>()
+    }
+    const totals = new Map<string, number>()
+    order.items.forEach((item) => {
+      const key = buildItemKey(item)
+      totals.set(key, (totals.get(key) ?? 0) + item.quantity)
+    })
+    return totals
+  }, [data.pedidos, editingDelivery])
 
   const summary = useMemo(() => {
     return deliveries.reduce(
@@ -112,6 +136,50 @@ const Entregas = () => {
     return obra?.address ?? fallback
   }
 
+  const getProduct = (productId: string) =>
+    data.produtos.find((product) => product.id === productId)
+
+  const getItemLabel = (item: DeliveryItem) => {
+    const product = getProduct(item.productId)
+    const variantName = product?.variants?.find((variant) => variant.id === item.variantId)?.name
+    return formatItemLabel(product?.name, variantName, item)
+  }
+
+  const mapOrderItemToDelivery = (item: Order['items'][number]): DeliveryItem => ({
+    productId: item.productId,
+    variantId: item.variantId,
+    customLength: item.customLength,
+    customWidth: item.customWidth,
+    customHeight: item.customHeight,
+    unitPrice: item.unitPrice,
+    quantity: item.quantity,
+  })
+
+  const resolveDeliveryItems = (delivery: Delivery) => {
+    if (Array.isArray(delivery.items) && delivery.items.length > 0) {
+      return delivery.items
+    }
+    const order = data.pedidos.find((item) => item.id === delivery.orderId)
+    if (!order) {
+      return []
+    }
+    const production = data.ordensProducao.find(
+      (item) => item.id === delivery.productionOrderId,
+    )
+    if (production) {
+      const matches = order.items.filter(
+        (item) =>
+          item.productId === production.productId &&
+          (item.variantId ?? '') === (production.variantId ?? '') &&
+          (item.customLength ?? 0) === (production.customLength ?? 0),
+      )
+      if (matches.length > 0) {
+        return matches.map(mapOrderItemToDelivery)
+      }
+    }
+    return order.items.map(mapOrderItemToDelivery)
+  }
+
   const openEdit = (delivery: Delivery) => {
     const scheduled = delivery.scheduledAt ? delivery.scheduledAt.slice(0, 10) : ''
     setEditingId(delivery.id)
@@ -121,6 +189,7 @@ const Entregas = () => {
       vehicle: delivery.vehicle ?? '',
       driver: delivery.driver ?? '',
       isPartial: delivery.isPartial ?? false,
+      items: resolveDeliveryItems(delivery),
       proofType: delivery.proofType ?? 'nenhum',
       proofNote: delivery.proofNote ?? '',
       occurrence: delivery.occurrence ?? '',
@@ -141,6 +210,15 @@ const Entregas = () => {
     setForm((prev) => ({ ...prev, ...patch }))
   }
 
+  const updateItemQuantity = (index: number, value: number) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((item, idx) =>
+        idx === index ? { ...item, quantity: value } : item,
+      ),
+    }))
+  }
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!editingId) {
@@ -152,13 +230,41 @@ const Entregas = () => {
       setStatus('Entrega nao encontrada.')
       return
     }
+    const order = payload.pedidos.find((item) => item.id === current.orderId)
+    const orderTotals = new Map<string, number>()
+    if (order) {
+      order.items.forEach((item) => {
+        const key = buildItemKey(item)
+        orderTotals.set(key, (orderTotals.get(key) ?? 0) + item.quantity)
+      })
+    }
+    const items = form.items.map((item) => {
+      const quantity = Number.isFinite(item.quantity) ? item.quantity : 0
+      const key = buildItemKey(item)
+      const maxQuantity = orderTotals.get(key)
+      const clampedQuantity =
+        maxQuantity !== undefined ? Math.min(Math.max(0, quantity), maxQuantity) : quantity
+      if (clampedQuantity !== quantity) {
+        return { ...item, quantity: clampedQuantity }
+      }
+      return { ...item, quantity }
+    })
+    const resolvedPartial =
+      order && items.length > 0
+        ? items.some((item) => {
+            const key = buildItemKey(item)
+            const maxQuantity = orderTotals.get(key) ?? item.quantity
+            return item.quantity < maxQuantity
+          })
+        : form.isPartial
     const updated: Delivery = {
       ...current,
       scheduledAt: form.scheduledAt || undefined,
       address: form.address.trim() || undefined,
       vehicle: form.vehicle.trim() || undefined,
       driver: form.driver.trim() || undefined,
-      isPartial: form.isPartial,
+      isPartial: resolvedPartial,
+      items,
       proofType: form.proofType === 'nenhum' ? undefined : form.proofType,
       proofNote: form.proofNote.trim() || undefined,
       occurrence: form.occurrence.trim() || undefined,
@@ -168,18 +274,40 @@ const Entregas = () => {
       delivery.id === updated.id ? updated : delivery,
     )
     if (updated.status === 'entregue') {
-      const relatedDeliveries = payload.entregas.filter(
-        (delivery) => delivery.orderId === updated.orderId,
-      )
-      const allDelivered = relatedDeliveries.every((delivery) =>
-        delivery.id === updated.id ? updated.status === 'entregue' : delivery.status === 'entregue',
-      )
-      if (allDelivered) {
-        payload.pedidos = payload.pedidos.map((order) =>
-          order.id === updated.orderId && order.status !== 'entregue'
-            ? { ...order, status: 'entregue' }
-            : order,
+      const orderToUpdate = payload.pedidos.find((item) => item.id === updated.orderId)
+      if (orderToUpdate) {
+        const expectedTotals = new Map<string, number>()
+        orderToUpdate.items.forEach((item) => {
+          const key = buildItemKey(item)
+          expectedTotals.set(key, (expectedTotals.get(key) ?? 0) + item.quantity)
+        })
+        const deliveredTotals = new Map<string, number>()
+        payload.entregas
+          .filter((delivery) => delivery.orderId === updated.orderId)
+          .forEach((delivery) => {
+            if (delivery.status !== 'entregue') {
+              return
+            }
+            const deliveryItems = Array.isArray(delivery.items) ? delivery.items : []
+            deliveryItems.forEach((item) => {
+              const key = buildItemKey(item)
+              const quantity = Number.isFinite(item.quantity) ? item.quantity : 0
+              if (quantity <= 0) {
+                return
+              }
+              deliveredTotals.set(key, (deliveredTotals.get(key) ?? 0) + quantity)
+            })
+          })
+        const allDelivered = Array.from(expectedTotals.entries()).every(
+          ([key, quantity]) => (deliveredTotals.get(key) ?? 0) >= quantity,
         )
+        if (allDelivered) {
+          payload.pedidos = payload.pedidos.map((order) =>
+            order.id === updated.orderId && order.status !== 'entregue'
+              ? { ...order, status: 'entregue' }
+              : order,
+          )
+        }
       }
     }
     dataService.replaceAll(payload)
@@ -482,6 +610,47 @@ const Entregas = () => {
                 onChange={(event) => updateForm({ driver: event.target.value })}
                 placeholder="Nome do motorista"
               />
+            </div>
+          </div>
+
+          <div className="modal__section">
+            <div className="modal__group">
+              <label className="modal__label">Itens da entrega</label>
+              <div className="list list--compact">
+                {form.items.length === 0 ? (
+                  <p className="list__empty">Nenhum item vinculado a esta entrega.</p>
+                ) : (
+                  form.items.map((item, index) => {
+                    const key = buildItemKey(item)
+                    const totalQuantity = orderItemTotals.get(key) ?? item.quantity
+                    const label = getItemLabel(item)
+                    return (
+                      <div key={`${key}-${index}`} className="list__item list__item--center">
+                        <div>
+                          <strong>{label}</strong>
+                          <span className="list__meta">
+                            Total no pedido: {totalQuantity}
+                          </span>
+                        </div>
+                        <div className="list__actions">
+                          <input
+                            className="modal__input modal__input--compact"
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={item.quantity}
+                            onChange={(event) => {
+                              const nextValue = Number(event.target.value)
+                              updateItemQuantity(index, Number.isFinite(nextValue) ? nextValue : 0)
+                            }}
+                            aria-label={`Quantidade entregue de ${label}`}
+                          />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
           </div>
 

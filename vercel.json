@@ -7,8 +7,15 @@
     { "src": "/favicon\\.ico", "dest": "/favicon.ico" },
     { "src": "/favicon\\.svg", "dest": "/favicon.svg" },
     { "src": "/robots\\.txt", "dest": "/robots.txt" },
+    { "src": "/rastreio", "dest": "/rastreio/index.html" },
+    { "src": "/rastreio/(.*)", "dest": "/rastreio/index.html" },
     { "src": "/pdv", "dest": "/pdv/index.html" },
     { "src": "/pdv/(.*)", "dest": "/pdv/index.html" },
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "rastreio.umoya.omatheus.com" }],
+      "dest": "/rastreio/index.html"
+    },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "pdv.umoya.omatheus.com" }],

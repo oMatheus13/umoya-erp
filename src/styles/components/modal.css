@@ -164,6 +164,11 @@
   padding: var(--spacing-2xs) 0;
 }
 
+.modal__input--compact {
+  max-width: 140px;
+  text-align: right;
+}
+
 .modal__input-row {
   display: flex;
   align-items: center;

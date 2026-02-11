@@ -7,6 +7,8 @@ import Login from '../pages/core/Login'
 import ResetPassword from '../pages/core/ResetPassword'
 import { erpRemote } from '../services/erpRemote'
 import { dataService, ensureStorageSeed, setRemoteSync } from '../services/dataService'
+import { trackingRemote } from '../services/trackingRemote'
+import { buildTrackingPayloads } from '../services/trackingPayload'
 import { createDevSeed, DEV_BACKUP_KEY, DEV_MODE_KEY, DEV_SEEDED_KEY } from '../services/devSeed'
 import { supabase } from '../services/supabaseClient'
 import { createSignedAvatarUrl } from '../services/storageFiles'
@@ -144,6 +146,7 @@ const createRemoteSync = (syncId: string) => {
     const result = await erpRemote.upsertState(syncId, payload)
     if (!result.error) {
       await runBackup(syncId, payload)
+      await trackingRemote.upsertOrders(syncId, buildTrackingPayloads(payload))
     }
   }
 

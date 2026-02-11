@@ -9,6 +9,8 @@ import { useERPData } from '../../store/appStore'
 import type { ProductionScrap, ProductionScrapStatus, ProductionScrapType } from '../../types/erp'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { getBaseCost, getLaborUnitCost } from '../../utils/pricing'
+import { adjustProductStock } from '../../utils/stock'
 
 type ScrapForm = {
   productId: string
@@ -67,7 +69,12 @@ const ProducaoRefugo = () => {
   const filteredScraps = useMemo(() => {
     return scraps.filter((scrap) => {
       const typeMatch = filterType === 'all' ? true : scrap.type === filterType
-      const statusMatch = filterStatus === 'all' ? true : scrap.status === filterStatus
+      const statusMatch =
+        filterStatus === 'all'
+          ? true
+          : scrap.type === 'retrabalho'
+            ? scrap.status === filterStatus
+            : true
       return typeMatch && statusMatch
     })
   }, [filterStatus, filterType, scraps])
@@ -78,13 +85,56 @@ const ProducaoRefugo = () => {
         acc.total += 1
         acc.items += scrap.quantity
         acc.cost += scrap.estimatedCost ?? 0
-        if (scrap.status === 'aberto') acc.open += 1
-        if (scrap.status === 'resolvido') acc.done += 1
+        if (scrap.type === 'retrabalho') {
+          if (scrap.status === 'aberto') acc.open += 1
+          if (scrap.status === 'resolvido') acc.done += 1
+        }
         return acc
       },
       { total: 0, items: 0, cost: 0, open: 0, done: 0 },
     )
   }, [scraps])
+
+  const selectedProduct = useMemo(
+    () => data.produtos.find((item) => item.id === form.productId),
+    [data.produtos, form.productId],
+  )
+
+  const selectedVariant = useMemo(
+    () => selectedProduct?.variants?.find((variant) => variant.id === form.variantId),
+    [selectedProduct, form.variantId],
+  )
+
+  const costSuggestion = useMemo(() => {
+    if (!selectedProduct) {
+      return { unit: 0, total: 0 }
+    }
+    const isArea = selectedProduct.unit === 'm2'
+    const customLength = selectedVariant?.length ?? selectedProduct.length
+    const customWidth = isArea ? selectedVariant?.width ?? selectedProduct.width : undefined
+    const baseCost = getBaseCost(selectedProduct, selectedVariant, {
+      materials: data.materiais,
+      customLength,
+      customWidth,
+    })
+    const laborCost = getLaborUnitCost(selectedProduct, selectedVariant, customLength)
+    const unitCost = baseCost + laborCost
+    const quantity = Number.isFinite(form.quantity) ? form.quantity : 0
+    return {
+      unit: unitCost,
+      total: unitCost > 0 ? unitCost * Math.max(0, quantity) : 0,
+    }
+  }, [data.materiais, form.quantity, selectedProduct, selectedVariant])
+
+  const supportsVariantSelection = (product?: typeof data.produtos[number] | null) => {
+    if (!product) {
+      return false
+    }
+    if (product.unit === 'metro_linear') {
+      return (product.variants ?? []).length > 0
+    }
+    return product.hasVariants ?? false
+  }
 
   const resetForm = () => {
     const firstProduct = products[0]
@@ -92,9 +142,7 @@ const ProducaoRefugo = () => {
     setForm({
       productId: firstProduct?.id ?? '',
       variantId:
-        firstProduct?.unit === 'metro_linear' || !firstProduct?.hasVariants
-          ? ''
-          : firstVariant?.id ?? '',
+        supportsVariantSelection(firstProduct) ? firstVariant?.id ?? '' : '',
       productionOrderId: '',
       quantity: 1,
       type: 'refugo',
@@ -128,29 +176,52 @@ const ProducaoRefugo = () => {
     const firstVariant = product?.variants?.[0]
     updateForm({
       productId,
-      variantId:
-        product?.unit === 'metro_linear' || !product?.hasVariants
-          ? ''
-          : firstVariant?.id ?? '',
+      variantId: supportsVariantSelection(product) ? firstVariant?.id ?? '' : '',
     })
   }
 
   const handleEdit = (scrap: ProductionScrap) => {
+    const product = products.find((item) => item.id === scrap.productId)
+    const fallbackVariant = product?.variants?.[0]
     setEditingId(scrap.id)
     setEditingCreatedAt(scrap.createdAt)
     setForm({
       productId: scrap.productId,
-      variantId: scrap.variantId ?? '',
+      variantId:
+        supportsVariantSelection(product) ? scrap.variantId ?? fallbackVariant?.id ?? '' : '',
       productionOrderId: scrap.productionOrderId ?? '',
       quantity: scrap.quantity,
       type: scrap.type,
       reason: scrap.reason,
       estimatedCost: scrap.estimatedCost ?? 0,
-      status: scrap.status,
+      status: scrap.type === 'retrabalho' ? scrap.status : 'aberto',
       notes: scrap.notes ?? '',
     })
     setStatus(null)
     setIsModalOpen(true)
+  }
+
+  const applyScrapStock = (
+    payload: ReturnType<typeof dataService.getAll>,
+    scrap: ProductionScrap | null | undefined,
+    multiplier: number,
+  ) => {
+    if (!scrap || scrap.type !== 'refugo') {
+      return
+    }
+    const quantity = Number.isFinite(scrap.quantity) ? scrap.quantity : 0
+    if (quantity <= 0 || multiplier === 0) {
+      return
+    }
+    const productIndex = payload.produtos.findIndex((item) => item.id === scrap.productId)
+    if (productIndex < 0) {
+      return
+    }
+    payload.produtos[productIndex] = adjustProductStock(
+      payload.produtos[productIndex],
+      scrap.variantId,
+      quantity * multiplier,
+    )
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -170,23 +241,39 @@ const ProducaoRefugo = () => {
 
     const product = products.find((item) => item.id === form.productId)
     const isLinear = product?.unit === 'metro_linear'
+    const hasVariantSelection = supportsVariantSelection(product)
+    const fallbackVariantId = hasVariantSelection ? product?.variants?.[0]?.id : undefined
+    const resolvedVariantId = hasVariantSelection
+      ? form.variantId || fallbackVariantId
+      : undefined
+    const resolvedEstimatedCost =
+      form.estimatedCost > 0 ? form.estimatedCost : costSuggestion.total
+    const estimatedCostValue = resolvedEstimatedCost > 0 ? resolvedEstimatedCost : undefined
 
-    const next: ProductionScrap = {
+    const baseScrap = {
       id: editingId ?? createId(),
       productId: form.productId,
-      variantId:
-        isLinear || !product?.hasVariants ? undefined : form.variantId || undefined,
+      variantId: isLinear && !resolvedVariantId ? undefined : resolvedVariantId,
       productionOrderId: form.productionOrderId || undefined,
       quantity: form.quantity,
-      type: form.type,
       reason: form.reason.trim(),
-      estimatedCost: form.estimatedCost > 0 ? form.estimatedCost : undefined,
-      status: form.status,
+      estimatedCost: estimatedCostValue,
       notes: form.notes.trim() || undefined,
       createdAt: editingCreatedAt ?? new Date().toISOString(),
     }
 
+    const next: ProductionScrap =
+      form.type === 'retrabalho'
+        ? { ...baseScrap, type: 'retrabalho', status: form.status }
+        : { ...baseScrap, type: 'refugo' }
+
     const payload = dataService.getAll()
+    const previous = editingId
+      ? payload.refugosProducao.find((item) => item.id === editingId)
+      : null
+    if (previous) {
+      applyScrapStock(payload, previous, 1)
+    }
     if (editingId) {
       payload.refugosProducao = payload.refugosProducao.map((item) =>
         item.id === editingId ? next : item,
@@ -194,11 +281,44 @@ const ProducaoRefugo = () => {
     } else {
       payload.refugosProducao = [...payload.refugosProducao, next]
     }
+    const shouldCreateReworkOrder =
+      next.type === 'retrabalho' && (!previous || previous.type !== 'retrabalho')
+    if (shouldCreateReworkOrder) {
+      const originOrder = next.productionOrderId
+        ? payload.ordensProducao.find((item) => item.id === next.productionOrderId)
+        : undefined
+      const linkedOrderCandidateId = originOrder?.linkedOrderId ?? originOrder?.orderId
+      const linkedOrder = linkedOrderCandidateId
+        ? payload.pedidos.find((item) => item.id === linkedOrderCandidateId)
+        : undefined
+      const customLength =
+        product?.unit === 'metro_linear'
+          ? originOrder?.customLength ?? selectedVariant?.length ?? product?.length
+          : undefined
+      payload.ordensProducao = [
+        ...payload.ordensProducao,
+        {
+          id: createId(),
+          orderId: `retrabalho_${createId()}`,
+          linkedOrderId: linkedOrder?.id,
+          productId: next.productId,
+          variantId: next.variantId,
+          quantity: next.quantity,
+          customLength,
+          status: 'aberta',
+          plannedAt: new Date().toISOString(),
+          source: originOrder?.source,
+          originProductionOrderId: originOrder?.id,
+        },
+      ]
+    }
+    applyScrapStock(payload, next, -1)
+    const actionLabel = getScrapLabel(next.type)
     const description = `${product?.name ?? 'Produto'} · ${next.quantity} un`
     dataService.replaceAll(payload, {
       auditEvent: {
         category: 'acao',
-        title: editingId ? 'Refugo atualizado' : 'Refugo registrado',
+        title: editingId ? `${actionLabel} atualizado` : `${actionLabel} registrado`,
         description,
       },
     })
@@ -217,11 +337,13 @@ const ProducaoRefugo = () => {
       return
     }
     const payload = dataService.getAll()
+    applyScrapStock(payload, scrapToDelete, 1)
     payload.refugosProducao = payload.refugosProducao.filter((item) => item.id !== deleteId)
+    const deleteLabel = getScrapLabel(scrapToDelete?.type)
     dataService.replaceAll(payload, {
       auditEvent: {
         category: 'acao',
-        title: 'Refugo removido',
+        title: `${deleteLabel} removido`,
         description: scrapToDelete ? getProductName(scrapToDelete.productId) : undefined,
       },
     })
@@ -234,6 +356,8 @@ const ProducaoRefugo = () => {
 
   const getProductName = (id: string) =>
     data.produtos.find((product) => product.id === id)?.name ?? 'Produto'
+  const getScrapLabel = (type?: ProductionScrapType) =>
+    type === 'retrabalho' ? 'Retrabalho' : 'Refugo'
   const getVariantName = (productId: string, variantId?: string) =>
     data.produtos
       .find((product) => product.id === productId)
@@ -276,7 +400,7 @@ const ProducaoRefugo = () => {
           <strong className="summary__value">{formatCurrency(summary.cost)}</strong>
         </article>
         <article className="summary__item">
-          <span className="summary__label">Pendentes</span>
+          <span className="summary__label">Retrabalhos pendentes</span>
           <strong className="summary__value">{summary.open}</strong>
         </article>
       </div>
@@ -302,26 +426,28 @@ const ProducaoRefugo = () => {
             ))}
           </select>
         </div>
-        <div className="form__group">
-          <label className="form__label" htmlFor="refugo-filter-status">
-            Status
-          </label>
-          <select
-            id="refugo-filter-status"
-            className="form__input"
-            value={filterStatus}
-            onChange={(event) =>
-              setFilterStatus(event.target.value as ProductionScrapStatus | 'all')
-            }
-          >
-            <option value="all">Todos</option>
-            {Object.entries(statusLabels).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
+        {filterType !== 'refugo' && (
+          <div className="form__group">
+            <label className="form__label" htmlFor="refugo-filter-status">
+              Status
+            </label>
+            <select
+              id="refugo-filter-status"
+              className="form__input"
+              value={filterStatus}
+              onChange={(event) =>
+                setFilterStatus(event.target.value as ProductionScrapStatus | 'all')
+              }
+            >
+              <option value="all">Todos</option>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="table-card">
@@ -347,8 +473,11 @@ const ProducaoRefugo = () => {
                 </td>
               </tr>
             ) : (
-              filteredScraps.map((scrap) => (
-                <tr key={scrap.id}>
+              filteredScraps.map((scrap) => {
+                const product = data.produtos.find((item) => item.id === scrap.productId)
+                const showVariant = supportsVariantSelection(product)
+                return (
+                  <tr key={scrap.id}>
                   <td className="table__cell--mobile-hide">{formatDateShort(scrap.createdAt)}</td>
                   <td className="table__cell--mobile-hide">
                     <span className={`badge badge--${scrap.type}`}>{typeLabels[scrap.type]}</span>
@@ -362,9 +491,7 @@ const ProducaoRefugo = () => {
                     </div>
                   </td>
                   <td className="table__cell--mobile-hide">
-                    {data.produtos.find((item) => item.id === scrap.productId)?.hasVariants
-                      ? getVariantName(scrap.productId, scrap.variantId)
-                      : '-'}
+                    {showVariant ? getVariantName(scrap.productId, scrap.variantId) : '-'}
                   </td>
                   <td className="table__cell--mobile-hide">{getOrderLabel(scrap.productionOrderId)}</td>
                   <td className="table__cell--mobile-hide">{scrap.quantity}</td>
@@ -377,9 +504,13 @@ const ProducaoRefugo = () => {
                   <td className="table__actions table__actions--end">
                     <div className="table__end">
                       <div className="table__status">
-                        <span className={`badge badge--${scrap.status}`}>
-                          {statusLabels[scrap.status]}
-                        </span>
+                        {scrap.type === 'retrabalho' ? (
+                          <span className={`badge badge--${scrap.status}`}>
+                            {statusLabels[scrap.status]}
+                          </span>
+                        ) : (
+                          <span className="table__sub">-</span>
+                        )}
                       </div>
                       <ActionMenu
                         items={[
@@ -388,8 +519,9 @@ const ProducaoRefugo = () => {
                       />
                     </div>
                   </td>
-                </tr>
-              ))
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
@@ -443,9 +575,9 @@ const ProducaoRefugo = () => {
                 ))}
               </select>
             </div>
-            {data.produtos.find((product) => product.id === form.productId)?.hasVariants &&
-              data.produtos.find((product) => product.id === form.productId)?.unit !==
-                'metro_linear' && (
+            {supportsVariantSelection(
+              data.produtos.find((product) => product.id === form.productId),
+            ) && (
                 <div className="modal__group">
                   <label className="modal__label" htmlFor="refugo-variant">
                     Variante
@@ -488,25 +620,27 @@ const ProducaoRefugo = () => {
                 ))}
               </select>
             </div>
-            <div className="modal__group">
-              <label className="modal__label" htmlFor="refugo-status">
-                Status
-              </label>
-              <select
-                id="refugo-status"
-                className="modal__input"
-                value={form.status}
-                onChange={(event) =>
-                  updateForm({ status: event.target.value as ProductionScrapStatus })
-                }
-              >
-                {Object.entries(statusLabels).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {form.type === 'retrabalho' && (
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="refugo-status">
+                  Status
+                </label>
+                <select
+                  id="refugo-status"
+                  className="modal__input"
+                  value={form.status}
+                  onChange={(event) =>
+                    updateForm({ status: event.target.value as ProductionScrapStatus })
+                  }
+                >
+                  {Object.entries(statusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="modal__row">
@@ -537,6 +671,11 @@ const ProducaoRefugo = () => {
                   updateForm({ estimatedCost: value ?? 0 })
                 }
               />
+              {costSuggestion.unit > 0 && (
+                <p className="modal__help">
+                  Sugestao: {formatCurrency(costSuggestion.total)} ({formatCurrency(costSuggestion.unit)} por un)
+                </p>
+              )}
             </div>
           </div>
 

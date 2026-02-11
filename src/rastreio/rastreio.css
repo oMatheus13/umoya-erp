@@ -1,0 +1,390 @@
+.rastreio-body {
+  background:
+    radial-gradient(circle at top left, rgba(170, 255, 0, 0.18), transparent 45%),
+    radial-gradient(circle at 80% 20%, rgba(74, 163, 255, 0.16), transparent 40%),
+    linear-gradient(120deg, #f7f5f1 0%, #f1efe8 100%);
+  color: var(--color-ink);
+  overflow: auto;
+}
+
+.rastreio-body #root {
+  min-height: 100%;
+}
+
+.rastreio-app {
+  min-height: 100vh;
+  padding: var(--spacing-3xl) var(--spacing-xl);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
+}
+
+.rastreio-app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--texture-paper);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rastreio-app::after {
+  content: '';
+  position: fixed;
+  width: 360px;
+  height: 360px;
+  right: -120px;
+  bottom: -120px;
+  background: radial-gradient(circle, rgba(15, 17, 22, 0.15), transparent 70%);
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.rastreio-shell {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
+}
+
+.rastreio-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: var(--spacing-2xl);
+  align-items: center;
+  animation: rastreio-rise 0.6s ease both;
+}
+
+.rastreio-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.rastreio-title {
+  margin: var(--spacing-sm) 0;
+  font-size: var(--font-size-5xl);
+  line-height: 1.05;
+}
+
+.rastreio-subtitle {
+  margin: 0;
+  color: var(--color-ink-muted);
+  font-size: var(--font-size-lg);
+  max-width: 36ch;
+}
+
+.rastreio-search {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--color-line);
+  border-radius: var(--border-radius-lg);
+  padding: var(--spacing-lg);
+  display: grid;
+  gap: var(--spacing-sm);
+  box-shadow: var(--box-shadow-sm);
+}
+
+.rastreio-search__label {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.rastreio-search__row {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.rastreio-search__input {
+  flex: 1 1 auto;
+  border-bottom: 1px solid var(--color-line-strong);
+  padding: var(--spacing-2xs) 0;
+  font-size: var(--font-size-lg);
+}
+
+.rastreio-search__button {
+  border-radius: var(--border-radius-full);
+  border: 1px solid var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-true-white);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.rastreio-search__button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--box-shadow-sm);
+}
+
+.rastreio-search__hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.rastreio-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-line);
+  border-radius: var(--border-radius-xl);
+  padding: var(--spacing-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  box-shadow: var(--box-shadow-md);
+  animation: rastreio-rise 0.7s ease both;
+}
+
+.rastreio-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.rastreio-card__title {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+}
+
+.rastreio-card__meta {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+}
+
+.rastreio-chip {
+  border-radius: var(--border-radius-full);
+  padding: var(--spacing-2xs) var(--spacing-sm);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border: 1px solid var(--color-line-strong);
+  background: var(--color-lime-soft);
+}
+
+.rastreio-chip--route {
+  background: rgba(74, 163, 255, 0.15);
+}
+
+.rastreio-chip--ready {
+  background: rgba(76, 210, 123, 0.18);
+}
+
+.rastreio-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.rastreio-summary__item {
+  background: var(--color-surface);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xs);
+}
+
+.rastreio-summary__label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.rastreio-summary__value {
+  font-size: var(--font-size-xl);
+}
+
+.rastreio-items {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.rastreio-item {
+  background: var(--color-true-white);
+  border-radius: var(--border-radius-lg);
+  border: 1px solid var(--color-line);
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  box-shadow: var(--box-shadow-sm);
+  animation: rastreio-rise 0.5s ease both;
+  animation-delay: var(--delay, 0s);
+}
+
+.rastreio-item__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+}
+
+.rastreio-item__title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.rastreio-item__meta {
+  margin: var(--spacing-2xs) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.rastreio-item__status {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+.rastreio-tag {
+  margin-top: var(--spacing-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  border-radius: var(--border-radius-full);
+  padding: 2px 8px;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  background: rgba(255, 179, 71, 0.2);
+  color: var(--color-ink);
+}
+
+.rastreio-tag--partial {
+  border: 1px solid rgba(255, 179, 71, 0.35);
+}
+
+.rastreio-steps-scroll {
+  overflow-x: auto;
+  padding-bottom: var(--spacing-xs);
+}
+
+.rastreio-steps {
+  --step-count: 6;
+  --step-progress: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--step-count), minmax(120px, 1fr));
+  gap: var(--spacing-sm);
+  min-width: 600px;
+  padding: var(--spacing-sm) 0 var(--spacing-sm);
+}
+
+.rastreio-steps::before,
+.rastreio-steps::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  top: 16px;
+  background: var(--color-line);
+  z-index: 0;
+}
+
+.rastreio-steps::after {
+  right: auto;
+  width: calc((var(--step-progress)) / (var(--step-count) - 1) * 100%);
+  background: var(--color-ink);
+}
+
+.rastreio-step {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+}
+
+.rastreio-step__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--border-radius-full);
+  border: 2px solid var(--color-ink);
+  background: var(--color-surface);
+}
+
+.rastreio-step.is-active .rastreio-step__dot {
+  background: var(--color-lime);
+}
+
+.rastreio-step__label {
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+}
+
+.rastreio-step.is-active .rastreio-step__label {
+  color: var(--color-ink);
+}
+
+.rastreio-status {
+  font-size: var(--font-size-sm);
+  color: var(--color-ink-muted);
+}
+
+.rastreio-status--error {
+  color: var(--color-danger);
+}
+
+@keyframes rastreio-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .rastreio-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .rastreio-title {
+    font-size: var(--font-size-4xl);
+  }
+
+  .rastreio-search__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .rastreio-app {
+    padding: var(--spacing-2xl) var(--spacing-lg);
+  }
+
+  .rastreio-card__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .rastreio-steps {
+    min-width: 520px;
+  }
+}

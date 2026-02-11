@@ -1,4 +1,5 @@
 import type {
+  DeliveryItem,
   ERPData,
   FinanceEntry,
   Order,
@@ -6,6 +7,7 @@ import type {
   PdvCashSession,
   Product,
   ProductMaterialUsage,
+  ProductionScrapStatus,
   ProductUnit,
   Quote,
   Receipt,
@@ -27,6 +29,7 @@ import {
   saveStorage,
 } from './storage'
 import { createId } from '../utils/ids'
+import { buildItemKey } from '../utils/tracking'
 
 type RemoteSync = (data: ERPData) => void | Promise<void>
 type SaveOptions = {
@@ -443,6 +446,13 @@ const normalizeData = (data: ERPData) => {
     if (producedInternally !== product.producedInternally) {
       changed = true
     }
+    const demoldTimeDays =
+      typeof product.demoldTimeDays === 'number' && Number.isFinite(product.demoldTimeDays)
+        ? Math.max(0, product.demoldTimeDays)
+        : undefined
+    if (demoldTimeDays !== product.demoldTimeDays) {
+      changed = true
+    }
     return {
       ...product,
       priceMin,
@@ -453,6 +463,7 @@ const normalizeData = (data: ERPData) => {
       hasVariants,
       materialUsages,
       batchRecipe,
+      demoldTimeDays,
     }
   })
 
@@ -549,7 +560,49 @@ const normalizeData = (data: ERPData) => {
   })
   const ordensProducao = ensureArray(data.ordensProducao, [])
   const lotesProducao = ensureArray(data.lotesProducao, [])
-  const refugosProducao = ensureArray(data.refugosProducao, [])
+  const refugosProducao = ensureArray(data.refugosProducao, []).map((scrap) => {
+    let changedScrap = false
+    const next = { ...scrap } as typeof scrap & { status?: ProductionScrapStatus }
+    const unit = productUnitById.get(scrap.productId)
+    const hasVariants = productHasVariantsById.get(scrap.productId) ?? false
+    if (!scrap.variantId && unit !== 'metro_linear' && hasVariants) {
+      const fallbackVariant = primaryVariantByProduct.get(scrap.productId)
+      if (fallbackVariant) {
+        changed = true
+        changedScrap = true
+        next.variantId = fallbackVariant
+      }
+    }
+    const quantity = Number.isFinite(scrap.quantity) ? scrap.quantity : 0
+    if (quantity !== scrap.quantity) {
+      changed = true
+      changedScrap = true
+      next.quantity = quantity
+    }
+    const estimatedCost = Number.isFinite(scrap.estimatedCost)
+      ? scrap.estimatedCost
+      : undefined
+    if (estimatedCost !== scrap.estimatedCost) {
+      changed = true
+      changedScrap = true
+      next.estimatedCost = estimatedCost
+    }
+    if (scrap.type === 'retrabalho') {
+      const nextStatus: ProductionScrapStatus =
+        scrap.status === 'resolvido' ? 'resolvido' : 'aberto'
+      if (nextStatus !== scrap.status) {
+        changed = true
+        changedScrap = true
+        next.status = nextStatus
+      }
+    } else if ('status' in next) {
+      changed = true
+      changedScrap = true
+      delete next.status
+    }
+    return changedScrap ? next : scrap
+  })
+  const ajustesEstoqueProdutos = ensureArray(data.ajustesEstoqueProdutos, [])
   const consumosMateriais = ensureArray(data.consumosMateriais, [])
   const orcamentos = ensureArray(data.orcamentos, []).map((quote) => ({
     ...quote,
@@ -568,7 +621,116 @@ const normalizeData = (data: ERPData) => {
     }
     return purchase
   })
-  const entregas = ensureArray(data.entregas, [])
+  const pedidosById = new Map(pedidos.map((order) => [order.id, order]))
+  const producaoById = new Map(ordensProducao.map((order) => [order.id, order]))
+
+  const buildDeliveryItemsFromOrder = (order: Order): DeliveryItem[] =>
+    order.items.map((item) => ({
+      productId: item.productId,
+      variantId: item.variantId,
+      customLength: item.customLength,
+      customWidth: item.customWidth,
+      customHeight: item.customHeight,
+      unitPrice: item.unitPrice,
+      quantity: item.quantity,
+    }))
+
+  const buildDeliveryItemFromProduction = (
+    production: (typeof ordensProducao)[number],
+  ): DeliveryItem => ({
+    productId: production.productId,
+    variantId: production.variantId,
+    customLength: production.customLength,
+    quantity: production.quantity,
+  })
+
+  const entregas = ensureArray(data.entregas, []).map((delivery) => {
+    let deliveryChanged = false
+    const rawItems = Array.isArray(delivery.items) ? delivery.items : []
+    if (rawItems !== delivery.items) {
+      deliveryChanged = true
+    }
+
+    let items: DeliveryItem[] = rawItems.map((item) => {
+      let itemChanged = false
+      const quantity = Number.isFinite(item.quantity) ? item.quantity : 0
+      if (quantity !== item.quantity) {
+        itemChanged = true
+      }
+      const customLength = Number.isFinite(item.customLength) ? item.customLength : undefined
+      const customWidth = Number.isFinite(item.customWidth) ? item.customWidth : undefined
+      const customHeight = Number.isFinite(item.customHeight) ? item.customHeight : undefined
+      if (
+        customLength !== item.customLength ||
+        customWidth !== item.customWidth ||
+        customHeight !== item.customHeight
+      ) {
+        itemChanged = true
+      }
+      const unitPrice = Number.isFinite(item.unitPrice) ? item.unitPrice : undefined
+      if (unitPrice !== item.unitPrice) {
+        itemChanged = true
+      }
+      if (itemChanged) {
+        deliveryChanged = true
+        return {
+          ...item,
+          quantity,
+          customLength,
+          customWidth,
+          customHeight,
+          unitPrice,
+        }
+      }
+      return item
+    })
+
+    if (items.length === 0) {
+      const production = producaoById.get(delivery.productionOrderId)
+      if (production) {
+        items = [buildDeliveryItemFromProduction(production)]
+        deliveryChanged = true
+      } else {
+        const order = pedidosById.get(delivery.orderId)
+        if (order) {
+          items = buildDeliveryItemsFromOrder(order)
+          deliveryChanged = true
+        }
+      }
+    }
+
+    const order = pedidosById.get(delivery.orderId)
+    if (order && items.length > 0) {
+      const orderItemsByKey = new Map<string, Order['items'][number][]>()
+      order.items.forEach((item) => {
+        const key = buildItemKey({ ...item, unitPrice: undefined })
+        const current = orderItemsByKey.get(key)
+        if (current) {
+          current.push(item)
+        } else {
+          orderItemsByKey.set(key, [item])
+        }
+      })
+      items = items.map((item) => {
+        if (Number.isFinite(item.unitPrice)) {
+          return item
+        }
+        const key = buildItemKey({ ...item, unitPrice: undefined })
+        const matches = orderItemsByKey.get(key)
+        if (matches && matches.length === 1) {
+          deliveryChanged = true
+          return { ...item, unitPrice: matches[0].unitPrice }
+        }
+        return item
+      })
+    }
+
+    if (deliveryChanged) {
+      changed = true
+      return { ...delivery, items }
+    }
+    return delivery
+  })
   const fiscalNotas = ensureArray(data.fiscalNotas, [])
   const qualidadeChecks = ensureArray(data.qualidadeChecks, [])
   const manutencoes = ensureArray(data.manutencoes, [])
@@ -656,6 +818,8 @@ const normalizeData = (data: ERPData) => {
   })
 
   const normalizedProducao = ordensProducao.map((order) => {
+    let next = order
+    let orderChanged = false
     if (
       !order.variantId &&
       productUnitById.get(order.productId) !== 'metro_linear' &&
@@ -664,10 +828,23 @@ const normalizeData = (data: ERPData) => {
       const fallbackVariant = primaryVariantByProduct.get(order.productId)
       if (fallbackVariant) {
         changed = true
-        return { ...order, variantId: fallbackVariant }
+        orderChanged = true
+        next = { ...next, variantId: fallbackVariant }
       }
     }
-    return order
+    const linkedOrderId = order.linkedOrderId || undefined
+    if (linkedOrderId !== order.linkedOrderId) {
+      changed = true
+      orderChanged = true
+      next = { ...next, linkedOrderId }
+    }
+    const originProductionOrderId = order.originProductionOrderId || undefined
+    if (originProductionOrderId !== order.originProductionOrderId) {
+      changed = true
+      orderChanged = true
+      next = { ...next, originProductionOrderId }
+    }
+    return orderChanged ? next : order
   })
 
   const normalized = {
@@ -680,6 +857,7 @@ const normalizeData = (data: ERPData) => {
     ordensProducao: normalizedProducao,
     lotesProducao,
     refugosProducao,
+    ajustesEstoqueProdutos,
     consumosMateriais,
     orcamentos,
     pedidos,

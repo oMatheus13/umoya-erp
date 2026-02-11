@@ -120,6 +120,7 @@ export type Product = {
   costPrice?: number
   laborCost?: number
   laborBasis?: 'unidade' | 'metro'
+  demoldTimeDays?: number
   sku?: string
   stock?: number
   unit?: ProductUnit
@@ -256,6 +257,16 @@ export type Receipt = {
   issuedAt: string
 }
 
+export type DeliveryItem = {
+  productId: UUID
+  variantId?: UUID
+  customLength?: number
+  customWidth?: number
+  customHeight?: number
+  unitPrice?: number
+  quantity: number
+}
+
 export type PurchaseItem = {
   id: UUID
   type: 'material' | 'extra'
@@ -290,6 +301,7 @@ export type Delivery = {
   vehicle?: string
   driver?: string
   isPartial?: boolean
+  items?: DeliveryItem[]
   proofType?: 'foto' | 'assinatura'
   proofNote?: string
   occurrence?: string
@@ -298,12 +310,14 @@ export type Delivery = {
 export type ProductionOrder = {
   id: UUID
   orderId: UUID
+  linkedOrderId?: UUID
   productId: UUID
   variantId?: UUID
   quantity: number
   customLength?: number
   moldId?: UUID
   status: 'aberta' | 'em_producao' | 'finalizada'
+  originProductionOrderId?: UUID
   plannedAt?: string
   finishedAt?: string
   source?: 'pedido' | 'estoque'
@@ -315,6 +329,7 @@ export type ProductionLot = {
   id: UUID
   productId: UUID
   variantId?: UUID
+  productionOrderId?: UUID
   quantity: number
   customLength?: number
   status: ProductionLotStatus
@@ -328,18 +343,34 @@ export type ProductionLot = {
 export type ProductionScrapStatus = 'aberto' | 'resolvido'
 export type ProductionScrapType = 'refugo' | 'retrabalho'
 
-export type ProductionScrap = {
+export type ProductionScrapBase = {
   id: UUID
   productId: UUID
   variantId?: UUID
   productionOrderId?: UUID
   quantity: number
-  type: ProductionScrapType
   reason: string
   estimatedCost?: number
-  status: ProductionScrapStatus
   createdAt: string
   notes?: string
+}
+
+export type ProductionScrap =
+  | (ProductionScrapBase & { type: 'refugo' })
+  | (ProductionScrapBase & { type: 'retrabalho'; status: ProductionScrapStatus })
+
+export type ProductStockAdjustmentType = 'entrada' | 'saida'
+
+export type ProductStockAdjustment = {
+  id: UUID
+  productId: UUID
+  variantId?: UUID
+  lotId?: UUID
+  type: ProductStockAdjustmentType
+  quantity: number
+  producedAt?: string
+  notes?: string
+  createdAt: string
 }
 
 export type FiscalNoteStatus = 'pendente' | 'autorizada' | 'cancelada'
@@ -619,6 +650,7 @@ export type ERPData = {
   ordensProducao: ProductionOrder[]
   lotesProducao: ProductionLot[]
   refugosProducao: ProductionScrap[]
+  ajustesEstoqueProdutos: ProductStockAdjustment[]
   consumosMateriais: MaterialConsumption[]
   orcamentos: Quote[]
   pedidos: Order[]

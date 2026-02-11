@@ -48,6 +48,8 @@ import type { User } from '@supabase/supabase-js'
 import type { ERPData, UserAccount } from './types/erp'
 import { erpRemote } from './services/erpRemote'
 import { dataService, ensureStorageSeed, setRemoteSync } from './services/dataService'
+import { trackingRemote } from './services/trackingRemote'
+import { buildTrackingPayloads } from './services/trackingPayload'
 import { supabase } from './services/supabaseClient'
 import { createDevSeed, DEV_BACKUP_KEY, DEV_MODE_KEY, DEV_SEEDED_KEY } from './services/devSeed'
 import { createSignedAvatarUrl } from './services/storageFiles'
@@ -244,6 +246,7 @@ function App() {
       const result = await erpRemote.upsertState(syncId, payload)
       if (!result.error) {
         await runBackup(syncId, payload)
+        await trackingRemote.upsertOrders(syncId, buildTrackingPayloads(payload))
       }
       if (result.error) {
         pending = payload

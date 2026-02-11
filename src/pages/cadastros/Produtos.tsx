@@ -24,6 +24,7 @@ type ProductForm = {
   costPrice: number
   laborCost: number
   laborBasis: 'unidade' | 'metro'
+  demoldTimeDays: number
   stock: number
   unit: ProductUnit | ''
   length: number
@@ -85,6 +86,7 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     costPrice: 0,
     laborCost: 0,
     laborBasis: 'unidade',
+    demoldTimeDays: 0,
     stock: 0,
     unit: '',
     length: 0,
@@ -148,6 +150,7 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
       costPrice: 0,
       laborCost: 0,
       laborBasis: 'unidade',
+      demoldTimeDays: 0,
       stock: 0,
       unit: '',
       length: 0,
@@ -225,6 +228,7 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
       costPrice: product.costPrice ?? 0,
       laborCost: product.laborCost ?? 0,
       laborBasis: product.laborBasis ?? 'unidade',
+      demoldTimeDays: product.demoldTimeDays ?? 0,
       stock: product.stock ?? 0,
       unit: product.unit ?? '',
       length: product.length ?? 0,
@@ -317,6 +321,10 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
       setStatus('O custo de mao de obra nao pode ser negativo.')
       return
     }
+    if (form.demoldTimeDays < 0) {
+      setStatus('O tempo de desenforma nao pode ser negativo.')
+      return
+    }
     const priceMinValue = form.priceMin ?? undefined
     if (!form.hasVariants && priceMinValue !== undefined && !Number.isFinite(priceMinValue)) {
       setStatus('Informe um preco minimo valido.')
@@ -347,6 +355,7 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
       costPrice: form.costPrice,
       laborCost: form.laborCost,
       laborBasis: form.laborBasis,
+      demoldTimeDays: form.demoldTimeDays > 0 ? form.demoldTimeDays : undefined,
       stock: form.stock,
       unit: form.unit,
       length: form.length || undefined,
@@ -833,6 +842,31 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
                   onValueChange={(value) => updateForm({ height: value })}
                   disabled={form.hasVariants}
                 />
+              </div>
+            </div>
+
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="product-demold-time">
+                  Tempo de desenforma (dias)
+                </label>
+                <input
+                  id="product-demold-time"
+                  className="modal__input"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={form.demoldTimeDays}
+                  onChange={(event) =>
+                    updateForm({ demoldTimeDays: Number(event.target.value) })
+                  }
+                  disabled={!form.producedInternally}
+                />
+                {!form.producedInternally && (
+                  <p className="modal__help">
+                    Ative a linha de producao para usar este prazo nos lotes.
+                  </p>
+                )}
               </div>
             </div>
 
