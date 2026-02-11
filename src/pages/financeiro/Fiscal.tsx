@@ -8,6 +8,7 @@ import { useERPData } from '../../store/appStore'
 import type { FiscalNote, FiscalNoteStatus, FiscalNoteType } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { resolveOrderCode } from '../../utils/orderCode'
 
 type FiscalForm = {
   type: FiscalNoteType
@@ -60,6 +61,10 @@ const Fiscal = () => {
     () => [...data.pedidos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [data.pedidos],
   )
+  const orderById = useMemo(
+    () => new Map(data.pedidos.map((order) => [order.id, order])),
+    [data.pedidos],
+  )
 
   const notes = useMemo(
     () => [...data.fiscalNotas].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
@@ -81,7 +86,14 @@ const Fiscal = () => {
 
   const getClientName = (id?: string) =>
     clients.find((client) => client.id === id)?.name ?? 'Cliente'
-  const getOrderLabel = (id?: string) => (id ? `#${id.slice(-6)}` : '-')
+  const getOrderLabel = (id?: string) => {
+    if (!id) {
+      return '-'
+    }
+    const order = orderById.get(id)
+    const code = order ? resolveOrderCode(order) : id.slice(0, 6)
+    return `#${code}`
+  }
 
   const resetForm = () => {
     setForm({
@@ -377,7 +389,7 @@ const Fiscal = () => {
               <option value="">Sem pedido</option>
               {orders.map((order) => (
                 <option key={order.id} value={order.id}>
-                  #{order.id.slice(-6)} · {getClientName(order.clientId)} ·{' '}
+                  #{resolveOrderCode(order)} · {getClientName(order.clientId)} ·{' '}
                   {order.total.toFixed(2)}
                 </option>
               ))}

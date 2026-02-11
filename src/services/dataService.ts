@@ -29,6 +29,7 @@ import {
   saveStorage,
 } from './storage'
 import { createId } from '../utils/ids'
+import { ensureOrderCodes } from '../utils/orderCode'
 import { buildItemKey } from '../utils/tracking'
 
 type RemoteSync = (data: ERPData) => void | Promise<void>
@@ -628,7 +629,11 @@ const normalizeData = (data: ERPData) => {
     if (unique.length !== pedidosRaw.length) {
       changed = true
     }
-    return unique
+    const { orders: normalizedOrders, changed: codesChanged } = ensureOrderCodes(unique)
+    if (codesChanged) {
+      changed = true
+    }
+    return normalizedOrders
   })()
   const recibos = ensureArray(data.recibos, [])
   const comprasHistorico = ensureArray(data.comprasHistorico, []).map((purchase) => {

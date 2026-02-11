@@ -235,6 +235,7 @@ export type OrderItem = {
 
 export type Order = {
   id: UUID
+  trackingCode?: string
   clientId: UUID
   obraId?: UUID
   items: OrderItem[]

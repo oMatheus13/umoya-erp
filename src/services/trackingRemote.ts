@@ -19,16 +19,12 @@ export const trackingRemote = {
         []
       const seen = new Set<string>()
       payloads.forEach((payload) => {
-        const fullId = payload.orderId.toLowerCase()
-        if (fullId && !seen.has(fullId)) {
-          rows.push({ order_id: fullId, workspace_id: workspaceId, payload })
-          seen.add(fullId)
+        const code = (payload.orderCode || payload.orderId).trim().toLowerCase()
+        if (!code || seen.has(code)) {
+          return
         }
-        const shortId = fullId.slice(0, 6)
-        if (shortId && !seen.has(shortId)) {
-          rows.push({ order_id: shortId, workspace_id: workspaceId, payload })
-          seen.add(shortId)
-        }
+        rows.push({ order_id: code, workspace_id: workspaceId, payload })
+        seen.add(code)
       })
       const { error } = await supabase.from('tracking_orders').upsert(rows, {
         onConflict: 'order_id',
@@ -44,17 +40,16 @@ export const trackingRemote = {
   },
   async deleteOrders(
     workspaceId: string,
-    orderIds: string[],
+    orderCodes: string[],
   ): Promise<RemoteResult<boolean>> {
     if (!supabase) {
       return { data: null, error: 'Supabase nao configurado.' }
     }
     const ids = new Set<string>()
-    orderIds.forEach((orderId) => {
-      const fullId = orderId.toLowerCase()
-      if (fullId) {
-        ids.add(fullId)
-        ids.add(fullId.slice(0, 6))
+    orderCodes.forEach((code) => {
+      const normalized = code.trim().toLowerCase()
+      if (normalized) {
+        ids.add(normalized)
       }
     })
     const list = Array.from(ids)

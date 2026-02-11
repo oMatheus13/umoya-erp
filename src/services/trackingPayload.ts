@@ -6,6 +6,7 @@ import type {
   TrackingStage,
   TrackingSummaryStage,
 } from '../types/tracking'
+import { resolveOrderCode } from '../utils/orderCode'
 import { buildItemKey, formatItemLabel, type ItemKeyInput } from '../utils/tracking'
 
 type AggregatedItem = ItemKeyInput & {
@@ -225,6 +226,7 @@ export const buildTrackingPayloads = (data: ERPData): TrackingOrderPayload[] => 
     const summary = buildSummary(items)
     return {
       orderId: order.id,
+      orderCode: resolveOrderCode(order),
       clientName: clientById.get(order.clientId)?.name,
       createdAt: order.createdAt,
       fulfillment: order.fulfillment ?? 'producao',

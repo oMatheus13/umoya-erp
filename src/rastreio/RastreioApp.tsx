@@ -149,8 +149,8 @@ const RastreioApp = () => {
   useEffect(() => {
     const baseTitle = document.title || 'Umoya Rastreio'
     if (tracking) {
-      const shortCode = tracking.orderId.slice(0, 6)
-      document.title = `${baseTitle} - Pedido ${shortCode}`
+      const code = tracking.orderCode || tracking.orderId.slice(0, 6)
+      document.title = `${baseTitle} - Pedido ${code}`
       return
     }
     document.title = baseTitle
@@ -176,6 +176,10 @@ const RastreioApp = () => {
   const summaryChipClass = tracking ? resolveSummaryChip(tracking.summary.stage) : 'rastreio-chip'
   const summaryMeta = tracking
     ? `${tracking.summary.deliveredQuantity} de ${tracking.summary.totalQuantity} itens entregues`
+    : ''
+
+  const trackingCode = tracking
+    ? tracking.orderCode || tracking.orderId.slice(0, 6)
     : ''
 
   return (
@@ -228,7 +232,7 @@ const RastreioApp = () => {
             <header className="rastreio-card__header">
               <div>
                 <h2 className="rastreio-card__title">
-                  Pedido #{tracking.orderId.slice(0, 6)}
+                  Pedido #{trackingCode}
                 </h2>
                 <p className="rastreio-card__meta">
                   {summaryLabel}

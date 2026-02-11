@@ -9,6 +9,7 @@ import { useERPData } from '../../store/appStore'
 import type { ProductionLot, ProductionLotStatus, ProductionOrder } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { resolveOrderCode } from '../../utils/orderCode'
 
 type LotForm = {
   productionOrderId: string
@@ -342,7 +343,14 @@ const ProducaoLotes = () => {
     data.produtos
       .find((product) => product.id === productId)
       ?.variants?.find((variant) => variant.id === variantId)?.name ?? '-'
-  const getOrderCode = (orderId: string) => orderId.slice(0, 6)
+  const orderById = useMemo(
+    () => new Map(data.pedidos.map((order) => [order.id, order])),
+    [data.pedidos],
+  )
+  const getOrderCode = (orderId: string) => {
+    const order = orderById.get(orderId)
+    return order ? resolveOrderCode(order) : orderId.slice(0, 6)
+  }
   const getProductionLabel = (production: ProductionOrder) => {
     const productName = getProductName(production.productId)
     const variantName = production.variantId

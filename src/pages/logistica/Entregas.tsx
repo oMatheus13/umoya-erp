@@ -6,6 +6,7 @@ import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Delivery, DeliveryItem, Order } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
+import { resolveOrderCode } from '../../utils/orderCode'
 import { buildItemKey, formatItemLabel } from '../../utils/tracking'
 
 type ProofOption = 'nenhum' | 'foto' | 'assinatura'
@@ -111,9 +112,18 @@ const Entregas = () => {
     () => deliveries.filter((delivery) => delivery.occurrence).slice(0, 6),
     [deliveries],
   )
+  const orderById = useMemo(
+    () => new Map(data.pedidos.map((order) => [order.id, order])),
+    [data.pedidos],
+  )
 
   const findClient = (clientId: string) =>
     data.clientes.find((client) => client.id === clientId)
+
+  const getOrderCode = (orderId: string) => {
+    const order = orderById.get(orderId)
+    return order ? resolveOrderCode(order) : orderId.slice(0, 6)
+  }
 
   const findObra = (obraId?: string | null) => {
     if (!obraId) {
@@ -461,7 +471,7 @@ const Entregas = () => {
                       {client?.name ?? 'Cliente'} • {obra?.name ?? 'Obra'}
                     </h3>
                     <span className="card__meta">
-                      Pedido #{delivery.orderId.slice(0, 6)}
+                      Pedido #{getOrderCode(delivery.orderId)}
                     </span>
                   </div>
                   <span className={`badge badge--${delivery.status}`}>
@@ -719,7 +729,7 @@ const Entregas = () => {
         title="Excluir entrega?"
         description={
           deliveryToDelete
-            ? `A entrega do pedido ${deliveryToDelete.orderId.slice(0, 6)} sera removida.`
+            ? `A entrega do pedido ${getOrderCode(deliveryToDelete.orderId)} sera removida.`
             : 'Esta acao nao pode ser desfeita.'
         }
         onClose={() => setDeleteId(null)}

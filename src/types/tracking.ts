@@ -32,6 +32,7 @@ export type TrackingOrderSummary = {
 
 export type TrackingOrderPayload = {
   orderId: string
+  orderCode: string
   clientName?: string
   createdAt: string
   fulfillment: 'producao' | 'estoque'

@@ -18,6 +18,7 @@ import { useERPData } from '../../store/appStore'
 import type { Client, FulfillmentMode, Order, ProductVariant, ProductionOrder } from '../../types/erp'
 import { formatCurrency } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { resolveOrderCode } from '../../utils/orderCode'
 import { getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
 import {
   resolveUnitPrice as resolveUnitPriceBase,
@@ -58,8 +59,8 @@ const TRACKING_BASE_URL =
   (import.meta.env.VITE_TRACKING_BASE_URL as string | undefined) ||
   'https://rastreio.umoya.omatheus.com'
 
-const buildTrackingLink = (orderId: string) =>
-  `${TRACKING_BASE_URL.replace(/\/+$/, '')}/${orderId}`
+const buildTrackingLink = (orderCode: string) =>
+  `${TRACKING_BASE_URL.replace(/\/+$/, '')}/${orderCode}`
 
 const createEmptyItem = (): OrderItemForm => ({
   productId: '',
@@ -180,14 +181,15 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     setForm((prev) => ({ ...prev, ...patch }))
   }
 
-  const copyTrackingLink = async (orderId: string) => {
-    const link = buildTrackingLink(orderId)
+  const copyTrackingLink = async (order: Order) => {
+    const orderCode = resolveOrderCode(order)
+    const link = buildTrackingLink(orderCode)
     setTrackingLink(link)
     const workspaceId = data.meta?.workspaceId
     if (workspaceId) {
       const snapshot = dataService.getAll()
       const trackingPayload = buildTrackingPayloads(snapshot).find(
-        (entry) => entry.orderId === orderId,
+        (entry) => entry.orderId === order.id,
       )
       if (trackingPayload) {
         void trackingRemote.upsertOrders(workspaceId, [trackingPayload])
@@ -813,8 +815,10 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     }
 
     const discountType = form.discountType || undefined
+    const orderId = existingOrder?.id ?? createId()
     const order: Order = {
-      id: existingOrder?.id ?? createId(),
+      id: orderId,
+      trackingCode: existingOrder?.trackingCode ?? resolveOrderCode({ id: orderId }),
       clientId: resolvedClient.id,
       obraId: form.clientId ? form.obraId || undefined : undefined,
       items,
@@ -983,8 +987,10 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
         description: orderToDelete ? getClientName(orderToDelete.clientId) : undefined,
       },
     })
-    if (payload.meta?.workspaceId) {
-      void trackingRemote.deleteOrders(payload.meta.workspaceId, [deleteId])
+    if (payload.meta?.workspaceId && orderToDelete) {
+      void trackingRemote.deleteOrders(payload.meta.workspaceId, [
+        resolveOrderCode(orderToDelete),
+      ])
     }
     refresh()
     setIsModalOpen(false)
@@ -1556,7 +1562,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
                 )}
                 {orders.map((order) => {
                   const discountInfo = getOrderDiscountInfo(order)
-                  const orderCode = order.id.slice(0, 6)
+                  const orderCode = resolveOrderCode(order)
                   return (
                     <tr key={order.id}>
                       <td className="table__cell--truncate">
@@ -1615,7 +1621,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
                               { label: 'Editar', onClick: () => handleEdit(order) },
                               {
                                 label: 'Copiar link de rastreio',
-                                onClick: () => void copyTrackingLink(order.id),
+                                onClick: () => void copyTrackingLink(order),
                               },
                             ]}
                           />

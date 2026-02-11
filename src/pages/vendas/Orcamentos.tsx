@@ -17,6 +17,7 @@ import type { Client, FulfillmentMode, ProductVariant, Quote } from '../../types
 import type { PageIntentAction } from '../../types/ui'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { resolveOrderCode } from '../../utils/orderCode'
 import { getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
 import {
   resolveUnitPrice as resolveUnitPriceBase,
@@ -541,6 +542,7 @@ const Orcamentos = ({
         ...payload.pedidos,
         {
           id: orderId,
+          trackingCode: resolveOrderCode({ id: orderId }),
           clientId: quote.clientId,
           obraId: quote.obraId,
           items: quote.items,
@@ -556,7 +558,7 @@ const Orcamentos = ({
         },
       ]
       quote.convertedOrderId = orderId
-      conversionMessage = ` Pedido ${orderId.slice(0, 6)} criado automaticamente.`
+      conversionMessage = ` Pedido ${resolveOrderCode({ id: orderId })} criado automaticamente.`
     }
 
     if (existingQuote) {
@@ -586,9 +588,20 @@ const Orcamentos = ({
     () => [...data.orcamentos].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     [data.orcamentos],
   )
+  const orderById = useMemo(
+    () => new Map(data.pedidos.map((order) => [order.id, order])),
+    [data.pedidos],
+  )
 
   const getClientName = (id: string) =>
     data.clientes.find((client) => client.id === id)?.name ?? 'Cliente'
+  const getOrderCode = (orderId?: string) => {
+    if (!orderId) {
+      return '-'
+    }
+    const order = orderById.get(orderId)
+    return order ? resolveOrderCode(order) : orderId.slice(0, 6)
+  }
 
   const getProductName = (id: string) =>
     data.produtos.find((product) => product.id === id)?.name ?? 'Produto'
@@ -842,6 +855,7 @@ const Orcamentos = ({
         ...payload.pedidos,
         {
           id: orderId,
+          trackingCode: resolveOrderCode({ id: orderId }),
           clientId: target.clientId,
           obraId: target.obraId,
           items: target.items,
@@ -1583,7 +1597,7 @@ const Orcamentos = ({
                       <td className="table__cell--mobile-hide">{formatCurrency(quote.total)}</td>
                       <td className="table__cell--mobile-hide">{formatDateShort(quote.validUntil)}</td>
                       <td className="table__cell--mobile-hide">
-                        {quote.convertedOrderId ? `#${quote.convertedOrderId.slice(0, 6)}` : '-'}
+                        {quote.convertedOrderId ? `#${getOrderCode(quote.convertedOrderId)}` : '-'}
                       </td>
                       <td className="table__actions table__actions--end">
                         <div className="table__end">
