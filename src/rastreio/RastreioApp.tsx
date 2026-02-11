@@ -127,7 +127,10 @@ const RastreioApp = () => {
     setTracking(null)
     setUpdatedAt(null)
     const { data, error } = await supabaseNoPersist
-      .rpc('get_tracking_order', { p_order_id: nextCode })
+      .rpc<{ order_id: string; payload: TrackingOrderPayload; updated_at: string }>(
+        'get_tracking_order',
+        { p_order_id: nextCode },
+      )
       .maybeSingle()
     if (error || !data?.payload) {
       setStatus('error')

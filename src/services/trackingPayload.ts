@@ -114,6 +114,10 @@ const mergeOrderItems = (data: ERPData, orderId: string): AggregatedItem[] => {
       items.set(key, existing)
       return
     }
+    const product = productById.get(item.productId)
+    const variantName =
+      product?.variants?.find((variant) => variant.id === item.variantId)?.name
+    const label = formatItemLabel(product?.name, variantName, item)
     items.set(key, {
       productId: item.productId,
       variantId: item.variantId,
@@ -124,17 +128,10 @@ const mergeOrderItems = (data: ERPData, orderId: string): AggregatedItem[] => {
       key,
       productionKey,
       quantity: item.quantity,
+      label,
     })
   })
-  return Array.from(items.values()).map((item) => {
-    const product = productById.get(item.productId)
-    const variantName =
-      product?.variants?.find((variant) => variant.id === item.variantId)?.name
-    return {
-      ...item,
-      label: formatItemLabel(product?.name, variantName, item),
-    }
-  })
+  return Array.from(items.values())
 }
 
 const buildSummary = (items: TrackingItem[]): TrackingOrderSummary => {
