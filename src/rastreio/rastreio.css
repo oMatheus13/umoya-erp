@@ -408,19 +408,10 @@
     width: 100%;
   }
 
-  .rastreio-steps {
-    grid-template-columns: repeat(var(--step-count), minmax(100px, 1fr));
-    min-width: 460px;
-    gap: var(--spacing-xs);
+  .rastreio-items {
+    grid-template-columns: 1fr;
   }
 
-  .rastreio-step__label {
-    font-size: 0.68rem;
-    line-height: 1.2;
-  }
-}
-
-@media (max-width: 640px) {
   .rastreio-steps-scroll {
     overflow-x: visible;
     padding-bottom: 0;
