@@ -1,4 +1,12 @@
-import { useRef, useState, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import logotipo from '../../assets/brand/logotipo.svg'
 import loginMockErp from '../../assets/brand/login-mock-3.webp'
 import loginMockPdv from '../../assets/brand/login-mock-2.webp'
@@ -9,13 +17,27 @@ import {
   isSupabaseEnabled,
   setAuthPersistence,
 } from '../../services/supabaseClient'
+import { useERPData } from '../../store/appStore'
+import type { Employee } from '../../types/erp'
 import { resolveAppKind } from '../../utils/appContext'
+import { resolveDeviceId, resolveDeviceInfo } from '../../utils/device'
+import { createId } from '../../utils/ids'
+import { verifyPin } from '../../utils/pin'
 import type { User } from '@supabase/supabase-js'
 
-type LoginProps = {
-  onLogin: (user: User) => void
-  onDevLogin?: () => void
-}
+type LoginProps =
+  | {
+      variant?: 'credentials'
+      onLogin: (user: User) => void
+      onDevLogin?: () => void
+      className?: string
+    }
+  | {
+      variant: 'pin'
+      onPinLogin: (employee: Employee) => void
+      className?: string
+      pinNotice?: string | null
+    }
 
 type LoginForm = {
   identifier: string
@@ -41,6 +63,11 @@ const createEmptyLogin = (): LoginForm => ({
 const normalizeEmail = (value: string) => value.trim().toLowerCase()
 const normalizeCpf = (value: string) => value.replace(/\D/g, '')
 const buildCpfEmail = (cpf: string) => `${cpf}@umoya.cpf`
+const MAX_PIN_LENGTH = 8
+const MIN_PIN_LENGTH = 4
+const MAX_ATTEMPTS = 5
+const LOCK_MS = 30000
+const LOCK_STORAGE_KEY = 'umoya_pop_lock'
 const RECOVERY_CODE_LENGTH = 6
 const createEmptyRecoveryCode = () =>
   Array.from({ length: RECOVERY_CODE_LENGTH }, () => '')
@@ -69,11 +96,63 @@ const resolveIdentifierEmail = (identifier: string): IdentifierResolution => {
   return { email: normalizeEmail(matchedUser.email), usedCpfFallback: false }
 }
 
-const Login = ({ onLogin, onDevLogin }: LoginProps) => {
+const isEmployeeActive = (employee: Employee) =>
+  employee.active !== false && employee.isActive !== false
+
+const loadLockState = () => {
+  if (typeof window === 'undefined') {
+    return { attempts: 0, lockedUntil: null as number | null }
+  }
+  try {
+    const raw = window.localStorage.getItem(LOCK_STORAGE_KEY)
+    if (!raw) {
+      return { attempts: 0, lockedUntil: null as number | null }
+    }
+    const parsed = JSON.parse(raw) as { attempts?: number; lockedUntil?: number }
+    return {
+      attempts: Number.isFinite(parsed.attempts) ? (parsed.attempts as number) : 0,
+      lockedUntil: Number.isFinite(parsed.lockedUntil)
+        ? (parsed.lockedUntil as number)
+        : null,
+    }
+  } catch {
+    return { attempts: 0, lockedUntil: null as number | null }
+  }
+}
+
+const saveLockState = (attempts: number, lockedUntil: number | null) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.setItem(
+      LOCK_STORAGE_KEY,
+      JSON.stringify({ attempts, lockedUntil }),
+    )
+  } catch {
+    // ignore
+  }
+}
+
+const Login = (props: LoginProps) => {
+  const isPin = props.variant === 'pin'
+  const onLogin = 'onLogin' in props ? props.onLogin : undefined
+  const onDevLogin = 'onDevLogin' in props ? props.onDevLogin : undefined
+  const onPinLogin = 'onPinLogin' in props ? props.onPinLogin : undefined
+  const pinNotice = 'pinNotice' in props ? props.pinNotice ?? null : null
+  const rootClassName = ['login', props.className].filter(Boolean).join(' ')
+  const { data } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState<LoginForm>(createEmptyLogin())
   const [rememberMe, setRememberMe] = useState(() => getAuthPersistence())
   const [showPassword, setShowPassword] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [pinStatus, setPinStatus] = useState<string | null>(pinNotice)
+  const [showPin, setShowPin] = useState(false)
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false)
+  const { attempts: initialAttempts, lockedUntil: initialLockedUntil } = loadLockState()
+  const [failedAttempts, setFailedAttempts] = useState(initialAttempts)
+  const [lockedUntil, setLockedUntil] = useState<number | null>(initialLockedUntil)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [recoveryIdentifier, setRecoveryIdentifier] = useState('')
   const [recoveryStatus, setRecoveryStatus] = useState<string | null>(null)
@@ -89,11 +168,25 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
   const [recoveryVerifying, setRecoveryVerifying] = useState(false)
   const recoveryCodeRefs = useRef<Array<HTMLInputElement | null>>([])
   const autoVerifyTokenRef = useRef('')
+  const lockTickerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [lockTick, setLockTick] = useState(0)
+  const deviceIdRef = useRef(resolveDeviceId())
   const supabaseEnabled = isSupabaseEnabled()
   const recoveryToken = recoveryCode.join('')
   const appKind = resolveAppKind()
-  const appLabel = appKind === 'pdv' ? 'PDV' : 'ERP'
+  const appLabel = appKind === 'pdv' ? 'PDV' : appKind === 'pop' ? 'POP' : 'ERP'
   const appMock = appKind === 'pdv' ? loginMockPdv : loginMockErp
+  const employeesWithPin = useMemo(
+    () =>
+      data.funcionarios
+        .filter((employee) => isEmployeeActive(employee) && employee.pinHash)
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [data.funcionarios],
+  )
+  const isLocked = lockedUntil !== null && Date.now() < lockedUntil
+  const lockSeconds = isLocked
+    ? Math.max(0, Math.ceil((lockedUntil - Date.now()) / 1000))
+    : 0
 
   const updateLoginForm = (patch: Partial<LoginForm>) => {
     setLoginForm((prev) => ({ ...prev, ...patch }))
@@ -138,12 +231,200 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
         return
       }
       setStatus(null)
+      if (!onLogin) {
+        setStatus('Login indisponivel.')
+        return
+      }
       onLogin(data.user)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Falha de rede.'
       setStatus(`Falha ao conectar no Supabase. ${message}`)
     }
   }
+
+  const logPinAttempt = (success: boolean, employeeId?: string) => {
+    const payload = dataService.getAll()
+    const now = new Date().toISOString()
+    payload.popPinAttempts = [
+      ...payload.popPinAttempts,
+      {
+        id: createId(),
+        employeeId,
+        success,
+        timestamp: now,
+        deviceId: deviceIdRef.current,
+        deviceInfo: resolveDeviceInfo(),
+        createdAt: now,
+      },
+    ]
+    dataService.replaceAll(payload)
+  }
+
+  const findEmployeeByPin = async (pin: string) => {
+    for (const employee of employeesWithPin) {
+      if (!employee.pinHash) {
+        continue
+      }
+      if (await verifyPin(pin, employee.pinHash)) {
+        return employee
+      }
+    }
+    return null
+  }
+
+  const handlePinSubmit = async () => {
+    if (!isPin || isVerifyingPin) {
+      return
+    }
+    if (isLocked) {
+      setPinStatus(`Bloqueado. Aguarde ${lockSeconds}s.`)
+      return
+    }
+    if (pinInput.trim().length < MIN_PIN_LENGTH) {
+      setPinStatus('Informe o PIN.')
+      return
+    }
+    setIsVerifyingPin(true)
+    const employee = await findEmployeeByPin(pinInput.trim())
+    if (!employee) {
+      const nextAttempts = failedAttempts + 1
+      setFailedAttempts(nextAttempts)
+      logPinAttempt(false)
+      setPinStatus('PIN incorreto.')
+      setPinInput('')
+      if (nextAttempts >= MAX_ATTEMPTS) {
+        setLockedUntil(Date.now() + LOCK_MS)
+        setFailedAttempts(0)
+      }
+      setIsVerifyingPin(false)
+      return
+    }
+    setFailedAttempts(0)
+    setLockedUntil(null)
+    logPinAttempt(true, employee.id)
+    setPinInput('')
+    setPinStatus(null)
+    setShowPin(false)
+    onPinLogin?.(employee)
+    setIsVerifyingPin(false)
+  }
+
+  const handleDigit = (value: string) => {
+    if (isLocked) {
+      return
+    }
+    if (pinInput.length >= MAX_PIN_LENGTH) {
+      return
+    }
+    setPinInput((prev) => prev + value)
+    setPinStatus(null)
+  }
+
+  const handleBackspace = () => {
+    if (isLocked) {
+      return
+    }
+    setPinInput((prev) => prev.slice(0, -1))
+    setPinStatus(null)
+  }
+
+  const handlePinFormSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void handlePinSubmit()
+  }
+
+  const handlePinChange = (event: FormEvent<HTMLInputElement>) => {
+    const next = event.currentTarget.value.replace(/\D/g, '').slice(0, MAX_PIN_LENGTH)
+    setPinInput(next)
+    setPinStatus(null)
+  }
+
+  useEffect(() => {
+    if (!isPin || !pinNotice) {
+      return
+    }
+    setPinStatus(pinNotice)
+  }, [isPin, pinNotice])
+
+  useEffect(() => {
+    if (!isPin) {
+      return
+    }
+    saveLockState(failedAttempts, lockedUntil)
+  }, [isPin, failedAttempts, lockedUntil])
+
+  useEffect(() => {
+    if (!isPin) {
+      return
+    }
+    if (!lockedUntil) {
+      if (lockTickerRef.current) {
+        clearInterval(lockTickerRef.current)
+        lockTickerRef.current = null
+      }
+      return
+    }
+    if (lockTickerRef.current) {
+      return
+    }
+    lockTickerRef.current = setInterval(() => {
+      setLockTick((value) => value + 1)
+    }, 500)
+    return () => {
+      if (lockTickerRef.current) {
+        clearInterval(lockTickerRef.current)
+        lockTickerRef.current = null
+      }
+    }
+  }, [isPin, lockedUntil])
+
+  useEffect(() => {
+    if (!isPin || !lockedUntil) {
+      return
+    }
+    if (Date.now() >= lockedUntil) {
+      setLockedUntil(null)
+      setFailedAttempts(0)
+      setPinStatus(null)
+    }
+  }, [isPin, lockTick, lockedUntil])
+
+  useEffect(() => {
+    if (!isPin) {
+      return
+    }
+    const handleKey = (event: globalThis.KeyboardEvent) => {
+      if (isLocked) {
+        return
+      }
+      const target = event.target as HTMLElement | null
+      if (target?.isContentEditable) {
+        return
+      }
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+        return
+      }
+      if (/^\d$/.test(event.key)) {
+        handleDigit(event.key)
+        return
+      }
+      if (event.key === 'Backspace') {
+        handleBackspace()
+        return
+      }
+      if (event.key === 'Enter') {
+        void handlePinSubmit()
+      }
+    }
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', handleKey)
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('keydown', handleKey)
+      }
+    }
+  }, [isPin, isLocked, handleBackspace, handleDigit, handlePinSubmit])
 
   const openRecovery = () => {
     setRecoveryOpen(true)
@@ -374,7 +655,10 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
     applyRecoveryCode(value, index)
   }
 
-  const handleRecoveryCodeKeyDown = (index: number, event: KeyboardEvent<HTMLInputElement>) => {
+  const handleRecoveryCodeKeyDown = (
+    index: number,
+    event: ReactKeyboardEvent<HTMLInputElement>,
+  ) => {
     if (event.key === 'Backspace' && !recoveryCode[index] && index > 0) {
       event.preventDefault()
       const next = [...recoveryCode]
@@ -391,8 +675,11 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
     applyRecoveryCode(text, index)
   }
 
+  const pinStatusMessage =
+    isLocked && lockSeconds > 0 ? `Bloqueado. Aguarde ${lockSeconds}s.` : pinStatus
+
   return (
-    <div className="login">
+    <div className={rootClassName}>
       <div className="login__panel">
         <div className="login__mock">
           <img src={appMock} alt="" />
@@ -404,7 +691,79 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
             <img className="login__logo" src={logotipo} alt={`Umoya ${appLabel}`} />
           </div>
 
-          {!supabaseEnabled ? (
+          {isPin ? (
+            <form className="login__form" onSubmit={handlePinFormSubmit}>
+              <div className="login__password">
+                <div className="login__field">
+                  <input
+                    className="form__input pop-pin-input"
+                    type={showPin ? 'text' : 'password'}
+                    value={pinInput}
+                    onChange={handlePinChange}
+                    placeholder="PIN"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={MAX_PIN_LENGTH}
+                  />
+                  <button
+                    className="login__toggle"
+                    type="button"
+                    aria-label={showPin ? 'Ocultar PIN' : 'Mostrar PIN'}
+                    aria-pressed={showPin}
+                    onClick={() => setShowPin((prev) => !prev)}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {showPin ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+              {employeesWithPin.length === 0 && (
+                <p className="login__hint">Nenhum funcionario com PIN cadastrado.</p>
+              )}
+              {pinStatusMessage && <p className="login__status">{pinStatusMessage}</p>}
+              <div className="pop-keypad pop-keypad--login">
+                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
+                  <button
+                    key={digit}
+                    type="button"
+                    className="pop-key"
+                    onClick={() => handleDigit(digit)}
+                    disabled={isVerifyingPin || isLocked}
+                  >
+                    {digit}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="pop-key pop-key--ghost"
+                  onClick={handleBackspace}
+                  disabled={isVerifyingPin || isLocked}
+                  aria-label="Apagar"
+                >
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    backspace
+                  </span>
+                  <span className="sr-only">Apagar</span>
+                </button>
+                <button
+                  type="button"
+                  className="pop-key"
+                  onClick={() => handleDigit('0')}
+                  disabled={isVerifyingPin || isLocked}
+                >
+                  0
+                </button>
+                <button
+                  type="submit"
+                  className="pop-key pop-key--primary"
+                  disabled={isVerifyingPin || isLocked}
+                >
+                  ok
+                </button>
+              </div>
+            </form>
+          ) : !supabaseEnabled ? (
             <p className="login__status">
               Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no arquivo `.env` para
               ativar login.
@@ -634,7 +993,7 @@ const Login = ({ onLogin, onDevLogin }: LoginProps) => {
             </form>
           )}
 
-          {!supabaseEnabled && onDevLogin && (
+          {!isPin && !supabaseEnabled && onDevLogin && (
             <div className="login__dev">
               <button
                 className="button button--ghost button--sm login__dev-button"
