@@ -10,7 +10,7 @@ import {
 import { erpRemote } from '../services/erpRemote'
 import { trackingRemote } from '../services/trackingRemote'
 import { buildTrackingPayloads } from '../services/trackingPayload'
-import { isSupabaseEnabled, supabase } from '../services/supabaseClient'
+import { supabase } from '../services/supabaseClient'
 import { useERPData } from '../store/appStore'
 import type {
   Employee,
@@ -112,9 +112,6 @@ const PopApp = () => {
     createEmptyProductionForm(),
   )
   const [confirmation, setConfirmation] = useState<string | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [authReady, setAuthReady] = useState(!isSupabaseEnabled())
-  const [authError, setAuthError] = useState<string | null>(null)
   const deviceIdRef = useRef(resolveDeviceId())
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -137,9 +134,6 @@ const PopApp = () => {
         (b.createdAt ?? b.plannedAt ?? '').localeCompare(a.createdAt ?? a.plannedAt ?? ''),
       )
   }, [data.ordensProducao])
-
-  const shouldLogin =
-    isSupabaseEnabled() && authReady && !isAuthenticated && !hasMeaningfulData(data)
 
   useEffect(() => {
     ensureStorageSeed()
@@ -169,7 +163,6 @@ const PopApp = () => {
 
   useEffect(() => {
     if (!supabase) {
-      setAuthReady(true)
       return
     }
     supabase.auth.getSession().then(({ data: sessionData }) => {
@@ -177,14 +170,12 @@ const PopApp = () => {
       if (user) {
         void startSession(user)
       }
-      setAuthReady(true)
     })
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       const user = session?.user ?? null
       if (!user) {
-        setIsAuthenticated(false)
         setRemoteSync(null)
         return
       }
@@ -197,7 +188,6 @@ const PopApp = () => {
 
   const startSession = async (user: User) => {
     setRemoteSync(null)
-    setAuthError(null)
     const resolvedSyncId =
       (user.user_metadata?.workspace_id as string | undefined) ?? user.id
 
@@ -220,8 +210,6 @@ const PopApp = () => {
     if (!remoteError) {
       const handler = createRemoteSync(resolvedSyncId)
       setRemoteSync(handler)
-    } else {
-      setAuthError(remote.error ?? 'Falha ao sincronizar.')
     }
 
     const localIsNewer =
@@ -234,7 +222,6 @@ const PopApp = () => {
       await trackingRemote.upsertOrders(resolvedSyncId, buildTrackingPayloads(latest))
     }
 
-    setIsAuthenticated(true)
   }
 
   const resetSession = (message?: string) => {
@@ -473,19 +460,6 @@ const PopApp = () => {
       }
     }
   }, [view])
-
-  if (shouldLogin) {
-    return (
-      <div className="pop-app pop-app--login">
-        <Login
-          onLogin={(user) => {
-            void startSession(user)
-          }}
-        />
-        {authError && <p className="pop-status">{authError}</p>}
-      </div>
-    )
-  }
 
   const breakAction = resolveBreakLabel()
 
