@@ -31,6 +31,9 @@
   text-align: center;
   letter-spacing: 1em;
   font-size: var(--font-size-xl);
+}
+
+.pop-login .login__form .pop-pin-input {
   padding-left: 2.2rem;
   padding-right: 2.2rem;
 }
