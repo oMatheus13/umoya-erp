@@ -34,8 +34,7 @@
 }
 
 .pop-login .login__form .pop-pin-input {
-  padding-left: 2.2rem;
-  padding-right: 2.2rem;
+  padding-right: 0;
 }
 
 .pop-keypad--login {
