@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useERPData } from '../../store/appStore'
 import { formatCurrency, formatDateShort } from '../../utils/format'
-import { resolveOrderCode } from '../../utils/orderCode'
+import { resolveOrderInternalCode } from '../../utils/orderCode'
 
 type PdvHistoryProps = {
   onOpen?: (target: 'pedidos' | 'orcamentos', id: string) => void
@@ -45,10 +45,10 @@ const PdvHistory = ({ onOpen }: PdvHistoryProps) => {
               type="button"
               className="list__item list__item--button list__item--center"
               onClick={() => onOpen?.('pedidos', order.id)}
-              aria-label={`Abrir pedido ${resolveOrderCode(order)}`}
+              aria-label={`Abrir pedido ${resolveOrderInternalCode(order)}`}
             >
               <div>
-                <strong>#{resolveOrderCode(order)}</strong>
+                <strong>#{resolveOrderInternalCode(order)}</strong>
                 <span className="list__meta">
                   {resolveClient(order.clientId)} · {formatDateShort(order.createdAt)}
                 </span>

@@ -25,6 +25,34 @@ export const resolveOrderCode = (order: Pick<Order, 'id' | 'trackingCode'>) => {
   return buildOrderCode(order.id)
 }
 
+export const resolveOrderPublicCode = (
+  order: Pick<Order, 'id' | 'publicCode' | 'trackingCode'>,
+) => {
+  const normalized = normalizeCode(order.publicCode)
+  if (normalized) {
+    return normalized
+  }
+  const legacy = normalizeCode(order.trackingCode)
+  if (legacy) {
+    return legacy
+  }
+  return buildOrderCode(order.id)
+}
+
+export const resolveOrderInternalCode = (
+  order: Pick<Order, 'id' | 'code' | 'trackingCode'>,
+) => {
+  const code = order.code?.trim()
+  if (code) {
+    return code
+  }
+  const legacy = normalizeCode(order.trackingCode)
+  if (legacy) {
+    return legacy
+  }
+  return buildOrderCode(order.id)
+}
+
 export const ensureOrderCodes = (orders: Order[]) => {
   const used = new Map<string, string>()
   let changed = false

@@ -8,7 +8,7 @@ import { useERPData } from '../../store/appStore'
 import type { FiscalNote, FiscalNoteStatus, FiscalNoteType } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
-import { resolveOrderCode } from '../../utils/orderCode'
+import { resolveOrderInternalCode } from '../../utils/orderCode'
 
 type FiscalForm = {
   type: FiscalNoteType
@@ -91,7 +91,7 @@ const Fiscal = () => {
       return '-'
     }
     const order = orderById.get(id)
-    const code = order ? resolveOrderCode(order) : id.slice(0, 6)
+    const code = order ? resolveOrderInternalCode(order) : id.slice(0, 6)
     return `#${code}`
   }
 
@@ -389,7 +389,7 @@ const Fiscal = () => {
               <option value="">Sem pedido</option>
               {orders.map((order) => (
                 <option key={order.id} value={order.id}>
-                  #{resolveOrderCode(order)} · {getClientName(order.clientId)} ·{' '}
+                  #{resolveOrderInternalCode(order)} · {getClientName(order.clientId)} ·{' '}
                   {order.total.toFixed(2)}
                 </option>
               ))}

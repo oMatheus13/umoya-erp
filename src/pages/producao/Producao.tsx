@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
@@ -16,11 +16,14 @@ import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { getUnitFactor } from '../../utils/pricing'
 import { convertUsageToPurchaseQuantity, getDefaultUsageUnit } from '../../utils/materialUsage'
+import { findStockItemIndex } from '../../utils/stockItems'
 
 const statusLabels: Record<ProductionOrder['status'], string> = {
-  aberta: 'Aberta',
-  em_producao: 'Em producao',
-  finalizada: 'Finalizada',
+  ABERTA: 'Aberta',
+  EM_ANDAMENTO: 'Em andamento',
+  PARCIAL: 'Parcial',
+  CONCLUIDA: 'Concluida',
+  CANCELADA: 'Cancelada',
 }
 
 const toCentimeters = (value: number) =>
@@ -29,6 +32,17 @@ const toCentimeters = (value: number) =>
 type ProducaoProps = {
   pageIntent?: PageIntentAction
   onConsumeIntent?: () => void
+}
+
+type ProductionEntryForm = {
+  productionOrderId: string
+  employeeId: string
+  date: string
+  quantity: number
+  lengthM: number
+  scrapQuantity: number
+  scrapLengthM: number
+  notes: string
 }
 
 const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
@@ -42,6 +56,19 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     quantity: 1,
     customLength: 0,
   })
+  const createEntryForm = (): ProductionEntryForm => ({
+    productionOrderId: '',
+    employeeId: '',
+    date: new Date().toISOString().slice(0, 10),
+    quantity: 1,
+    lengthM: 0,
+    scrapQuantity: 0,
+    scrapLengthM: 0,
+    notes: '',
+  })
+  const [isEntryOpen, setIsEntryOpen] = useState(false)
+  const [entryForm, setEntryForm] = useState<ProductionEntryForm>(createEntryForm())
+  const entryFormId = 'producao-apontamento-form'
 
   const productionOrders = useMemo(
     () =>
@@ -50,17 +77,36 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       ),
     [data.ordensProducao],
   )
+  const employees = useMemo(
+    () => [...data.funcionarios].sort((a, b) => a.name.localeCompare(b.name)),
+    [data.funcionarios],
+  )
+  const productionEntriesByOrder = useMemo(() => {
+    const map = new Map<string, (typeof data.productionEntries)[number][]>()
+    data.productionEntries.forEach((entry) => {
+      if (!entry.productionOrderId) {
+        return
+      }
+      const current = map.get(entry.productionOrderId) ?? []
+      current.push(entry)
+      map.set(entry.productionOrderId, current)
+    })
+    map.forEach((list) => {
+      list.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    })
+    return map
+  }, [data.productionEntries])
   const productionSummary = useMemo(() => {
     return productionOrders.reduce(
       (acc, order) => {
         acc.total += 1
-        if (order.status === 'aberta') {
+        if (order.status === 'ABERTA') {
           acc.open += 1
         }
-        if (order.status === 'em_producao') {
+        if (order.status === 'EM_ANDAMENTO' || order.status === 'PARCIAL') {
           acc.active += 1
         }
-        if (order.status === 'finalizada') {
+        if (order.status === 'CONCLUIDA') {
           acc.done += 1
         }
         return acc
@@ -72,6 +118,8 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const getOrder = (id: string) => data.pedidos.find((order) => order.id === id)
   const getClientName = (id: string) =>
     data.clientes.find((client) => client.id === id)?.name ?? 'Cliente'
+  const getEmployeeName = (id?: string) =>
+    employees.find((employee) => employee.id === id)?.name ?? 'Equipe'
   const getProductName = (id: string) =>
     data.produtos.find((product) => product.id === id)?.name ?? 'Produto'
   const getVariant = (productId: string, variantId?: string) =>
@@ -90,11 +138,25 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     const parts = [productName, variantName, lengthLabel].filter(Boolean)
     return `${parts.join(' · ')} · ${order.quantity} un`
   }
+  const getProductionCode = (order: ProductionOrder) =>
+    order.code?.trim() || order.id.slice(0, 6)
 
   const availableProducts = data.produtos.filter((product) => product.active !== false)
   const manualProduct = data.produtos.find((product) => product.id === manualForm.productId)
   const manualIsLinear = manualProduct?.unit === 'metro_linear'
   const manualHasVariants = manualProduct?.hasVariants ?? false
+  const entryOrder = useMemo(
+    () =>
+      data.ordensProducao.find((order) => order.id === entryForm.productionOrderId) ??
+      null,
+    [data.ordensProducao, entryForm.productionOrderId],
+  )
+  const entryProduct = entryOrder
+    ? data.produtos.find((product) => product.id === entryOrder.productId) ?? null
+    : null
+  const entryIsLinear = entryProduct?.unit === 'metro_linear'
+  const entryTotalLength = entryIsLinear ? entryForm.quantity * entryForm.lengthM : 0
+  const entryOrderCode = entryOrder ? getProductionCode(entryOrder) : '-'
 
   const resetManualForm = () => {
     const firstProduct = availableProducts[0]
@@ -149,6 +211,87 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     }))
   }
 
+  const openEntryModal = (order: ProductionOrder) => {
+    const product = data.produtos.find((item) => item.id === order.productId)
+    const isLinear = product?.unit === 'metro_linear'
+    const fallbackLength = Number.isFinite(product?.length) ? product?.length ?? 0 : 0
+    const length = isLinear
+      ? Number.isFinite(order.plannedLengthM)
+        ? order.plannedLengthM ?? fallbackLength
+        : Number.isFinite(order.customLength)
+          ? order.customLength ?? fallbackLength
+          : fallbackLength
+      : 0
+    setStatus(null)
+    setEntryForm({
+      productionOrderId: order.id,
+      employeeId: '',
+      date: new Date().toISOString().slice(0, 10),
+      quantity: 1,
+      lengthM: length,
+      scrapQuantity: 0,
+      scrapLengthM: 0,
+      notes: '',
+    })
+    setIsEntryOpen(true)
+  }
+
+  const updateEntryForm = (patch: Partial<ProductionEntryForm>) => {
+    setEntryForm((prev) => ({ ...prev, ...patch }))
+  }
+
+  const handleEntrySubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!entryForm.productionOrderId) {
+      setStatus('Selecione uma ordem para apontar.')
+      return
+    }
+    if (!entryForm.employeeId) {
+      setStatus('Selecione um funcionario.')
+      return
+    }
+    if (entryForm.quantity <= 0) {
+      setStatus('Informe uma quantidade valida.')
+      return
+    }
+    if (entryIsLinear && entryForm.lengthM <= 0) {
+      setStatus('Informe o comprimento.')
+      return
+    }
+    if (entryForm.scrapQuantity < 0 || entryForm.scrapQuantity > entryForm.quantity) {
+      setStatus('Refugo nao pode ser maior que a quantidade.')
+      return
+    }
+    const payload = dataService.getAll()
+    payload.productionEntries = [
+      ...payload.productionEntries,
+      {
+        id: createId(),
+        productionOrderId: entryForm.productionOrderId,
+        employeeId: entryForm.employeeId,
+        date: entryForm.date,
+        quantity: entryForm.quantity,
+        lengthM: entryIsLinear ? entryForm.lengthM : undefined,
+        scrapQuantity: entryForm.scrapQuantity > 0 ? entryForm.scrapQuantity : undefined,
+        scrapLengthM:
+          entryIsLinear && entryForm.scrapLengthM > 0 ? entryForm.scrapLengthM : undefined,
+        notes: entryForm.notes.trim() || undefined,
+        createdAt: new Date().toISOString(),
+      },
+    ]
+    dataService.replaceAll(payload, {
+      auditEvent: {
+        category: 'acao',
+        title: 'Apontamento registrado',
+        description: entryOrder ? `OP ${getProductionCode(entryOrder)}` : undefined,
+      },
+    })
+    refresh()
+    setStatus('Apontamento registrado.')
+    setIsEntryOpen(false)
+    setEntryForm(createEntryForm())
+  }
+
   const updateProduction = (
     next: ProductionOrder,
     audit?: { title: string; description?: string },
@@ -169,6 +312,9 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     const cm = Math.round(lengthMeters * 100)
     return cm > 0 ? cm : 0
   }
+
+  const formatMeasurement = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
 
   const toDateInputValue = (value?: string) =>
     value ? value.slice(0, 10) : new Date().toISOString().slice(0, 10)
@@ -313,13 +459,13 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   }
 
   const handleStart = (order: ProductionOrder) => {
-    if (order.status !== 'aberta') {
+    if (order.status !== 'ABERTA') {
       return
     }
     updateProduction(
       {
         ...order,
-        status: 'em_producao',
+        status: 'EM_ANDAMENTO',
         plannedAt: order.plannedAt ?? new Date().toISOString(),
       },
       {
@@ -327,29 +473,58 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
         description: getOrderLabel(order),
       },
     )
-    setStatus(`Ordem ${order.id.slice(0, 6)} em producao.`)
+    setStatus(`Ordem ${getProductionCode(order)} em andamento.`)
   }
 
   const handleFinish = (order: ProductionOrder) => {
-    if (order.status !== 'em_producao') {
+    if (order.status !== 'EM_ANDAMENTO' && order.status !== 'PARCIAL') {
       return
     }
     const nextOrder: ProductionOrder = {
       ...order,
-      status: 'finalizada',
+      status: 'CONCLUIDA',
       finishedAt: new Date().toISOString(),
     }
     const payload = dataService.getAll()
-    payload.ordensProducao = payload.ordensProducao.map((item) =>
-      item.id === order.id ? nextOrder : item,
+    const entries = payload.productionEntries.filter(
+      (entry) => entry.productionOrderId === order.id,
     )
+    let resolvedOrder = nextOrder
+    let resolvedLength = 0
+    let isLinear = false
     if (order.productId && order.quantity > 0) {
       const index = payload.produtos.findIndex((product) => product.id === order.productId)
       if (index >= 0) {
         const current = payload.produtos[index]
         if (current.unit === 'metro_linear') {
-          const length = order.customLength ?? current.length ?? 1
-          payload.produtos[index] = upsertLinearStockVariant(current, length, order.quantity)
+          isLinear = true
+          resolvedLength =
+            order.plannedLengthM ?? order.customLength ?? current.length ?? 0
+          const stockIndex = findStockItemIndex(
+            payload.stockItems,
+            current.id,
+            resolvedLength,
+          )
+          if (stockIndex >= 0) {
+            const target = payload.stockItems[stockIndex]
+            payload.stockItems[stockIndex] = {
+              ...target,
+              quantity: (target.quantity ?? 0) + order.quantity,
+              updatedAt: new Date().toISOString(),
+            }
+          } else {
+            payload.stockItems = [
+              ...payload.stockItems,
+              {
+                id: createId(),
+                productId: current.id,
+                lengthM: resolvedLength,
+                unit: 'un',
+                quantity: order.quantity,
+                createdAt: new Date().toISOString(),
+              },
+            ]
+          }
         } else if (current.hasVariants) {
           const variants = current.variants ?? []
           const targetVariantId = order.variantId ?? variants[0]?.id
@@ -403,6 +578,17 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
         }
       }
     }
+    if (entries.length === 0) {
+      const plannedQty = order.plannedQty ?? order.quantity
+      resolvedOrder = {
+        ...resolvedOrder,
+        producedQty: plannedQty,
+        producedLengthM: isLinear ? plannedQty * resolvedLength : undefined,
+      }
+    }
+    payload.ordensProducao = payload.ordensProducao.map((item) =>
+      item.id === order.id ? resolvedOrder : item,
+    )
     const consumptionResult = applyMaterialConsumption(payload, nextOrder)
     const linkedOrderId = order.linkedOrderId ?? order.orderId
     const linkedOrder = payload.pedidos.find((item) => item.id === linkedOrderId)
@@ -460,7 +646,9 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       ? 'Estoque de materia-prima atualizado.'
       : 'Sem consumo definido para este produto.'
     const warningSuffix = warnings ? ` ${warnings}` : ''
-    setStatus(`Ordem ${order.id.slice(0, 6)} finalizada. ${consumptionMessage}${warningSuffix}`)
+    setStatus(
+      `Ordem ${getProductionCode(order)} concluida. ${consumptionMessage}${warningSuffix}`,
+    )
   }
 
   const handleManualOrder = () => {
@@ -496,6 +684,8 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       return
     }
     const payload = dataService.getAll()
+    const now = new Date().toISOString()
+    const isLinear = product?.unit === 'metro_linear'
     const next: ProductionOrder = {
       id: createId(),
       orderId: `estoque_${createId()}`,
@@ -503,8 +693,11 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       variantId: manualForm.variantId || undefined,
       quantity: manualForm.quantity,
       customLength: manualForm.customLength > 0 ? manualForm.customLength : undefined,
-      status: 'aberta',
-      plannedAt: new Date().toISOString(),
+      plannedQty: manualForm.quantity,
+      plannedLengthM: isLinear ? manualForm.customLength : undefined,
+      status: 'ABERTA',
+      createdAt: now,
+      plannedAt: now,
       source: 'estoque',
     }
     payload.ordensProducao = [...payload.ordensProducao, next]
@@ -530,7 +723,7 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     }
     const payload = dataService.getAll()
     const target = payload.ordensProducao.find((order) => order.id === deleteId)
-    if (target && target.status === 'finalizada') {
+    if (target && target.status === 'CONCLUIDA') {
       const productIndex = payload.produtos.findIndex(
         (product) => product.id === target.productId,
       )
@@ -538,11 +731,21 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
         const current = payload.produtos[productIndex]
         if (current.unit === 'metro_linear') {
           const length = target.customLength ?? current.length ?? 1
-          payload.produtos[productIndex] = upsertLinearStockVariant(
-            current,
-            length,
-            -target.quantity,
-          )
+          const stockIndex = findStockItemIndex(payload.stockItems, current.id, length)
+          if (stockIndex >= 0) {
+            const stockItem = payload.stockItems[stockIndex]
+            payload.stockItems[stockIndex] = {
+              ...stockItem,
+              quantity: (stockItem.quantity ?? 0) - target.quantity,
+              updatedAt: new Date().toISOString(),
+            }
+          } else {
+            payload.produtos[productIndex] = upsertLinearStockVariant(
+              current,
+              length,
+              -target.quantity,
+            )
+          }
         } else if (current.hasVariants) {
           const variants = current.variants ?? []
           const targetVariantId = target.variantId ?? variants[0]?.id
@@ -625,11 +828,11 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
           <strong className="summary__value">{productionSummary.open}</strong>
         </article>
         <article className="summary__item">
-          <span className="summary__label">Em producao</span>
+          <span className="summary__label">Em andamento</span>
           <strong className="summary__value">{productionSummary.active}</strong>
         </article>
         <article className="summary__item">
-          <span className="summary__label">Finalizadas</span>
+          <span className="summary__label">Concluidas</span>
           <strong className="summary__value">{productionSummary.done}</strong>
         </article>
       </div>
@@ -674,13 +877,43 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                 : pedido
                   ? getClientName(pedido.clientId)
                   : 'Pedido'
-            const originLabel = order.originProductionOrderId
-              ? `Retrabalho de OP #${order.originProductionOrderId.slice(0, 6)}`
+            const originProduction = order.originProductionOrderId
+              ? data.ordensProducao.find(
+                  (entry) => entry.id === order.originProductionOrderId,
+                )
+              : null
+            const originLabel = originProduction
+              ? `Retrabalho de OP #${getProductionCode(originProduction)}`
               : ''
+            const statusKey = order.status.toLowerCase()
+            const plannedQty = Number.isFinite(order.plannedQty)
+              ? order.plannedQty ?? 0
+              : order.quantity
+            const producedQty = Number.isFinite(order.producedQty) ? order.producedQty ?? 0 : 0
+            const isLinear = product?.unit === 'metro_linear'
+            const plannedLength = isLinear
+              ? Number.isFinite(order.plannedLengthM)
+                ? order.plannedLengthM ?? 0
+                : Number.isFinite(length)
+                  ? length ?? 0
+                  : 0
+              : 0
+            const plannedTotalLength = isLinear ? plannedQty * plannedLength : 0
+            const producedLength = isLinear
+              ? Number.isFinite(order.producedLengthM)
+                ? order.producedLengthM ?? 0
+                : 0
+              : 0
+            const remainingQty = Math.max(0, plannedQty - producedQty)
+            const remainingLength = isLinear
+              ? Math.max(0, plannedTotalLength - producedLength)
+              : 0
+            const entries = productionEntriesByOrder.get(order.id) ?? []
+            const entryHistory = entries.slice(0, 3)
             return (
               <div key={order.id} className="list__item">
                 <div>
-                  <strong>Ordem #{order.id.slice(0, 6)}</strong>
+                  <strong>Ordem #{getProductionCode(order)}</strong>
                   <span className="list__meta">{sourceLabel}</span>
                   {originLabel && <span className="list__meta">{originLabel}</span>}
                   <span className="list__meta">
@@ -688,10 +921,10 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                     {variant ? ` • ${variant.name}` : ''}
                     {lengthLabel ? ` • ${lengthLabel}` : ''}
                     {' • '}
-                    {order.quantity} un
+                    {plannedQty} un
                   </span>
                   <span className="list__meta">
-                    <span className={`badge badge--${order.status}`}>
+                    <span className={`badge badge--${statusKey}`}>
                       {statusLabels[order.status]}
                     </span>
                     {' · '}
@@ -699,23 +932,69 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                     {' · '}
                     <span>Fim: {formatDateShort(order.finishedAt ?? '')}</span>
                   </span>
+                  <span className="list__meta">
+                    Planejado: {plannedQty} un
+                    {isLinear ? ` (${formatMeasurement(plannedTotalLength)} m)` : ''}
+                    {' · '}
+                    Produzido: {producedQty} un
+                    {isLinear ? ` (${formatMeasurement(producedLength)} m)` : ''}
+                    {' · '}
+                    Faltam: {remainingQty} un
+                    {isLinear ? ` (${formatMeasurement(remainingLength)} m)` : ''}
+                  </span>
+                  {entryHistory.map((entry) => {
+                    const entryLength = isLinear
+                      ? Number.isFinite(entry.lengthM)
+                        ? entry.lengthM ?? plannedLength
+                        : plannedLength
+                      : 0
+                    const entryTotal = isLinear ? entry.quantity * entryLength : 0
+                    const scrapLabel =
+                      entry.scrapQuantity && entry.scrapQuantity > 0
+                        ? ` · Refugo ${entry.scrapQuantity} un`
+                        : ''
+                    return (
+                      <span key={entry.id} className="list__meta">
+                        {formatDateShort(entry.date)} · {entry.quantity} un
+                        {isLinear ? ` (${formatMeasurement(entryTotal)} m)` : ''}
+                        {' · '}
+                        {getEmployeeName(entry.employeeId)}
+                        {scrapLabel}
+                      </span>
+                    )
+                  })}
+                  {entries.length > entryHistory.length && (
+                    <span className="list__meta">
+                      +{entries.length - entryHistory.length} apontamento(s)
+                    </span>
+                  )}
                 </div>
                 <div className="list__actions">
                   <button
                     className="button button--ghost"
                     type="button"
                     onClick={() => handleStart(order)}
-                    disabled={order.status !== 'aberta'}
+                    disabled={order.status !== 'ABERTA'}
                   >
                     Iniciar
+                  </button>
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={() => openEntryModal(order)}
+                    disabled={order.status === 'CONCLUIDA' || order.status === 'CANCELADA'}
+                  >
+                    Apontar
                   </button>
                   <button
                     className="button button--primary"
                     type="button"
                     onClick={() => handleFinish(order)}
-                    disabled={order.status !== 'em_producao'}
+                    disabled={
+                      order.status !== 'EM_ANDAMENTO' && order.status !== 'PARCIAL'
+                    }
                   >
-                    Finalizar
+                    Concluir
                   </button>
                   <button
                     className="button button--danger"
@@ -839,12 +1118,158 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
           </div>
         </div>
       </Modal>
+      <Modal
+        open={isEntryOpen}
+        onClose={() => setIsEntryOpen(false)}
+        title="Novo apontamento"
+        size="lg"
+        actions={
+          <button className="button button--primary" type="submit" form={entryFormId}>
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save
+            </span>
+            <span className="modal__action-label">Registrar apontamento</span>
+          </button>
+        }
+      >
+        <form id={entryFormId} className="modal__form" onSubmit={handleEntrySubmit}>
+          <div className="modal__group">
+            <label className="modal__label">Ordem</label>
+            <input
+              className="modal__input"
+              type="text"
+              value={entryOrderCode}
+              disabled
+            />
+          </div>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="entry-employee">
+                Responsavel
+              </label>
+              <select
+                id="entry-employee"
+                className="modal__input"
+                value={entryForm.employeeId}
+                onChange={(event) => updateEntryForm({ employeeId: event.target.value })}
+              >
+                <option value="">Selecionar funcionario</option>
+                {employees.map((employee) => (
+                  <option key={employee.id} value={employee.id}>
+                    {employee.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="entry-date">
+                Data
+              </label>
+              <input
+                id="entry-date"
+                className="modal__input"
+                type="date"
+                value={entryForm.date}
+                onChange={(event) => updateEntryForm({ date: event.target.value })}
+              />
+            </div>
+          </div>
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="entry-quantity">
+                Quantidade
+              </label>
+              <input
+                id="entry-quantity"
+                className="modal__input"
+                type="number"
+                min="0"
+                step="1"
+                value={entryForm.quantity}
+                onChange={(event) =>
+                  updateEntryForm({ quantity: Number(event.target.value) })
+                }
+              />
+            </div>
+            {entryIsLinear && (
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="entry-length">
+                  Comprimento (m)
+                </label>
+                <DimensionInput
+                  id="entry-length"
+                  className="modal__input"
+                  min="0"
+                  step={0.01}
+                  value={entryForm.lengthM}
+                  onValueChange={(value) => updateEntryForm({ lengthM: value })}
+                />
+              </div>
+            )}
+          </div>
+          {entryIsLinear && (
+            <div className="modal__group">
+              <label className="modal__label">Total (m)</label>
+              <input
+                className="modal__input"
+                type="text"
+                value={formatMeasurement(entryTotalLength)}
+                disabled
+              />
+            </div>
+          )}
+          <div className="modal__row">
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="entry-scrap">
+                Refugo (un)
+              </label>
+              <input
+                id="entry-scrap"
+                className="modal__input"
+                type="number"
+                min="0"
+                step="1"
+                value={entryForm.scrapQuantity}
+                onChange={(event) =>
+                  updateEntryForm({ scrapQuantity: Number(event.target.value) })
+                }
+              />
+            </div>
+            {entryIsLinear && (
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="entry-scrap-length">
+                  Refugo (m)
+                </label>
+                <DimensionInput
+                  id="entry-scrap-length"
+                  className="modal__input"
+                  min="0"
+                  step={0.01}
+                  value={entryForm.scrapLengthM}
+                  onValueChange={(value) => updateEntryForm({ scrapLengthM: value })}
+                />
+              </div>
+            )}
+          </div>
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="entry-notes">
+              Observacoes
+            </label>
+            <textarea
+              id="entry-notes"
+              className="modal__input modal__textarea"
+              value={entryForm.notes}
+              onChange={(event) => updateEntryForm({ notes: event.target.value })}
+            />
+          </div>
+        </form>
+      </Modal>
       <ConfirmDialog
         open={!!deleteId}
         title="Excluir ordem de producao?"
         description={
           orderToDelete
-            ? `A ordem #${orderToDelete.id.slice(0, 6)} sera removida.`
+            ? `A ordem #${getProductionCode(orderToDelete)} sera removida.`
             : 'Esta acao nao pode ser desfeita.'
         }
         onClose={() => setDeleteId(null)}

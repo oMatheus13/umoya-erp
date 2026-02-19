@@ -6,7 +6,7 @@ import type {
   TrackingStage,
   TrackingSummaryStage,
 } from '../types/tracking'
-import { resolveOrderCode } from '../utils/orderCode'
+import { resolveOrderPublicCode } from '../utils/orderCode'
 import { buildItemKey, formatItemLabel, type ItemKeyInput } from '../utils/tracking'
 
 type AggregatedItem = ItemKeyInput & {
@@ -29,7 +29,10 @@ const resolveProductionStage = (
     return 'aguardando_producao'
   }
   const hasStarted = productions.some(
-    (production) => production.status === 'em_producao' || production.status === 'finalizada',
+    (production) =>
+      production.status === 'EM_ANDAMENTO' ||
+      production.status === 'PARCIAL' ||
+      production.status === 'CONCLUIDA',
   )
   if (!hasStarted) {
     return 'aguardando_producao'
@@ -46,7 +49,7 @@ const resolveProductionStage = (
   if (lots.some((lot) => lot.status === 'pronto')) {
     return 'aguardando_envio'
   }
-  if (productions.every((production) => production.status === 'finalizada')) {
+  if (productions.every((production) => production.status === 'CONCLUIDA')) {
     return 'aguardando_envio'
   }
   return 'moldagem'
@@ -226,7 +229,7 @@ export const buildTrackingPayloads = (data: ERPData): TrackingOrderPayload[] => 
     const summary = buildSummary(items)
     return {
       orderId: order.id,
-      orderCode: resolveOrderCode(order),
+      orderCode: resolveOrderPublicCode(order),
       clientName: clientById.get(order.clientId)?.name,
       createdAt: order.createdAt,
       fulfillment: order.fulfillment ?? 'producao',

@@ -6,7 +6,7 @@ import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Delivery, DeliveryItem, Order } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
-import { resolveOrderCode } from '../../utils/orderCode'
+import { resolveOrderInternalCode } from '../../utils/orderCode'
 import { buildItemKey, formatItemLabel } from '../../utils/tracking'
 
 type ProofOption = 'nenhum' | 'foto' | 'assinatura'
@@ -122,7 +122,7 @@ const Entregas = () => {
 
   const getOrderCode = (orderId: string) => {
     const order = orderById.get(orderId)
-    return order ? resolveOrderCode(order) : orderId.slice(0, 6)
+    return order ? resolveOrderInternalCode(order) : orderId.slice(0, 6)
   }
 
   const findObra = (obraId?: string | null) => {

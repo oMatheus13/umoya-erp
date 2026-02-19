@@ -195,6 +195,13 @@ const Qualidade = () => {
 
   const getProductName = (id?: string) =>
     data.produtos.find((item) => item.id === id)?.name ?? '-'
+  const getProductionOrderCode = (id?: string) => {
+    if (!id) {
+      return '-'
+    }
+    const order = data.ordensProducao.find((entry) => entry.id === id)
+    return order?.code?.trim() || `#${id.slice(-5)}`
+  }
 
   const handleQualityEdit = (entry: QualityCheck) => {
     setQualityEditingId(entry.id)
@@ -449,7 +456,7 @@ const Qualidade = () => {
                         {formatDateShort(entry.createdAt)}
                       </td>
                       <td className="table__cell--mobile-hide">
-                        {entry.productionOrderId ? `#${entry.productionOrderId.slice(-5)}` : '-'}
+                        {getProductionOrderCode(entry.productionOrderId)}
                       </td>
                       <td className="table__cell--mobile-hide">
                         {entry.severity ? severityLabels[entry.severity] : '-'}
@@ -693,7 +700,7 @@ const Qualidade = () => {
                 <option value="">Sem ordem</option>
                 {productionOrders.map((order) => (
                   <option key={order.id} value={order.id}>
-                    #{order.id.slice(-5)} · {getProductName(order.productId)}
+                    {getProductionOrderCode(order.id)} · {getProductName(order.productId)}
                   </option>
                 ))}
               </select>

@@ -11,6 +11,10 @@
     { "src": "/rastreio/(.*)", "dest": "/rastreio/index.html" },
     { "src": "/pdv", "dest": "/pdv/index.html" },
     { "src": "/pdv/(.*)", "dest": "/pdv/index.html" },
+    { "src": "/apontamento", "dest": "/pop/index.html" },
+    { "src": "/apontamento/(.*)", "dest": "/pop/index.html" },
+    { "src": "/pop", "dest": "/pop/index.html" },
+    { "src": "/pop/(.*)", "dest": "/pop/index.html" },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "rastreio.umoya.omatheus.com" }],
@@ -20,6 +24,11 @@
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "pdv.umoya.omatheus.com" }],
       "dest": "/pdv/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "pop.umoya.omatheus.com" }],
+      "dest": "/pop/index.html"
     },
     {
       "src": "/(.*)",

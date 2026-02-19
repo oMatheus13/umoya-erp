@@ -19,6 +19,7 @@ type PaymentForm = {
   discounts: number
   status: EmployeePaymentStatus
   method: string
+  cashboxId: string
   notes: string
 }
 
@@ -47,6 +48,7 @@ const createEmptyForm = (): PaymentForm => {
     discounts: 0,
     status: 'aberto',
     method: 'a_definir',
+    cashboxId: '',
     notes: '',
   }
 }
@@ -68,6 +70,10 @@ const RhPagamentos = () => {
     () => [...data.pagamentosRH].sort((a, b) => b.periodEnd.localeCompare(a.periodEnd)),
     [data.pagamentosRH],
   )
+  const cashboxes = useMemo(
+    () => [...data.caixas].sort((a, b) => a.name.localeCompare(b.name)),
+    [data.caixas],
+  )
 
   const totalPago = pagamentos
     .filter((entry) => entry.status === 'pago')
@@ -78,6 +84,8 @@ const RhPagamentos = () => {
 
   const getEmployeeName = (id: string) =>
     employees.find((employee) => employee.id === id)?.name ?? '-'
+  const getCashboxName = (id?: string) =>
+    cashboxes.find((cashbox) => cashbox.id === id)?.name ?? '-'
 
   const openModal = () => {
     setStatus(null)
@@ -102,6 +110,7 @@ const RhPagamentos = () => {
       discounts: entry.discounts,
       status: entry.status,
       method: entry.method ?? 'a_definir',
+      cashboxId: entry.cashboxId ?? '',
       notes: entry.notes ?? '',
     })
     setIsModalOpen(true)
@@ -123,7 +132,62 @@ const RhPagamentos = () => {
       return
     }
 
+    if (form.status === 'pago' && !form.cashboxId) {
+      setStatus('Selecione o caixa para registrar o pagamento.')
+      return
+    }
+
     const payload = dataService.getAll()
+    const existingPayment = editingId
+      ? payload.pagamentosRH.find((entry) => entry.id === editingId)
+      : undefined
+    let financeEntryId = existingPayment?.financeEntryId
+    let paidAt = existingPayment?.paidAt
+    const createdAt = existingPayment?.createdAt ?? new Date().toISOString()
+
+    if (form.status === 'pago') {
+      paidAt = paidAt ?? new Date().toISOString()
+      const employeeName = getEmployeeName(form.employeeId)
+      const description = `Pagamento RH: ${employeeName} (${formatDateShort(
+        form.periodStart,
+      )} - ${formatDateShort(form.periodEnd)})`
+      if (financeEntryId) {
+        payload.financeiro = payload.financeiro.map((entry) =>
+          entry.id === financeEntryId
+            ? {
+                ...entry,
+                amount: total,
+                cashboxId: form.cashboxId,
+                description,
+                createdAt: entry.createdAt ?? paidAt ?? new Date().toISOString(),
+              }
+            : entry,
+        )
+      } else {
+        financeEntryId = createId()
+        payload.financeiro = [
+          ...payload.financeiro,
+          {
+            id: financeEntryId,
+            type: 'saida',
+            description,
+            amount: total,
+            category: 'RH',
+            createdAt: paidAt ?? new Date().toISOString(),
+            cashboxId: form.cashboxId,
+          },
+        ]
+      }
+    } else if (existingPayment?.financeEntryId) {
+      payload.financeiro = payload.financeiro.filter(
+        (entry) => entry.id !== existingPayment.financeEntryId,
+      )
+      financeEntryId = undefined
+      paidAt = undefined
+    } else {
+      paidAt = undefined
+    }
+
     const next: EmployeePayment = {
       id: editingId ?? createId(),
       employeeId: form.employeeId,
@@ -135,10 +199,10 @@ const RhPagamentos = () => {
       total,
       status: form.status,
       method: form.method || undefined,
-      createdAt:
-        payload.pagamentosRH.find((entry) => entry.id === editingId)?.createdAt ??
-        new Date().toISOString(),
-      paidAt: form.status === 'pago' ? new Date().toISOString() : undefined,
+      cashboxId: form.status === 'pago' ? form.cashboxId : undefined,
+      financeEntryId,
+      createdAt,
+      paidAt,
       notes: form.notes.trim() || undefined,
     }
 
@@ -160,7 +224,13 @@ const RhPagamentos = () => {
       return
     }
     const payload = dataService.getAll()
+    const target = payload.pagamentosRH.find((entry) => entry.id === deleteId)
     payload.pagamentosRH = payload.pagamentosRH.filter((entry) => entry.id !== deleteId)
+    if (target?.financeEntryId) {
+      payload.financeiro = payload.financeiro.filter(
+        (entry) => entry.id !== target.financeEntryId,
+      )
+    }
     dataService.replaceAll(payload)
     refresh()
     setIsModalOpen(false)
@@ -213,7 +283,7 @@ const RhPagamentos = () => {
                 <th>Funcionario</th>
                 <th>Periodo</th>
                 <th>Total</th>
-                <th>Metodo</th>
+                <th>Caixa</th>
                 <th className="table__actions table__actions--end">Status / Editar</th>
               </tr>
             </thead>
@@ -242,7 +312,9 @@ const RhPagamentos = () => {
                     {formatDateShort(entry.periodStart)} - {formatDateShort(entry.periodEnd)}
                   </td>
                   <td className="table__cell--mobile-hide">{formatCurrency(entry.total)}</td>
-                  <td className="table__cell--mobile-hide">{entry.method ?? '-'}</td>
+                  <td className="table__cell--mobile-hide">
+                    {entry.cashboxId ? getCashboxName(entry.cashboxId) : '-'}
+                  </td>
                   <td className="table__actions table__actions--end">
                     <div className="table__end">
                       <div className="table__status">
@@ -335,6 +407,29 @@ const RhPagamentos = () => {
               </select>
             </div>
           </div>
+
+          {form.status === 'pago' && (
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="pay-cashbox">
+                Caixa
+              </label>
+              <select
+                id="pay-cashbox"
+                className="modal__input"
+                value={form.cashboxId}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, cashboxId: event.target.value }))
+                }
+              >
+                <option value="">Selecione o caixa</option>
+                {cashboxes.map((cashbox) => (
+                  <option key={cashbox.id} value={cashbox.id}>
+                    {cashbox.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="modal__row">
             <div className="modal__group">

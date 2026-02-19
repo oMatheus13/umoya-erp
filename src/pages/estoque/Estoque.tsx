@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -7,15 +8,29 @@ import type { ProductStockAdjustmentType } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { adjustProductStock } from '../../utils/stock'
+import { findStockItem, findStockItemIndex } from '../../utils/stockItems'
 
 type StockAdjustForm = {
   productId: string
   variantId: string
+  lengthM: number
   type: ProductStockAdjustmentType
   quantity: number
   producedAt: string
   lotId: string
   notes: string
+}
+
+type StockRow = {
+  productId: string
+  productName: string
+  variantId: string
+  variantName: string
+  variantLocked: boolean
+  stock: number
+  lengthM?: number
+  totalLengthM?: number
+  source: 'stock_item' | 'variant' | 'product'
 }
 
 const Estoque = () => {
@@ -25,6 +40,7 @@ const Estoque = () => {
   const [form, setForm] = useState<StockAdjustForm>({
     productId: '',
     variantId: '',
+    lengthM: 0,
     type: 'entrada',
     quantity: 0,
     producedAt: '',
@@ -38,40 +54,78 @@ const Estoque = () => {
     [data.produtos],
   )
 
-  const variants = useMemo(
-    () =>
-      data.produtos.flatMap((product) => {
-        const entries = (product.variants ?? []).map((variant) => ({
-          productId: product.id,
-          productName: product.name,
-          variantId: variant.id,
-          variantName: variant.name,
-          variantLocked: variant.locked ?? false,
-          stock: variant.stock ?? 0,
-        }))
-        const hasLinearVariants =
-          product.unit === 'metro_linear' && (product.variants ?? []).length > 0
-        if (product.hasVariants || hasLinearVariants) {
-          return entries
-        }
-        return [
-          {
+  const stockRows = useMemo<StockRow[]>(() => {
+    const rows: StockRow[] = []
+    const stockItemsByProduct = new Map<string, (typeof data.stockItems)[number][]>()
+    data.stockItems.forEach((item) => {
+      const current = stockItemsByProduct.get(item.productId) ?? []
+      current.push(item)
+      stockItemsByProduct.set(item.productId, current)
+    })
+    data.produtos.forEach((product) => {
+      const isLinear = product.unit === 'metro_linear'
+      const productStockItems = stockItemsByProduct.get(product.id) ?? []
+      if (isLinear && productStockItems.length > 0) {
+        productStockItems.forEach((item) => {
+          const lengthM = Number.isFinite(item.lengthM) ? item.lengthM ?? 0 : 0
+          const totalLengthM = lengthM > 0 ? (item.quantity ?? 0) * lengthM : undefined
+          rows.push({
             productId: product.id,
             productName: product.name,
-            variantId: `${product.id}-base`,
-            variantName: '',
-            variantLocked: false,
-            stock: product.stock ?? 0,
-          },
-        ]
-      }),
-    [data.produtos],
-  )
+            variantId: item.id,
+            variantName: lengthM > 0 ? `${lengthM.toFixed(2)} m` : '',
+            variantLocked: true,
+            stock: item.quantity ?? 0,
+            lengthM: lengthM > 0 ? lengthM : undefined,
+            totalLengthM,
+            source: 'stock_item',
+          })
+        })
+        return
+      }
 
-  const totalSkus = variants.length
-  const totalStock = variants.reduce((acc, item) => acc + item.stock, 0)
-  const outOfStock = variants.filter((item) => item.stock <= 0)
-  const lowStock = variants.filter((item) => item.stock > 0 && item.stock <= 5)
+      const variants = product.variants ?? []
+      const entries = variants.map((variant) => ({
+        productId: product.id,
+        productName: product.name,
+        variantId: variant.id,
+        variantName: variant.name,
+        variantLocked: variant.locked ?? false,
+        stock: variant.stock ?? 0,
+        lengthM: Number.isFinite(variant.length) ? variant.length : undefined,
+        totalLengthM:
+          isLinear && Number.isFinite(variant.length)
+            ? (variant.stock ?? 0) * (variant.length ?? 0)
+            : undefined,
+        source: 'variant' as const,
+      }))
+      const hasLinearVariants = isLinear && variants.length > 0
+      if (product.hasVariants || hasLinearVariants) {
+        rows.push(...entries)
+        return
+      }
+      const baseLength =
+        isLinear && Number.isFinite(product.length) ? product.length ?? 0 : undefined
+      rows.push({
+        productId: product.id,
+        productName: product.name,
+        variantId: `${product.id}-base`,
+        variantName: '',
+        variantLocked: false,
+        stock: product.stock ?? 0,
+        lengthM: baseLength,
+        totalLengthM:
+          baseLength && baseLength > 0 ? (product.stock ?? 0) * baseLength : undefined,
+        source: 'product',
+      })
+    })
+    return rows
+  }, [data.produtos, data.stockItems])
+
+  const totalSkus = stockRows.length
+  const totalStock = stockRows.reduce((acc, item) => acc + item.stock, 0)
+  const outOfStock = stockRows.filter((item) => item.stock <= 0)
+  const lowStock = stockRows.filter((item) => item.stock > 0 && item.stock <= 5)
 
   const criticalItems = useMemo(() => {
     const list = [
@@ -82,16 +136,29 @@ const Estoque = () => {
   }, [lowStock, outOfStock])
 
   const topStock = useMemo(
-    () => [...variants].sort((a, b) => b.stock - a.stock).slice(0, 6),
-    [variants],
+    () => [...stockRows].sort((a, b) => b.stock - a.stock).slice(0, 6),
+    [stockRows],
   )
 
-  const getLabel = (item: typeof variants[number]) =>
-    item.variantName
-      ? item.variantLocked
+  const formatMeasurement = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
+  const getLabel = (item: StockRow) => {
+    if (item.lengthM && item.lengthM > 0) {
+      return `${item.productName} (${formatMeasurement(item.lengthM)} m)`
+    }
+    if (item.variantName) {
+      return item.variantLocked
         ? `${item.productName} ${item.variantName}`
         : `${item.productName} • ${item.variantName}`
-      : item.productName
+    }
+    return item.productName
+  }
+  const getStockValue = (item: StockRow) => {
+    if (item.totalLengthM && item.totalLengthM > 0) {
+      return `${item.stock} un · ${formatMeasurement(item.totalLengthM)} m`
+    }
+    return `${item.stock}`
+  }
 
   const selectedProduct = useMemo(
     () => data.produtos.find((product) => product.id === form.productId) ?? null,
@@ -103,7 +170,7 @@ const Estoque = () => {
       return false
     }
     if (product.unit === 'metro_linear') {
-      return (product.variants ?? []).length > 0
+      return false
     }
     return product.hasVariants ?? false
   }
@@ -153,7 +220,16 @@ const Estoque = () => {
     if (!orderId) {
       return 'Perda avulsa'
     }
-    return `OP #${orderId.slice(-5)}`
+    const production = data.ordensProducao.find((order) => order.id === orderId)
+    const code = production?.code?.trim() || orderId.slice(-5)
+    return `OP #${code}`
+  }
+  const getLotCode = (lotId?: string) => {
+    if (!lotId) {
+      return '-'
+    }
+    const lot = data.lotesProducao.find((entry) => entry.id === lotId)
+    return lot?.code?.trim() || lotId.slice(-5)
   }
 
   const updateForm = (patch: Partial<StockAdjustForm>) => {
@@ -163,10 +239,15 @@ const Estoque = () => {
   const openAdjust = () => {
     const firstProduct = products[0]
     const firstVariant = firstProduct?.variants?.[0]
+    const lengthM =
+      firstProduct?.unit === 'metro_linear' && Number.isFinite(firstProduct.length)
+        ? firstProduct.length ?? 0
+        : 0
     setStatus(null)
     setForm({
       productId: firstProduct?.id ?? '',
       variantId: supportsVariantSelection(firstProduct) ? firstVariant?.id ?? '' : '',
+      lengthM,
       type: 'entrada',
       quantity: 0,
       producedAt: new Date().toISOString().slice(0, 10),
@@ -183,17 +264,28 @@ const Estoque = () => {
   const handleProductChange = (productId: string) => {
     const product = products.find((item) => item.id === productId)
     const firstVariant = product?.variants?.[0]
+    const lengthM =
+      product?.unit === 'metro_linear' && Number.isFinite(product.length)
+        ? product.length ?? 0
+        : 0
     updateForm({
       productId,
       variantId: supportsVariantSelection(product) ? firstVariant?.id ?? '' : '',
+      lengthM,
     })
   }
 
-  const resolveCurrentStock = (product: typeof data.produtos[number], variantId?: string) => {
+  const resolveCurrentStock = (
+    product: typeof data.produtos[number],
+    variantId?: string,
+    lengthM?: number,
+  ) => {
+    if (product.unit === 'metro_linear') {
+      const stockItem = findStockItem(data.stockItems, product.id, lengthM)
+      return stockItem?.quantity ?? 0
+    }
     const variantsList = product.variants ?? []
-    const shouldUseVariants =
-      (product.hasVariants ?? false) ||
-      (product.unit === 'metro_linear' && variantsList.length > 0)
+    const shouldUseVariants = product.hasVariants ?? false
     if (shouldUseVariants) {
       const targetId = variantId || variantsList[0]?.id
       const target = variantsList.find((variant) => variant.id === targetId)
@@ -221,20 +313,54 @@ const Estoque = () => {
       return
     }
     const current = payload.produtos[productIndex]
+    const isLinear = current.unit === 'metro_linear'
     const hasVariantSelection = supportsVariantSelection(current)
     const fallbackVariantId = hasVariantSelection ? current.variants?.[0]?.id : undefined
     const resolvedVariantId = hasVariantSelection
       ? form.variantId || fallbackVariantId
       : undefined
+    let lengthM: number | undefined
+    if (isLinear) {
+      const parsedLength = Number(form.lengthM)
+      if (!Number.isFinite(parsedLength) || parsedLength <= 0) {
+        setStatus('Informe o comprimento.')
+        return
+      }
+      lengthM = parsedLength
+    }
     const delta = form.type === 'entrada' ? form.quantity : -form.quantity
     if (form.type === 'saida') {
-      const currentStock = resolveCurrentStock(current, resolvedVariantId)
+      const currentStock = resolveCurrentStock(current, resolvedVariantId, lengthM)
       if (currentStock + delta < 0) {
         setStatus('Estoque insuficiente para essa saida.')
         return
       }
     }
-    payload.produtos[productIndex] = adjustProductStock(current, resolvedVariantId, delta)
+    if (isLinear) {
+      const index = findStockItemIndex(payload.stockItems, current.id, lengthM)
+      if (index >= 0) {
+        const target = payload.stockItems[index]
+        payload.stockItems[index] = {
+          ...target,
+          quantity: (target.quantity ?? 0) + delta,
+          updatedAt: new Date().toISOString(),
+        }
+      } else {
+        payload.stockItems = [
+          ...payload.stockItems,
+          {
+            id: createId(),
+            productId: current.id,
+            lengthM,
+            unit: 'un',
+            quantity: delta,
+            createdAt: new Date().toISOString(),
+          },
+        ]
+      }
+    } else {
+      payload.produtos[productIndex] = adjustProductStock(current, resolvedVariantId, delta)
+    }
     payload.ajustesEstoqueProdutos = [
       ...payload.ajustesEstoqueProdutos,
       {
@@ -244,12 +370,17 @@ const Estoque = () => {
         lotId: form.lotId || undefined,
         type: form.type,
         quantity: form.quantity,
+        lengthM,
         producedAt: form.producedAt || undefined,
         notes: form.notes.trim() || undefined,
         createdAt: new Date().toISOString(),
       },
     ]
-    const description = `${current.name} · ${form.type === 'entrada' ? '+' : '-'}${form.quantity}`
+    const lengthLabel =
+      isLinear && Number.isFinite(lengthM)
+        ? ` (${formatMeasurement(lengthM ?? 0)} m)`
+        : ''
+    const description = `${current.name}${lengthLabel} · ${form.type === 'entrada' ? '+' : '-'}${form.quantity}`
     dataService.replaceAll(payload, {
       auditEvent: {
         category: 'alteracao',
@@ -314,7 +445,7 @@ const Estoque = () => {
                   <strong>{getLabel(item)}</strong>
                   <span className="list__meta">{item.status}</span>
                 </div>
-                <strong>{item.stock}</strong>
+                <strong>{getStockValue(item)}</strong>
               </div>
             ))}
           </div>
@@ -332,7 +463,7 @@ const Estoque = () => {
             {topStock.map((item) => (
               <div key={`${item.productId}-${item.variantId}`} className="list__item">
                 <span>{getLabel(item)}</span>
-                <strong>{item.stock}</strong>
+                <strong>{getStockValue(item)}</strong>
               </div>
             ))}
           </div>
@@ -384,8 +515,13 @@ const Estoque = () => {
                     {formatDateShort(entry.producedAt ?? entry.createdAt)}
                   </span>
                   <span className="list__meta">
-                    {entry.lotId ? `Lote #${entry.lotId.slice(-5)}` : 'Sem lote'}
+                    {entry.lotId ? `Lote #${getLotCode(entry.lotId)}` : 'Sem lote'}
                   </span>
+                  {entry.lengthM ? (
+                    <span className="list__meta">
+                      Comprimento: {formatMeasurement(entry.lengthM)} m
+                    </span>
+                  ) : null}
                 </div>
                 <strong>
                   {entry.type === 'entrada' ? '+' : '-'}
@@ -450,6 +586,21 @@ const Estoque = () => {
               </select>
             </div>
           )}
+          {selectedProduct?.unit === 'metro_linear' && (
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="adjust-length">
+                Comprimento (m)
+              </label>
+              <DimensionInput
+                id="adjust-length"
+                className="modal__input"
+                min="0"
+                step={0.01}
+                value={form.lengthM}
+                onValueChange={(value) => updateForm({ lengthM: value })}
+              />
+            </div>
+          )}
 
           <div className="modal__row">
             <div className="modal__group">
@@ -509,7 +660,7 @@ const Estoque = () => {
               <option value="">Sem lote</option>
               {lotOptions.map((lot) => (
                 <option key={lot.id} value={lot.id}>
-                  #{lot.id.slice(-5)} · {getProductLabel(lot.productId, lot.variantId)} · {lot.quantity} un
+                  #{getLotCode(lot.id)} · {getProductLabel(lot.productId, lot.variantId)} · {lot.quantity} un
                 </option>
               ))}
             </select>

@@ -1,7 +1,13 @@
 export type UUID = string
 
+export type SequenceEntry = {
+  key: string
+  currentValue: number
+}
+
 export type MaterialUnit = 'saco_50kg' | 'm3' | 'unidade'
 export type ProductUnit = 'm2' | 'metro_linear' | 'unidade'
+export type StockItemUnit = 'un' | 'm'
 
 export type PermissionLevel = 'none' | 'view' | 'edit'
 export type PermissionKey =
@@ -235,7 +241,10 @@ export type OrderItem = {
 
 export type Order = {
   id: UUID
+  code?: string
+  seq?: number
   trackingCode?: string
+  publicCode?: string
   clientId: UUID
   obraId?: UUID
   items: OrderItem[]
@@ -310,15 +319,22 @@ export type Delivery = {
 
 export type ProductionOrder = {
   id: UUID
+  code?: string
+  seq?: number
   orderId: UUID
   linkedOrderId?: UUID
   productId: UUID
   variantId?: UUID
   quantity: number
   customLength?: number
+  plannedQty?: number
+  plannedLengthM?: number
+  producedQty?: number
+  producedLengthM?: number
   moldId?: UUID
-  status: 'aberta' | 'em_producao' | 'finalizada'
+  status: 'ABERTA' | 'EM_ANDAMENTO' | 'PARCIAL' | 'CONCLUIDA' | 'CANCELADA'
   originProductionOrderId?: UUID
+  createdAt?: string
   plannedAt?: string
   finishedAt?: string
   source?: 'pedido' | 'estoque'
@@ -328,6 +344,8 @@ export type ProductionLotStatus = 'aguardando' | 'produzindo' | 'curando' | 'pro
 
 export type ProductionLot = {
   id: UUID
+  code?: string
+  seq?: number
   productId: UUID
   variantId?: UUID
   productionOrderId?: UUID
@@ -339,6 +357,21 @@ export type ProductionLot = {
   curingUntil?: string
   notes?: string
   createdAt: string
+}
+
+export type ProductionEntry = {
+  id: UUID
+  productionOrderId: UUID
+  employeeId?: UUID
+  date: string
+  quantity: number
+  lengthM?: number
+  scrapQuantity?: number
+  scrapLengthM?: number
+  notes?: string
+  createdAt: string
+  createdByEmployeeId?: UUID
+  deviceId?: string
 }
 
 export type ProductionScrapStatus = 'aberto' | 'resolvido'
@@ -366,12 +399,25 @@ export type ProductStockAdjustment = {
   id: UUID
   productId: UUID
   variantId?: UUID
+  lengthM?: number
   lotId?: UUID
   type: ProductStockAdjustmentType
   quantity: number
   producedAt?: string
   notes?: string
   createdAt: string
+}
+
+export type StockItem = {
+  id: UUID
+  productId: UUID
+  lengthM?: number
+  unit: StockItemUnit
+  quantity: number
+  reservedQuantity?: number
+  code?: string
+  createdAt: string
+  updatedAt?: string
 }
 
 export type FiscalNoteStatus = 'pendente' | 'autorizada' | 'cancelada'
@@ -568,6 +614,8 @@ export type Employee = {
   levelId?: UUID
   cpf?: string
   active?: boolean
+  isActive?: boolean
+  pinHash?: string
   hiredAt?: string
 }
 
@@ -580,6 +628,19 @@ export type PresenceEntry = {
   status: PresenceStatus
   notes?: string
   createdAt: string
+}
+
+export type PresenceLogType = 'IN' | 'OUT' | 'BREAK_IN' | 'BREAK_OUT'
+
+export type PresenceLog = {
+  id: UUID
+  employeeId: UUID
+  type: PresenceLogType
+  timestamp: string
+  deviceId?: string
+  notes?: string
+  createdAt: string
+  createdByEmployeeId?: UUID
 }
 
 export type EmployeePaymentStatus = 'aberto' | 'pago' | 'cancelado'
@@ -595,6 +656,8 @@ export type EmployeePayment = {
   total: number
   status: EmployeePaymentStatus
   method?: string
+  cashboxId?: UUID
+  financeEntryId?: UUID
   createdAt: string
   paidAt?: string
   notes?: string
@@ -624,6 +687,16 @@ export type WorkLog = {
   totalPay: number
 }
 
+export type PopPinAttempt = {
+  id: UUID
+  employeeId?: UUID
+  success: boolean
+  timestamp: string
+  deviceId?: string
+  deviceInfo?: string
+  createdAt: string
+}
+
 export type UserAccount = {
   id: UUID
   employeeId?: UUID
@@ -650,8 +723,10 @@ export type ERPData = {
   moldes: Mold[]
   ordensProducao: ProductionOrder[]
   lotesProducao: ProductionLot[]
+  productionEntries: ProductionEntry[]
   refugosProducao: ProductionScrap[]
   ajustesEstoqueProdutos: ProductStockAdjustment[]
+  stockItems: StockItem[]
   consumosMateriais: MaterialConsumption[]
   orcamentos: Quote[]
   pedidos: Order[]
@@ -674,10 +749,13 @@ export type ERPData = {
   niveis: EmployeeLevel[]
   apontamentos: WorkLog[]
   presencas: PresenceEntry[]
+  presenceLogs: PresenceLog[]
+  popPinAttempts: PopPinAttempt[]
   pagamentosRH: EmployeePayment[]
   ocorrenciasRH: EmployeeOccurrence[]
   usuarios: UserAccount[]
   auditoria: AuditEvent[]
+  sequences: SequenceEntry[]
   meta?: {
     updatedAt?: string
     workspaceId?: string

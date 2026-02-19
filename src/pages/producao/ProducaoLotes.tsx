@@ -9,7 +9,7 @@ import { useERPData } from '../../store/appStore'
 import type { ProductionLot, ProductionLotStatus, ProductionOrder } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
-import { resolveOrderCode } from '../../utils/orderCode'
+import { resolveOrderInternalCode } from '../../utils/orderCode'
 
 type LotForm = {
   productionOrderId: string
@@ -343,13 +343,14 @@ const ProducaoLotes = () => {
     data.produtos
       .find((product) => product.id === productId)
       ?.variants?.find((variant) => variant.id === variantId)?.name ?? '-'
+  const getLotCode = (lot: ProductionLot) => lot.code?.trim() || lot.id.slice(-6)
   const orderById = useMemo(
     () => new Map(data.pedidos.map((order) => [order.id, order])),
     [data.pedidos],
   )
   const getOrderCode = (orderId: string) => {
     const order = orderById.get(orderId)
-    return order ? resolveOrderCode(order) : orderId.slice(0, 6)
+    return order ? resolveOrderInternalCode(order) : orderId.slice(0, 6)
   }
   const getProductionLabel = (production: ProductionOrder) => {
     const productName = getProductName(production.productId)
@@ -361,8 +362,9 @@ const ProducaoLotes = () => {
     const sourceLabel = linkedOrder
       ? `Pedido #${getOrderCode(linkedOrder.id)}`
       : 'Ordem interna'
+    const productionCode = production.code?.trim() || production.id.slice(0, 6)
     const variantLabel = variantName && variantName !== '-' ? ` · ${variantName}` : ''
-    return `${productName}${variantLabel} · ${sourceLabel}`
+    return `OP #${productionCode} · ${productName}${variantLabel} · ${sourceLabel}`
   }
 
   return (
@@ -472,7 +474,7 @@ const ProducaoLotes = () => {
                 const demoldedAt = formatDateShort(lot.demoldedAt ?? lot.curingUntil ?? '')
                 return (
                   <tr key={lot.id}>
-                    <td className="table__cell--mobile-hide">#{lot.id.slice(-6)}</td>
+                    <td className="table__cell--mobile-hide">#{getLotCode(lot)}</td>
                     <td className="table__cell--truncate">
                       <div className="table__stack">
                         <strong>{getProductName(lot.productId)}</strong>

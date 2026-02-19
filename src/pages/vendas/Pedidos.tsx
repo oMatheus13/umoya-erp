@@ -18,12 +18,17 @@ import { useERPData } from '../../store/appStore'
 import type { Client, FulfillmentMode, Order, ProductVariant, ProductionOrder } from '../../types/erp'
 import { formatCurrency } from '../../utils/format'
 import { createId } from '../../utils/ids'
-import { resolveOrderCode } from '../../utils/orderCode'
+import {
+  resolveOrderCode,
+  resolveOrderInternalCode,
+  resolveOrderPublicCode,
+} from '../../utils/orderCode'
 import { getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
 import {
   resolveUnitPrice as resolveUnitPriceBase,
   resolveVariantPrice as resolveVariantPriceBase,
 } from '../../utils/sales'
+import { findStockItem, findStockItemIndex } from '../../utils/stockItems'
 
 type OrderItemForm = {
   productId: string
@@ -182,7 +187,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
   }
 
   const copyTrackingLink = async (order: Order) => {
-    const orderCode = resolveOrderCode(order)
+    const orderCode = resolveOrderPublicCode(order)
     const link = buildTrackingLink(orderCode)
     setTrackingLink(link)
     const workspaceId = data.meta?.workspaceId
@@ -507,7 +512,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     ) {
       const allFinalized =
         existingProductions.length > 0 &&
-        existingProductions.every((production) => production.status === 'finalizada')
+        existingProductions.every((production) => production.status === 'CONCLUIDA')
       if (!allFinalized) {
         return { error: 'Finalize todas as ordens de producao antes de entregar.' }
       }
@@ -519,6 +524,13 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
         }
         if (product.unit === 'metro_linear') {
           const length = item.customLength ?? product.length ?? 1
+          const stockItem = findStockItem(payload.stockItems, product.id, length)
+          if (stockItem) {
+            if ((stockItem.quantity ?? 0) < item.quantity) {
+              return { error: 'Estoque insuficiente para entregar este pedido.' }
+            }
+            continue
+          }
           const lengthCm = toLengthCmLabel(length)
           const targetVariant = (product.variants ?? []).find(
             (variant) =>
@@ -598,15 +610,20 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
       const nextProductions: ProductionOrder[] = nextOrder.items.map((item) => {
       const key = buildProductionKey(item)
       const existing = existingByKey.get(key)
+      const product = payload.produtos.find((current) => current.id === item.productId)
+      const isLinear = product?.unit === 'metro_linear'
+      const plannedLengthM = isLinear
+        ? item.customLength ?? product?.length ?? 0
+        : undefined
 
       if (existing) {
         existingByKey.delete(key)
 
         const nextStatus: ProductionOrder['status'] =
           nextOrder.status === 'entregue'
-            ? 'finalizada'
+            ? 'CONCLUIDA'
             : nextOrder.status === 'em_producao'
-              ? 'em_producao'
+              ? 'EM_ANDAMENTO'
               : existing.status
 
         return {
@@ -615,7 +632,10 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
           productId: item.productId,
           variantId: item.variantId,
           customLength: item.customLength,
+          plannedQty: item.quantity,
+          plannedLengthM,
           status: nextStatus,
+          createdAt: existing.createdAt ?? existing.plannedAt ?? new Date().toISOString(),
           plannedAt: existing.plannedAt ?? new Date().toISOString(),
           finishedAt:
             nextOrder.status === 'entregue'
@@ -626,10 +646,10 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
 
       const status: ProductionOrder['status'] =
         nextOrder.status === 'entregue'
-          ? 'finalizada'
+          ? 'CONCLUIDA'
           : nextOrder.status === 'em_producao'
-            ? 'em_producao'
-            : 'aberta'
+            ? 'EM_ANDAMENTO'
+            : 'ABERTA'
 
       return {
         id: createId(),
@@ -638,14 +658,17 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
         variantId: item.variantId,
         quantity: item.quantity,
         customLength: item.customLength,
+        plannedQty: item.quantity,
+        plannedLengthM,
         status,
+        createdAt: new Date().toISOString(),
         plannedAt: new Date().toISOString(),
         finishedAt: nextOrder.status === 'entregue' ? new Date().toISOString() : undefined,
       }
     })
 
       const preserved = Array.from(existingByKey.values()).filter(
-        (production) => production.status === 'finalizada',
+        (production) => production.status === 'CONCLUIDA',
       )
 
       payload.ordensProducao = [
@@ -664,11 +687,21 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
           const current = payload.produtos[productIndex]
           if (current.unit === 'metro_linear') {
             const length = item.customLength ?? current.length ?? 1
-            payload.produtos[productIndex] = upsertLinearStockVariant(
-              current,
-              length,
-              -item.quantity,
-            )
+            const stockIndex = findStockItemIndex(payload.stockItems, current.id, length)
+            if (stockIndex >= 0) {
+              const target = payload.stockItems[stockIndex]
+              payload.stockItems[stockIndex] = {
+                ...target,
+                quantity: (target.quantity ?? 0) - item.quantity,
+                updatedAt: new Date().toISOString(),
+              }
+            } else {
+              payload.produtos[productIndex] = upsertLinearStockVariant(
+                current,
+                length,
+                -item.quantity,
+              )
+            }
           } else if (current.hasVariants) {
             const variants = current.variants ?? []
             payload.produtos[productIndex] = {
@@ -989,7 +1022,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     })
     if (payload.meta?.workspaceId && orderToDelete) {
       void trackingRemote.deleteOrders(payload.meta.workspaceId, [
-        resolveOrderCode(orderToDelete),
+        resolveOrderPublicCode(orderToDelete),
       ])
     }
     refresh()
@@ -1562,7 +1595,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
                 )}
                 {orders.map((order) => {
                   const discountInfo = getOrderDiscountInfo(order)
-                  const orderCode = resolveOrderCode(order)
+                  const orderCode = resolveOrderInternalCode(order)
                   return (
                     <tr key={order.id}>
                       <td className="table__cell--truncate">

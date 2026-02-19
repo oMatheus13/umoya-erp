@@ -7,6 +7,7 @@ import type {
   PdvCashSession,
   Product,
   ProductMaterialUsage,
+  ProductionOrder,
   ProductionScrapStatus,
   ProductUnit,
   Quote,
@@ -31,6 +32,7 @@ import {
 import { createId } from '../utils/ids'
 import { ensureOrderCodes } from '../utils/orderCode'
 import { buildItemKey } from '../utils/tracking'
+import { buildDailyCode, generatePublicCode, getDateKey, parseDailyCode } from '../utils/humanCodes'
 
 type RemoteSync = (data: ERPData) => void | Promise<void>
 type SaveOptions = {
@@ -332,6 +334,136 @@ const normalizeData = (data: ERPData) => {
     return value
   }
 
+  const normalizeCode = (code?: string) => code?.trim().toUpperCase() ?? ''
+
+  const ensureDailyCodes = <
+    T extends { id: string; code?: string; seq?: number },
+  >(
+    items: T[],
+    prefix: string,
+    getCreatedAt: (item: T) => string | undefined,
+    sequenceMap: Map<string, number>,
+  ) => {
+    const usedCodes = new Set<string>()
+    const invalidIds = new Set<string>()
+
+    items.forEach((item) => {
+      const code = normalizeCode(item.code)
+      if (!code) {
+        invalidIds.add(item.id)
+        return
+      }
+      const parsed = parseDailyCode(code, prefix)
+      if (!parsed) {
+        invalidIds.add(item.id)
+        return
+      }
+      const normalized = buildDailyCode(prefix, parsed.dateKey, parsed.seq)
+      if (usedCodes.has(normalized)) {
+        invalidIds.add(item.id)
+        return
+      }
+      usedCodes.add(normalized)
+      const key = `${prefix}-${parsed.dateKey}`
+      const current = sequenceMap.get(key) ?? 0
+      if (parsed.seq > current) {
+        sequenceMap.set(key, parsed.seq)
+      }
+    })
+
+    let itemChanged = false
+    const nextItems = items.map((item) => {
+      const createdAt = getCreatedAt(item)
+      const dateKey = getDateKey(createdAt)
+      const sequenceKey = `${prefix}-${dateKey}`
+      let code = normalizeCode(item.code)
+      let seq = Number.isFinite(item.seq) ? item.seq : undefined
+      const shouldGenerate = invalidIds.has(item.id) || !code
+      if (shouldGenerate) {
+        const nextSeq = (sequenceMap.get(sequenceKey) ?? 0) + 1
+        sequenceMap.set(sequenceKey, nextSeq)
+        code = buildDailyCode(prefix, dateKey, nextSeq)
+        seq = nextSeq
+      } else {
+        const parsed = parseDailyCode(code, prefix)
+        if (parsed) {
+          code = buildDailyCode(prefix, parsed.dateKey, parsed.seq)
+          seq = parsed.seq
+        }
+      }
+      if (code !== item.code || seq !== item.seq) {
+        itemChanged = true
+        return { ...item, code, seq }
+      }
+      return item
+    })
+
+    return { items: nextItems, changed: itemChanged }
+  }
+
+  const ensurePublicCodes = <T extends { id: string; publicCode?: string }>(
+    items: T[],
+  ) => {
+    const used = new Set<string>()
+    const invalidIds = new Set<string>()
+    items.forEach((item) => {
+      const code = item.publicCode?.trim().toLowerCase() ?? ''
+      if (!code) {
+        invalidIds.add(item.id)
+        return
+      }
+      if (used.has(code)) {
+        invalidIds.add(item.id)
+        return
+      }
+      used.add(code)
+    })
+    let changedPublic = false
+    const nextItems = items.map((item) => {
+      const current = item.publicCode?.trim().toLowerCase() ?? ''
+      if (!current || invalidIds.has(item.id)) {
+        let nextCode = ''
+        let guard = 0
+        do {
+          nextCode = generatePublicCode()
+          guard += 1
+        } while (used.has(nextCode) && guard < 50)
+        used.add(nextCode)
+        changedPublic = true
+        return { ...item, publicCode: nextCode }
+      }
+      if (current !== item.publicCode) {
+        changedPublic = true
+        return { ...item, publicCode: current }
+      }
+      return item
+    })
+    return { items: nextItems, changed: changedPublic }
+  }
+
+  const normalizeProductionStatus = (status?: string): ProductionOrder['status'] => {
+    const raw = status?.trim().toUpperCase()
+    if (!raw) {
+      return 'ABERTA'
+    }
+    if (raw === 'ABERTA' || raw === 'EM_ANDAMENTO' || raw === 'PARCIAL') {
+      return raw
+    }
+    if (raw === 'CONCLUIDA' || raw === 'CANCELADA') {
+      return raw
+    }
+    if (raw === 'EM_PRODUCAO') {
+      return 'EM_ANDAMENTO'
+    }
+    if (raw === 'FINALIZADA') {
+      return 'CONCLUIDA'
+    }
+    if (raw === 'ABERTA' || raw === 'ABERTO') {
+      return 'ABERTA'
+    }
+    return 'ABERTA'
+  }
+
   const rawMaterials = ensureArray(data.materiais, [])
   const materialKindById = new Map<string, MaterialKind>()
   rawMaterials.forEach((material) => {
@@ -470,12 +602,14 @@ const normalizeData = (data: ERPData) => {
 
   const primaryVariantByProduct = new Map<string, string>()
   const productUnitById = new Map<string, ProductUnit | undefined>()
+  const productLengthById = new Map<string, number | undefined>()
   const productHasVariantsById = new Map<string, boolean>()
   produtos.forEach((product) => {
     if (product.variants && product.variants.length > 0) {
       primaryVariantByProduct.set(product.id, product.variants[0].id)
     }
     productUnitById.set(product.id, product.unit)
+    productLengthById.set(product.id, product.length)
     productHasVariantsById.set(product.id, product.hasVariants ?? false)
   })
 
@@ -560,7 +694,65 @@ const normalizeData = (data: ERPData) => {
     return mold
   })
   const ordensProducao = ensureArray(data.ordensProducao, [])
-  const lotesProducao = ensureArray(data.lotesProducao, [])
+  let lotesProducao = ensureArray(data.lotesProducao, [])
+  const productionEntries = ensureArray(data.productionEntries, []).map((entry) => {
+    let entryChanged = false
+    const quantity = Number.isFinite(entry.quantity) ? entry.quantity : 0
+    if (quantity !== entry.quantity) {
+      entryChanged = true
+    }
+    const lengthM = Number.isFinite(entry.lengthM) ? entry.lengthM : undefined
+    if (lengthM !== entry.lengthM) {
+      entryChanged = true
+    }
+    const scrapQuantity = Number.isFinite(entry.scrapQuantity)
+      ? entry.scrapQuantity
+      : undefined
+    if (scrapQuantity !== entry.scrapQuantity) {
+      entryChanged = true
+    }
+    const scrapLengthM = Number.isFinite(entry.scrapLengthM)
+      ? entry.scrapLengthM
+      : undefined
+    if (scrapLengthM !== entry.scrapLengthM) {
+      entryChanged = true
+    }
+    const date = entry.date ? entry.date.slice(0, 10) : new Date().toISOString().slice(0, 10)
+    if (date !== entry.date) {
+      entryChanged = true
+    }
+    const createdAt = entry.createdAt ?? new Date().toISOString()
+    if (createdAt !== entry.createdAt) {
+      entryChanged = true
+    }
+    const notes = entry.notes?.trim() || undefined
+    if (notes !== entry.notes) {
+      entryChanged = true
+    }
+    if (entryChanged) {
+      changed = true
+      return {
+        ...entry,
+        quantity,
+        lengthM,
+        scrapQuantity,
+        scrapLengthM,
+        date,
+        createdAt,
+        notes,
+      }
+    }
+    return entry
+  })
+  const productionEntriesByOrder = new Map<string, typeof productionEntries>()
+  productionEntries.forEach((entry) => {
+    if (!entry.productionOrderId) {
+      return
+    }
+    const current = productionEntriesByOrder.get(entry.productionOrderId) ?? []
+    current.push(entry)
+    productionEntriesByOrder.set(entry.productionOrderId, current)
+  })
   const refugosProducao = ensureArray(data.refugosProducao, []).map((scrap) => {
     let changedScrap = false
     const next = { ...scrap } as typeof scrap & { status?: ProductionScrapStatus }
@@ -603,7 +795,64 @@ const normalizeData = (data: ERPData) => {
     }
     return changedScrap ? next : scrap
   })
-  const ajustesEstoqueProdutos = ensureArray(data.ajustesEstoqueProdutos, [])
+  const ajustesEstoqueProdutos = ensureArray(data.ajustesEstoqueProdutos, []).map(
+    (entry) => {
+      let entryChanged = false
+      const quantity = Number.isFinite(entry.quantity) ? entry.quantity : 0
+      if (quantity !== entry.quantity) {
+        entryChanged = true
+      }
+      const lengthM = Number.isFinite(entry.lengthM) ? entry.lengthM : undefined
+      if (lengthM !== entry.lengthM) {
+        entryChanged = true
+      }
+      if (entryChanged) {
+        changed = true
+        return { ...entry, quantity, lengthM }
+      }
+      return entry
+    },
+  )
+  const stockItems = ensureArray(data.stockItems, []).map((item) => {
+    let itemChanged = false
+    const quantity = Number.isFinite(item.quantity) ? item.quantity : 0
+    if (quantity !== item.quantity) {
+      itemChanged = true
+    }
+    const lengthM = Number.isFinite(item.lengthM) ? item.lengthM : undefined
+    if (lengthM !== item.lengthM) {
+      itemChanged = true
+    }
+    const unit = item.unit === 'm' || item.unit === 'un' ? item.unit : 'un'
+    if (unit !== item.unit) {
+      itemChanged = true
+    }
+    const createdAt = item.createdAt ?? new Date().toISOString()
+    if (createdAt !== item.createdAt) {
+      itemChanged = true
+    }
+    const updatedAt = item.updatedAt || undefined
+    if (updatedAt !== item.updatedAt) {
+      itemChanged = true
+    }
+    const code = item.code?.trim() || undefined
+    if (code !== item.code) {
+      itemChanged = true
+    }
+    if (itemChanged) {
+      changed = true
+      return {
+        ...item,
+        quantity,
+        lengthM,
+        unit,
+        createdAt,
+        updatedAt,
+        code,
+      }
+    }
+    return item
+  })
   const consumosMateriais = ensureArray(data.consumosMateriais, [])
   const orcamentos = ensureArray(data.orcamentos, []).map((quote) => ({
     ...quote,
@@ -614,7 +863,7 @@ const normalizeData = (data: ERPData) => {
     paymentMethod: order.paymentMethod?.trim() || 'a_definir',
     items: normalizeItems(order.items),
   }))
-  const pedidos = (() => {
+  let pedidos = (() => {
     const indexById = new Map<string, number>()
     const unique: typeof pedidosRaw = []
     pedidosRaw.forEach((order) => {
@@ -635,6 +884,24 @@ const normalizeData = (data: ERPData) => {
     }
     return normalizedOrders
   })()
+  let sequences = ensureArray(data.sequences, [])
+  const sequenceMap = new Map<string, number>(
+    sequences.map((entry) => [entry.key, entry.currentValue]),
+  )
+  const { items: codedOrders, changed: codesGenerated } = ensureDailyCodes(
+    pedidos,
+    'PED',
+    (order) => order.createdAt,
+    sequenceMap,
+  )
+  if (codesGenerated) {
+    changed = true
+  }
+  const { items: publicOrders, changed: publicCodesChanged } = ensurePublicCodes(codedOrders)
+  if (publicCodesChanged) {
+    changed = true
+  }
+  pedidos = publicOrders
   const recibos = ensureArray(data.recibos, [])
   const comprasHistorico = ensureArray(data.comprasHistorico, []).map((purchase) => {
     if (!Array.isArray(purchase.items)) {
@@ -827,6 +1094,13 @@ const normalizeData = (data: ERPData) => {
   }
   const apontamentos = ensureArray(data.apontamentos, [])
   const presencas = ensureArray(data.presencas, [])
+  const presenceLogs = ensureArray(data.presenceLogs, [])
+  const legacyPinAttempts = (data as { terminalPinAttempts?: typeof data.popPinAttempts })
+    .terminalPinAttempts
+  const popPinAttempts = ensureArray(data.popPinAttempts ?? legacyPinAttempts, [])
+  if (!data.popPinAttempts && Array.isArray(legacyPinAttempts)) {
+    changed = true
+  }
   const pagamentosRH = ensureArray(data.pagamentosRH, [])
   const ocorrenciasRH = ensureArray(data.ocorrenciasRH, [])
   const usuariosRaw = ensureArray(data.usuarios, [])
@@ -838,13 +1112,14 @@ const normalizeData = (data: ERPData) => {
     }
     return user
   })
-
-  const normalizedProducao = ordensProducao.map((order) => {
+  let normalizedProducao = ordensProducao.map((order) => {
     let next = order
     let orderChanged = false
+    const unit = productUnitById.get(order.productId)
+    const isLinear = unit === 'metro_linear'
     if (
       !order.variantId &&
-      productUnitById.get(order.productId) !== 'metro_linear' &&
+      unit !== 'metro_linear' &&
       productHasVariantsById.get(order.productId)
     ) {
       const fallbackVariant = primaryVariantByProduct.get(order.productId)
@@ -866,8 +1141,134 @@ const normalizeData = (data: ERPData) => {
       orderChanged = true
       next = { ...next, originProductionOrderId }
     }
+    const createdAt =
+      order.createdAt ?? order.plannedAt ?? order.finishedAt ?? new Date().toISOString()
+    if (createdAt !== order.createdAt) {
+      changed = true
+      orderChanged = true
+      next = { ...next, createdAt }
+    }
+    const plannedQty = Number.isFinite(order.plannedQty)
+      ? Number(order.plannedQty)
+      : order.quantity
+    if (plannedQty !== order.plannedQty) {
+      changed = true
+      orderChanged = true
+      next = { ...next, plannedQty }
+    }
+    const resolvedLength = isLinear
+      ? Number.isFinite(order.plannedLengthM)
+        ? order.plannedLengthM
+        : Number.isFinite(order.customLength)
+          ? order.customLength
+          : productLengthById.get(order.productId)
+      : undefined
+    if (resolvedLength !== order.plannedLengthM) {
+      changed = true
+      orderChanged = true
+      next = { ...next, plannedLengthM: resolvedLength }
+    }
+
+    const entries = productionEntriesByOrder.get(order.id) ?? []
+    let producedQty = Number.isFinite(order.producedQty) ? Number(order.producedQty) : 0
+    let producedLengthM = Number.isFinite(order.producedLengthM)
+      ? Number(order.producedLengthM)
+      : 0
+    if (entries.length > 0) {
+      producedQty = 0
+      producedLengthM = 0
+      entries.forEach((entry) => {
+        const entryQty = Number.isFinite(entry.quantity) ? Math.max(0, entry.quantity) : 0
+        const entryScrap = Number.isFinite(entry.scrapQuantity)
+          ? Math.max(0, entry.scrapQuantity ?? 0)
+          : 0
+        const netQty = Math.max(0, entryQty - entryScrap)
+        producedQty += netQty
+        if (isLinear) {
+          const entryLength = Number.isFinite(entry.lengthM)
+            ? Math.max(0, entry.lengthM ?? 0)
+            : Math.max(0, resolvedLength ?? 0)
+          const entryProduced = netQty * entryLength
+          const entryScrapLength = Number.isFinite(entry.scrapLengthM)
+            ? Math.max(0, entry.scrapLengthM ?? 0)
+            : 0
+          producedLengthM += Math.max(0, entryProduced - entryScrapLength)
+        }
+      })
+    }
+    if (producedQty !== order.producedQty) {
+      changed = true
+      orderChanged = true
+      next = { ...next, producedQty }
+    }
+    const nextProducedLength = isLinear ? producedLengthM : undefined
+    if (nextProducedLength !== order.producedLengthM) {
+      changed = true
+      orderChanged = true
+      next = { ...next, producedLengthM: nextProducedLength }
+    }
+
+    let status = normalizeProductionStatus(order.status)
+    if (entries.length > 0 && status !== 'CANCELADA') {
+      const plannedTotal = isLinear
+        ? (plannedQty ?? 0) * (resolvedLength ?? 0)
+        : plannedQty ?? 0
+      const producedTotal = isLinear ? producedLengthM : producedQty
+      if (plannedTotal > 0 && producedTotal >= plannedTotal) {
+        status = 'CONCLUIDA'
+      } else if (producedTotal > 0) {
+        status = 'PARCIAL'
+      } else if (status === 'EM_ANDAMENTO') {
+        status = 'EM_ANDAMENTO'
+      } else {
+        status = 'ABERTA'
+      }
+    }
+    if (status !== order.status) {
+      changed = true
+      orderChanged = true
+      next = { ...next, status }
+    }
+
     return orderChanged ? next : order
   })
+
+  const { items: codedProductions, changed: productionCodesChanged } = ensureDailyCodes(
+    normalizedProducao,
+    'OP',
+    (order) => order.createdAt ?? order.plannedAt ?? order.finishedAt,
+    sequenceMap,
+  )
+  if (productionCodesChanged) {
+    changed = true
+  }
+  normalizedProducao = codedProductions
+
+  const { items: codedLots, changed: lotCodesChanged } = ensureDailyCodes(
+    lotesProducao,
+    'LOT',
+    (lot) => lot.createdAt,
+    sequenceMap,
+  )
+  if (lotCodesChanged) {
+    changed = true
+  }
+  lotesProducao = codedLots
+
+  const nextSequences = Array.from(sequenceMap.entries()).map(([key, currentValue]) => ({
+    key,
+    currentValue,
+  }))
+  const sequencesByKey = new Map(sequences.map((entry) => [entry.key, entry.currentValue]))
+  const sequencesChanged =
+    nextSequences.length !== sequences.length ||
+    nextSequences.some(
+      (entry) => sequencesByKey.get(entry.key) !== entry.currentValue,
+    )
+  if (sequencesChanged) {
+    sequences = nextSequences
+    changed = true
+  }
 
   const normalized = {
     ...data,
@@ -878,8 +1279,10 @@ const normalizeData = (data: ERPData) => {
     moldes,
     ordensProducao: normalizedProducao,
     lotesProducao,
+    productionEntries,
     refugosProducao,
     ajustesEstoqueProdutos,
+    stockItems,
     consumosMateriais,
     orcamentos,
     pedidos,
@@ -902,10 +1305,13 @@ const normalizeData = (data: ERPData) => {
     niveis,
     apontamentos,
     presencas,
+    presenceLogs,
+    popPinAttempts,
     pagamentosRH,
     ocorrenciasRH,
     usuarios,
     auditoria,
+    sequences,
     meta,
   }
 

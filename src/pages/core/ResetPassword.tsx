@@ -17,7 +17,7 @@ const ResetPassword = ({ onDone }: ResetPasswordProps) => {
   const [showConfirm, setShowConfirm] = useState(false)
   const [done, setDone] = useState(false)
   const appKind = resolveAppKind()
-  const appLabel = appKind === 'pdv' ? 'PDV' : 'ERP'
+  const appLabel = appKind === 'pdv' ? 'PDV' : appKind === 'pop' ? 'POP' : 'ERP'
   const appMock = appKind === 'pdv' ? loginMockPdv : loginMockErp
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

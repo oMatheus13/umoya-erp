@@ -3,7 +3,7 @@ import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import { NAVIGATION_GROUPS } from '../data/navigation'
 import { useERPData } from '../store/appStore'
 import type { PageIntentAction } from '../types/ui'
-import { resolveOrderCode } from '../utils/orderCode'
+import { resolveOrderInternalCode } from '../utils/orderCode'
 import { formatSkuWithVariant } from '../utils/sku'
 
 export type TopbarSearchItemInput = {
@@ -283,7 +283,7 @@ const Topbar = ({
       const client = data.clientes.find((item) => item.id === order.clientId)
       pushItem({
         id: order.id,
-        title: `Pedido #${resolveOrderCode(order)}`,
+        title: `Pedido #${resolveOrderInternalCode(order)}`,
         subtitle: client?.name ?? 'Cliente',
         page: 'pedidos',
         category: 'Pedidos',
@@ -293,9 +293,10 @@ const Topbar = ({
 
     data.ordensProducao.forEach((order) => {
       const product = data.produtos.find((item) => item.id === order.productId)
+      const productionCode = order.code?.trim() || order.id.slice(-5)
       pushItem({
         id: order.id,
-        title: `OP #${order.id.slice(-5)}`,
+        title: `OP #${productionCode}`,
         subtitle: product?.name ?? 'Produto',
         page: 'producao',
         category: 'Produção',

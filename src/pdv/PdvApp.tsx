@@ -16,7 +16,7 @@ import { useERPData } from '../store/appStore'
 import type { ERPData, UserAccount } from '../types/erp'
 import { sanitizeAvatarUrl } from '../utils/avatar'
 import { createId } from '../utils/ids'
-import { resolveOrderCode } from '../utils/orderCode'
+import { resolveOrderInternalCode } from '../utils/orderCode'
 import { formatSkuWithVariant } from '../utils/sku'
 import PdvCash from './screens/PdvCash'
 import PdvCheckout from './screens/PdvCheckout'
@@ -698,7 +698,7 @@ const PdvApp = () => {
       const client = data.clientes.find((item) => item.id === order.clientId)
       items.push({
         id: order.id,
-        title: `Pedido #${resolveOrderCode(order)}`,
+        title: `Pedido #${resolveOrderInternalCode(order)}`,
         subtitle: client?.name ?? 'Cliente',
         category: 'Pedidos',
         page: 'pedidos',

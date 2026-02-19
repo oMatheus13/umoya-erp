@@ -10,7 +10,7 @@ import type { Order, Product, ProductVariant, Quote } from '../../types/erp'
 import { formatDimensionsMm } from '../../utils/dimensions'
 import { formatCurrency } from '../../utils/format'
 import { createId } from '../../utils/ids'
-import { resolveOrderCode } from '../../utils/orderCode'
+import { resolveOrderCode, resolveOrderInternalCode } from '../../utils/orderCode'
 import { resolveUnitPrice, resolveVariantPrice } from '../../utils/sales'
 import { getProductUnitLabel } from '../../utils/units'
 
@@ -348,7 +348,7 @@ const PdvCheckout = ({
     dataService.addFinanceEntry({
       id: createId(),
       type: 'entrada',
-      description: `Venda PDV #${resolveOrderCode(order)}`,
+      description: `Venda PDV #${resolveOrderInternalCode(order)}`,
       amount: subtotal,
       createdAt: now,
       cashboxId: getPaymentCashboxId(activePaymentMethod, data.tabelas?.paymentMethods),

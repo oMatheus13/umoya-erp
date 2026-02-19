@@ -295,6 +295,7 @@ const ProducaoRefugo = () => {
         product?.unit === 'metro_linear'
           ? originOrder?.customLength ?? selectedVariant?.length ?? product?.length
           : undefined
+      const createdAt = new Date().toISOString()
       payload.ordensProducao = [
         ...payload.ordensProducao,
         {
@@ -305,8 +306,11 @@ const ProducaoRefugo = () => {
           variantId: next.variantId,
           quantity: next.quantity,
           customLength,
-          status: 'aberta',
-          plannedAt: new Date().toISOString(),
+          plannedQty: next.quantity,
+          plannedLengthM: customLength,
+          status: 'ABERTA',
+          createdAt,
+          plannedAt: createdAt,
           source: originOrder?.source,
           originProductionOrderId: originOrder?.id,
         },
@@ -367,8 +371,11 @@ const ProducaoRefugo = () => {
       return '-'
     }
     const order = data.ordensProducao.find((item) => item.id === orderId)
-    const resolvedId = order?.id ?? orderId
-    return `#${resolvedId.slice(-5)}`
+    const code = order?.code?.trim()
+    if (code) {
+      return code
+    }
+    return `#${orderId.slice(-5)}`
   }
 
   return (
@@ -694,7 +701,8 @@ const ProducaoRefugo = () => {
               <option value="">Sem ordem vinculada</option>
               {data.ordensProducao.map((order) => (
                 <option key={order.id} value={order.id}>
-                  #{order.id.slice(-5)} · {getProductName(order.productId)} · {order.quantity} un
+                  {order.code?.trim() || `#${order.id.slice(-5)}`} ·{' '}
+                  {getProductName(order.productId)} · {order.quantity} un
                 </option>
               ))}
             </select>

@@ -17,7 +17,7 @@ import type { Client, FulfillmentMode, ProductVariant, Quote } from '../../types
 import type { PageIntentAction } from '../../types/ui'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
-import { resolveOrderCode } from '../../utils/orderCode'
+import { resolveOrderCode, resolveOrderInternalCode } from '../../utils/orderCode'
 import { getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
 import {
   resolveUnitPrice as resolveUnitPriceBase,
@@ -600,7 +600,7 @@ const Orcamentos = ({
       return '-'
     }
     const order = orderById.get(orderId)
-    return order ? resolveOrderCode(order) : orderId.slice(0, 6)
+    return order ? resolveOrderInternalCode(order) : orderId.slice(0, 6)
   }
 
   const getProductName = (id: string) =>

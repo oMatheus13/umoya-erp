@@ -33,10 +33,6 @@
   font-size: var(--font-size-xl);
 }
 
-.pop-login .login__form .pop-pin-input {
-  padding-right: 0;
-}
-
 .pop-keypad--login {
   margin-top: var(--spacing-lg);
 }

@@ -11,8 +11,8 @@ const RelatoriosProducao = () => {
     return data.ordensProducao.reduce(
       (acc, order) => {
         acc.total += 1
-        if (order.status === 'em_producao') acc.active += 1
-        if (order.status === 'finalizada') acc.done += 1
+        if (order.status === 'EM_ANDAMENTO' || order.status === 'PARCIAL') acc.active += 1
+        if (order.status === 'CONCLUIDA') acc.done += 1
         return acc
       },
       { total: 0, active: 0, done: 0 },
@@ -54,10 +54,10 @@ const RelatoriosProducao = () => {
         done: 0,
       }
       existing.total += amount
-      if (order.status === 'em_producao') {
+      if (order.status === 'EM_ANDAMENTO' || order.status === 'PARCIAL') {
         existing.active += amount
       }
-      if (order.status === 'finalizada') {
+      if (order.status === 'CONCLUIDA') {
         existing.done += amount
       }
       totals.set(product.id, existing)
@@ -83,11 +83,11 @@ const RelatoriosProducao = () => {
           <span className="summary__value">{productionSummary.total}</span>
         </article>
         <article className="summary__item">
-          <span className="summary__label">Em producao</span>
+          <span className="summary__label">Em andamento</span>
           <span className="summary__value">{productionSummary.active}</span>
         </article>
         <article className="summary__item">
-          <span className="summary__label">Finalizadas</span>
+          <span className="summary__label">Concluidas</span>
           <span className="summary__value">{productionSummary.done}</span>
         </article>
         <article className="summary__item">
@@ -105,8 +105,8 @@ const RelatoriosProducao = () => {
                 <th>Produto</th>
                 <th>Unidade</th>
                 <th>Total</th>
-                <th>Em producao</th>
-                <th>Finalizadas</th>
+                <th>Em andamento</th>
+                <th>Concluidas</th>
               </tr>
             </thead>
             <tbody>

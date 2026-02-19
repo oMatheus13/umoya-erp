@@ -229,7 +229,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   const productionSummary = useMemo<ProductionSummary>(() => {
     const finishedToday = data.ordensProducao.filter((order) => {
-      if (order.status !== 'finalizada') {
+      if (order.status !== 'CONCLUIDA') {
         return false
       }
       const date = order.finishedAt ?? order.plannedAt
@@ -245,7 +245,7 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
     })
     const producedMonth = data.ordensProducao
       .filter((order) => {
-        if (order.status !== 'finalizada') {
+        if (order.status !== 'CONCLUIDA') {
           return false
         }
         const date = order.finishedAt ?? order.plannedAt

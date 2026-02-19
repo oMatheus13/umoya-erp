@@ -9,12 +9,14 @@ import { useERPData } from '../../store/appStore'
 import type { Employee, EmployeeLevel, EmployeeRole, UserAccount, WorkLog } from '../../types/erp'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { hashPin } from '../../utils/pin'
 
 type EmployeeForm = {
   name: string
   roleId: string
   levelId: string
   cpf: string
+  pin: string
   active: boolean
   hiredAt: string
 }
@@ -50,6 +52,7 @@ const createEmptyEmployeeForm = (): EmployeeForm => ({
   roleId: '',
   levelId: '',
   cpf: '',
+  pin: '',
   active: true,
   hiredAt: new Date().toISOString().slice(0, 10),
 })
@@ -346,6 +349,12 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     const previous = editingEmployeeId
       ? payload.funcionarios.find((item) => item.id === editingEmployeeId)
       : undefined
+    const trimmedPin = employeeForm.pin.trim()
+    if (trimmedPin && !/^\d{4,8}$/.test(trimmedPin)) {
+      setEmployeeStatus('O PIN deve ter entre 4 e 8 digitos.')
+      return
+    }
+    const pinHash = trimmedPin ? await hashPin(trimmedPin) : previous?.pinHash
     const next: Employee = {
       id: editingEmployeeId ?? createId(),
       name: employeeForm.name.trim(),
@@ -353,6 +362,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       levelId: employeeForm.levelId || undefined,
       cpf: normalizedCpf || undefined,
       active: employeeForm.active,
+      pinHash,
       hiredAt: employeeForm.hiredAt,
     }
 
@@ -655,6 +665,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       roleId: employee.roleId ?? '',
       levelId: employee.levelId ?? '',
       cpf: employee.cpf ?? '',
+      pin: '',
       active: employee.active ?? true,
       hiredAt: employee.hiredAt ?? new Date().toISOString().slice(0, 10),
     })
@@ -1401,6 +1412,23 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                 onChange={(event) => updateEmployeeForm({ hiredAt: event.target.value })}
               />
             </div>
+          </div>
+
+          <div className="modal__group">
+            <label className="modal__label" htmlFor="employee-pin">
+              PIN do POP
+            </label>
+            <input
+              id="employee-pin"
+              className="modal__input"
+              type="password"
+              inputMode="numeric"
+              autoComplete="new-password"
+              value={employeeForm.pin}
+              onChange={(event) => updateEmployeeForm({ pin: event.target.value })}
+              placeholder="4 a 8 digitos"
+            />
+            <p className="modal__help">Deixe em branco para manter o PIN atual.</p>
           </div>
 
           <label className="toggle modal__checkbox">
