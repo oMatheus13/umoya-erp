@@ -9,6 +9,7 @@ Use no SQL Editor do Supabase:
 ```sql
 delete from public.erp_states_backup;
 delete from public.erp_states;
+delete from public.tracking_orders;
 ```
 
 ## Opcao 2: reset total (dados + contas)
@@ -23,6 +24,7 @@ delete from auth.users;
 
 delete from public.erp_states_backup;
 delete from public.erp_states;
+delete from public.tracking_orders;
 ```
 
 Se algum desses objetos nao existir no seu projeto, remova a linha e rode o restante.

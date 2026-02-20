@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import type { User } from '@supabase/supabase-js'
 import Login from '../pages/core/Login'
 import logotipo from '../assets/brand/logotipo.svg'
 import {
@@ -7,10 +6,8 @@ import {
   ensureStorageSeed,
   setRemoteSync,
 } from '../services/dataService'
-import { erpRemote } from '../services/erpRemote'
-import { trackingRemote } from '../services/trackingRemote'
 import { buildTrackingPayloads } from '../services/trackingPayload'
-import { supabase } from '../services/supabaseClient'
+import { popSyncRemote } from '../services/popSyncRemote'
 import { useERPData } from '../store/appStore'
 import type {
   Employee,
@@ -53,15 +50,7 @@ const hasMeaningfulData = (payload: ERPData) =>
 const resolveUpdatedAt = (payload: ERPData | null, fallback?: string) =>
   payload?.meta?.updatedAt ?? fallback
 
-const fetchRemoteState = async (syncId: string) => {
-  type RemoteState = Awaited<ReturnType<typeof erpRemote.fetchState>>
-  const timeout = new Promise<RemoteState>((resolve) => {
-    setTimeout(() => resolve({ data: null, error: 'timeout' }), 8000)
-  })
-  return Promise.race<RemoteState>([erpRemote.fetchState(syncId), timeout])
-}
-
-const createRemoteSync = (syncId: string) => {
+const createRemoteSync = () => {
   const SYNC_DEBOUNCE_MS = 400
   let pending: ERPData | null = null
   let timer: ReturnType<typeof setTimeout> | null = null
@@ -72,10 +61,7 @@ const createRemoteSync = (syncId: string) => {
     }
     const payload = pending
     pending = null
-    const result = await erpRemote.upsertState(syncId, payload)
-    if (!result.error) {
-      await trackingRemote.upsertOrders(syncId, buildTrackingPayloads(payload))
-    }
+    await popSyncRemote.upsertState(payload, buildTrackingPayloads(payload))
   }
 
   return (data: ERPData) => {
@@ -112,9 +98,13 @@ const PopApp = () => {
     createEmptyProductionForm(),
   )
   const [confirmation, setConfirmation] = useState<string | null>(null)
+  const [syncReady, setSyncReady] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
   const deviceIdRef = useRef(resolveDeviceId())
   const confirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const syncHandlerRef = useRef<ReturnType<typeof createRemoteSync> | null>(null)
+  const syncInFlightRef = useRef(false)
 
   const productsById = useMemo(
     () => new Map(data.produtos.map((product) => [product.id, product])),
@@ -161,68 +151,86 @@ const PopApp = () => {
     }
   }, [view])
 
-  useEffect(() => {
-    if (!supabase) {
+  const ensureRemoteSync = () => {
+    if (syncHandlerRef.current) {
+      setRemoteSync(syncHandlerRef.current)
+      return syncHandlerRef.current
+    }
+    const handler = createRemoteSync()
+    syncHandlerRef.current = handler
+    setRemoteSync(handler)
+    return handler
+  }
+
+  const applyRemotePayload = (payload: ERPData) => {
+    const handler = syncHandlerRef.current
+    setRemoteSync(null)
+    dataService.replaceAll(payload, { touchMeta: false, skipSync: true })
+    if (handler) {
+      setRemoteSync(handler)
+    } else {
+      ensureRemoteSync()
+    }
+  }
+
+  const syncFromRemote = async () => {
+    if (syncInFlightRef.current) {
       return
     }
-    supabase.auth.getSession().then(({ data: sessionData }) => {
-      const user = sessionData.session?.user ?? null
-      if (user) {
-        void startSession(user)
-      }
-    })
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      const user = session?.user ?? null
-      if (!user) {
-        setRemoteSync(null)
-        return
-      }
-      void startSession(user)
-    })
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  const startSession = async (user: User) => {
-    setRemoteSync(null)
-    const resolvedSyncId =
-      (user.user_metadata?.workspace_id as string | undefined) ?? user.id
-
+    syncInFlightRef.current = true
     const localSnapshot = dataService.getAll()
     const localHasData = hasMeaningfulData(localSnapshot)
-    const remote = await fetchRemoteState(resolvedSyncId)
-    const remoteError = !!remote.error
-    const remotePayload = remote.data
-    const remoteUpdatedAt = resolveUpdatedAt(remotePayload, remote.updatedAt)
-    const localUpdatedAt = resolveUpdatedAt(localSnapshot)
-    const remoteIsNewer =
-      !!remotePayload &&
-      !!remoteUpdatedAt &&
-      (!localUpdatedAt || remoteUpdatedAt > localUpdatedAt)
+    try {
+      setSyncError(null)
+      const remote = await popSyncRemote.fetchState()
+      if (remote.error) {
+        setSyncError(remote.error)
+        return
+      }
+      const remotePayload = remote.data
+      const remoteUpdatedAt = resolveUpdatedAt(remotePayload, remote.updatedAt)
+      const localUpdatedAt = resolveUpdatedAt(localSnapshot)
+      const remoteIsNewer =
+        !!remotePayload &&
+        !!remoteUpdatedAt &&
+        (!localUpdatedAt || remoteUpdatedAt > localUpdatedAt)
 
-    if (remotePayload && (!localHasData || remoteIsNewer)) {
-      dataService.replaceAll(remotePayload, { touchMeta: false, skipSync: true })
+      if (remotePayload && (!localHasData || remoteIsNewer)) {
+        applyRemotePayload(remotePayload)
+      }
+
+      const localIsNewer =
+        localHasData &&
+        !!localUpdatedAt &&
+        (!remoteUpdatedAt || localUpdatedAt > remoteUpdatedAt)
+      const shouldSeedRemote = !remotePayload && localHasData
+      if (localIsNewer || shouldSeedRemote) {
+        await popSyncRemote.upsertState(
+          localSnapshot,
+          buildTrackingPayloads(localSnapshot),
+        )
+      }
+      ensureRemoteSync()
+    } finally {
+      setSyncReady(true)
+      syncInFlightRef.current = false
     }
-
-    if (!remoteError) {
-      const handler = createRemoteSync(resolvedSyncId)
-      setRemoteSync(handler)
-    }
-
-    const localIsNewer =
-      localHasData &&
-      !!localUpdatedAt &&
-      (!remoteUpdatedAt || localUpdatedAt > remoteUpdatedAt)
-    if (!remoteError && localIsNewer) {
-      const latest = dataService.getAll()
-      await erpRemote.upsertState(resolvedSyncId, latest)
-      await trackingRemote.upsertOrders(resolvedSyncId, buildTrackingPayloads(latest))
-    }
-
   }
+
+  useEffect(() => {
+    void syncFromRemote()
+  }, [])
+
+  useEffect(() => {
+    if (!syncReady) {
+      return
+    }
+    const SYNC_POLL_MS = 10000
+    const interval = setInterval(() => {
+      void syncFromRemote()
+    }, SYNC_POLL_MS)
+    return () => clearInterval(interval)
+  }, [syncReady])
 
   const resetSession = (message?: string) => {
     if (confirmTimerRef.current) {
@@ -461,6 +469,10 @@ const PopApp = () => {
     }
   }, [view])
 
+  const hasLocalData = hasMeaningfulData(data)
+  const resolvedPinNotice =
+    pinNotice ?? syncError ?? (!syncReady ? 'Sincronizando dados do ERP...' : null)
+  const isPinDisabled = !syncReady || (!hasLocalData && !!syncError)
   const breakAction = resolveBreakLabel()
 
   if (view === 'pin') {
@@ -468,7 +480,8 @@ const PopApp = () => {
       <Login
         variant="pin"
         className="pop-login"
-        pinNotice={pinNotice}
+        pinNotice={resolvedPinNotice}
+        pinDisabled={isPinDisabled}
         onPinLogin={(employee) => {
           setCurrentEmployee(employee)
           setFormStatus(null)

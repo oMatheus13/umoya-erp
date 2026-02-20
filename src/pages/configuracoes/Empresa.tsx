@@ -8,13 +8,18 @@ const Empresa = () => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [form, setForm] = useState<CompanyProfile>(() => ({ ...data.empresa }))
+  const [isDirty, setIsDirty] = useState(false)
 
   useEffect(() => {
+    if (isDirty) {
+      return
+    }
     setForm({ ...data.empresa })
-  }, [data.empresa])
+  }, [data.empresa, isDirty])
 
   const updateForm = (patch: Partial<CompanyProfile>) => {
     setForm((prev) => ({ ...prev, ...patch }))
+    setIsDirty(true)
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -41,6 +46,7 @@ const Empresa = () => {
       website: form.website?.trim() || undefined,
       notes: form.notes?.trim() || undefined,
     }
+    setIsDirty(false)
     dataService.replaceAll(payload)
     refresh()
     setStatus('Dados da empresa atualizados.')

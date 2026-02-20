@@ -2,6 +2,8 @@ import type { Cashbox, EmployeeLevel, EmployeeRole, ERPData, SystemTables } from
 import { PAYMENT_METHODS } from '../data/paymentMethods'
 
 const STORAGE_KEY = 'umoya_erp_data'
+let memoryState: ERPData | null = null
+let didMigrateLegacy = false
 
 export const DEFAULT_ROLES: EmployeeRole[] = [
   { id: 'role-ajudante', name: 'Ajudante de producao', multiplier: 0.9 },
@@ -123,22 +125,55 @@ export const createEmptyState = (): ERPData => ({
   },
 })
 
-export const getStorage = (): ERPData | null => {
-  const raw = localStorage.getItem(STORAGE_KEY)
-  if (!raw) {
+const loadLegacyStorage = (): ERPData | null => {
+  if (didMigrateLegacy) {
+    return null
+  }
+  didMigrateLegacy = true
+  if (typeof window === 'undefined') {
     return null
   }
   try {
-    return JSON.parse(raw) as ERPData
+    const raw = window.localStorage.getItem(STORAGE_KEY)
+    if (!raw) {
+      return null
+    }
+    const parsed = JSON.parse(raw) as ERPData
+    window.localStorage.removeItem(STORAGE_KEY)
+    return parsed
   } catch {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY)
+    } catch {
+      // ignore
+    }
     return null
   }
 }
 
+export const getStorage = (): ERPData | null => {
+  if (memoryState) {
+    return memoryState
+  }
+  const legacy = loadLegacyStorage()
+  if (legacy) {
+    memoryState = legacy
+  }
+  return memoryState
+}
+
 export const saveStorage = (data: ERPData) => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  memoryState = data
 }
 
 export const clearStorage = () => {
-  localStorage.removeItem(STORAGE_KEY)
+  memoryState = null
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // ignore
+  }
 }

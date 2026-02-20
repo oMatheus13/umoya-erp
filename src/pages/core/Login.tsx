@@ -37,6 +37,7 @@ type LoginProps =
       onPinLogin: (employee: Employee) => void
       className?: string
       pinNotice?: string | null
+      pinDisabled?: boolean
     }
 
 type LoginForm = {
@@ -140,6 +141,7 @@ const Login = (props: LoginProps) => {
   const onDevLogin = 'onDevLogin' in props ? props.onDevLogin : undefined
   const onPinLogin = 'onPinLogin' in props ? props.onPinLogin : undefined
   const pinNotice = 'pinNotice' in props ? props.pinNotice ?? null : null
+  const pinDisabled = 'pinDisabled' in props ? props.pinDisabled ?? false : false
   const rootClassName = ['login', props.className].filter(Boolean).join(' ')
   const { data } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
@@ -273,7 +275,7 @@ const Login = (props: LoginProps) => {
   }
 
   const handlePinSubmit = async () => {
-    if (!isPin || isVerifyingPin) {
+    if (!isPin || isVerifyingPin || pinDisabled) {
       return
     }
     if (isLocked) {
@@ -310,7 +312,7 @@ const Login = (props: LoginProps) => {
   }
 
   const handleDigit = (value: string) => {
-    if (isLocked) {
+    if (isLocked || pinDisabled) {
       return
     }
     if (pinInput.length >= MAX_PIN_LENGTH) {
@@ -321,7 +323,7 @@ const Login = (props: LoginProps) => {
   }
 
   const handleBackspace = () => {
-    if (isLocked) {
+    if (isLocked || pinDisabled) {
       return
     }
     setPinInput((prev) => prev.slice(0, -1))
@@ -330,10 +332,16 @@ const Login = (props: LoginProps) => {
 
   const handlePinFormSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (pinDisabled) {
+      return
+    }
     void handlePinSubmit()
   }
 
   const handlePinChange = (event: FormEvent<HTMLInputElement>) => {
+    if (pinDisabled) {
+      return
+    }
     const next = event.currentTarget.value.replace(/\D/g, '').slice(0, MAX_PIN_LENGTH)
     setPinInput(next)
     setPinStatus(null)
@@ -704,6 +712,7 @@ const Login = (props: LoginProps) => {
                     inputMode="numeric"
                     autoComplete="off"
                     maxLength={MAX_PIN_LENGTH}
+                    disabled={pinDisabled}
                   />
                   <button
                     className="login__toggle"
@@ -711,6 +720,7 @@ const Login = (props: LoginProps) => {
                     aria-label={showPin ? 'Ocultar PIN' : 'Mostrar PIN'}
                     aria-pressed={showPin}
                     onClick={() => setShowPin((prev) => !prev)}
+                    disabled={pinDisabled}
                   >
                     <span className="material-symbols-outlined" aria-hidden="true">
                       {showPin ? 'visibility_off' : 'visibility'}
@@ -718,7 +728,7 @@ const Login = (props: LoginProps) => {
                   </button>
                 </div>
               </div>
-              {employeesWithPin.length === 0 && (
+              {!pinDisabled && employeesWithPin.length === 0 && (
                 <p className="login__hint">Nenhum funcionario com PIN cadastrado.</p>
               )}
               {pinStatusMessage && <p className="login__status">{pinStatusMessage}</p>}
@@ -729,7 +739,7 @@ const Login = (props: LoginProps) => {
                     type="button"
                     className="pop-key"
                     onClick={() => handleDigit(digit)}
-                    disabled={isVerifyingPin || isLocked}
+                    disabled={isVerifyingPin || isLocked || pinDisabled}
                   >
                     {digit}
                   </button>
@@ -738,7 +748,7 @@ const Login = (props: LoginProps) => {
                   type="button"
                   className="pop-key pop-key--ghost"
                   onClick={handleBackspace}
-                  disabled={isVerifyingPin || isLocked}
+                  disabled={isVerifyingPin || isLocked || pinDisabled}
                   aria-label="Apagar"
                 >
                   <span className="material-symbols-outlined" aria-hidden="true">
@@ -750,14 +760,14 @@ const Login = (props: LoginProps) => {
                   type="button"
                   className="pop-key"
                   onClick={() => handleDigit('0')}
-                  disabled={isVerifyingPin || isLocked}
+                  disabled={isVerifyingPin || isLocked || pinDisabled}
                 >
                   0
                 </button>
                 <button
                   type="submit"
                   className="pop-key pop-key--primary"
-                  disabled={isVerifyingPin || isLocked}
+                  disabled={isVerifyingPin || isLocked || pinDisabled}
                 >
                   ok
                 </button>

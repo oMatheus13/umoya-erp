@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import Placeholder from '../shared/Placeholder'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
@@ -108,6 +108,8 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     avatarUrl: '',
     avatarPath: '',
   })
+  const [isDirty, setIsDirty] = useState(false)
+  const lastUserIdRef = useRef<string | null>(null)
 
   const resolvedUser = useMemo(() => {
     if (!currentUser) {
@@ -139,6 +141,14 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     if (!resolvedUser) {
       return
     }
+    const resolvedId = resolvedUser.id
+    const shouldForceReset =
+      lastUserIdRef.current !== null && lastUserIdRef.current !== resolvedId
+    if (isDirty && !shouldForceReset) {
+      return
+    }
+    lastUserIdRef.current = resolvedId
+    setIsDirty(false)
     setForm({
       displayName: resolvedUser.displayName ?? '',
       name: resolvedUser.name ?? '',
@@ -147,7 +157,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       avatarUrl: sanitizeAvatarUrl(resolvedUser.avatarUrl) ?? '',
       avatarPath: resolvedUser.avatarPath ?? '',
     })
-  }, [resolvedUser])
+  }, [resolvedUser, isDirty])
 
   useEffect(() => {
     if (!resolvedUser?.avatarPath || form.avatarUrl) {
@@ -159,7 +169,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
         return
       }
       if (signed.url) {
-        updateForm({ avatarUrl: signed.url })
+        updateForm({ avatarUrl: signed.url }, false)
       }
     })
     return () => {
@@ -176,8 +186,11 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     )
   }
 
-  const updateForm = (patch: Partial<PerfilForm>) => {
+  const updateForm = (patch: Partial<PerfilForm>, markDirty = true) => {
     setForm((prev) => ({ ...prev, ...patch }))
+    if (markDirty) {
+      setIsDirty(true)
+    }
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -208,6 +221,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
       payload.usuarios = [...payload.usuarios, payloadUser]
     }
 
+    setIsDirty(false)
     dataService.replaceAll(payload)
     refresh()
     onUpdate?.(nextUser)
