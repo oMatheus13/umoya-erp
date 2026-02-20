@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Placeholder from '../shared/Placeholder'
 import { Page, PageHeader } from '../../components/ui'
+import QuickNotice from '../../components/QuickNotice'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { PermissionKey, PermissionLevel, RolePermissions, UserAccount } from '../../types/erp'
@@ -141,7 +142,7 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
         }
       />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">

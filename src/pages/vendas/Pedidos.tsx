@@ -4,6 +4,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
 import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import {
   getPaymentCashboxId,
@@ -181,6 +182,19 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     ? data.clientes.find((client) => client.id === form.clientId)
     : null
   const clientObras = selectedClient?.obras ?? []
+  const trackingLinkNotice = useMemo(() => {
+    if (!trackingLink) {
+      return null
+    }
+    return (
+      <>
+        Link de rastreio:{' '}
+        <a href={trackingLink} target="_blank" rel="noreferrer">
+          {trackingLink}
+        </a>
+      </>
+    )
+  }, [trackingLink])
 
   const updateForm = (patch: Partial<OrderForm>) => {
     setForm((prev) => ({ ...prev, ...patch }))
@@ -1073,15 +1087,15 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
           </button>
         }
       />
-      {status && <p className="form__status">{status}</p>}
-      {trackingLink && (
-        <p className="form__status">
-          Link de rastreio:{' '}
-          <a href={trackingLink} target="_blank" rel="noreferrer">
-            {trackingLink}
-          </a>
-        </p>
-      )}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
+      <QuickNotice
+        message={trackingLinkNotice}
+        tone="info"
+        autoHideMs={9000}
+        interactive
+        onClear={() => setTrackingLink(null)}
+        slot={1}
+      />
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -1558,7 +1572,6 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
             <strong>{formatCurrency(total)}</strong>
           </div>
 
-          {status && <p className="modal__status">{status}</p>}
           {!hasProducts && <p className="modal__help">Cadastre produtos para liberar pedidos.</p>}
         </form>
       </Modal>

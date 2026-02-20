@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import QuickNotice from '../../components/QuickNotice'
 import { getPaymentMethodLabel, getPaymentMethodOptions } from '../../data/paymentMethods'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
@@ -343,7 +344,7 @@ const PdvCash = ({ operatorId, operatorName }: PdvCashProps) => {
             </>
           )}
 
-          {status && <p className="form__status">{status}</p>}
+          <QuickNotice message={status} onClear={() => setStatus(null)} />
         </div>
       </section>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
@@ -386,7 +387,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
         }
       />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -778,7 +779,6 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             <strong>{formatCurrency(totalAmount)}</strong>
           </div>
 
-          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
     </Page>

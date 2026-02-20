@@ -3,6 +3,7 @@ import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
@@ -391,7 +392,7 @@ const ProducaoRefugo = () => {
         }
       />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -733,7 +734,6 @@ const ProducaoRefugo = () => {
             />
           </div>
 
-          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 

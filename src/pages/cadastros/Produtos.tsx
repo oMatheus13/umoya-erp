@@ -4,6 +4,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
 import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
@@ -642,7 +643,7 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
           </button>
         }
       />
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -989,7 +990,6 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
               <span className="toggle__label">Produto ativo</span>
             </label>
 
-            {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
@@ -1395,7 +1395,11 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
               <span className="toggle__label">Variacao ativa</span>
             </label>
 
-            {variantStatus && <p className="modal__status">{variantStatus}</p>}
+            <QuickNotice
+              message={variantStatus}
+              onClear={() => setVariantStatus(null)}
+              slot={1}
+            />
           </form>
         ) : (
           <p className="modal__help">Selecione um produto para gerenciar variacoes.</p>

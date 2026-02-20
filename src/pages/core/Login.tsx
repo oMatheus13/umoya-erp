@@ -10,6 +10,7 @@ import {
 import logotipo from '../../assets/brand/logotipo.svg'
 import loginMockErp from '../../assets/brand/login-mock-3.webp'
 import loginMockPdv from '../../assets/brand/login-mock-2.webp'
+import QuickNotice from '../../components/QuickNotice'
 import { dataService } from '../../services/dataService'
 import {
   getAuthPersistence,
@@ -150,7 +151,6 @@ const Login = (props: LoginProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinStatus, setPinStatus] = useState<string | null>(pinNotice)
-  const [pinToast, setPinToast] = useState<string | null>(null)
   const [showPin, setShowPin] = useState(false)
   const [isVerifyingPin, setIsVerifyingPin] = useState(false)
   const { attempts: initialAttempts, lockedUntil: initialLockedUntil } = loadLockState()
@@ -174,7 +174,6 @@ const Login = (props: LoginProps) => {
   const lockTickerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [lockTick, setLockTick] = useState(0)
   const deviceIdRef = useRef(resolveDeviceId())
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabaseEnabled = isSupabaseEnabled()
   const recoveryToken = recoveryCode.join('')
   const appKind = resolveAppKind()
@@ -276,16 +275,20 @@ const Login = (props: LoginProps) => {
     return null
   }
 
+  const setPinFeedback = (message: string | null) => {
+    setPinStatus(message)
+  }
+
   const handlePinSubmit = async () => {
     if (!isPin || isVerifyingPin || pinDisabled) {
       return
     }
     if (isLocked) {
-      setPinStatus(`Bloqueado. Aguarde ${lockSeconds}s.`)
+      setPinFeedback(`Bloqueado. Aguarde ${lockSeconds}s.`)
       return
     }
     if (pinInput.trim().length < MIN_PIN_LENGTH) {
-      setPinStatus('Informe o PIN.')
+      setPinFeedback('Informe o PIN.')
       return
     }
     setIsVerifyingPin(true)
@@ -294,7 +297,7 @@ const Login = (props: LoginProps) => {
       const nextAttempts = failedAttempts + 1
       setFailedAttempts(nextAttempts)
       logPinAttempt(false)
-      setPinStatus('PIN incorreto.')
+      setPinFeedback('PIN incorreto.')
       setPinInput('')
       if (nextAttempts >= MAX_ATTEMPTS) {
         setLockedUntil(Date.now() + LOCK_MS)
@@ -307,7 +310,7 @@ const Login = (props: LoginProps) => {
     setLockedUntil(null)
     logPinAttempt(true, employee.id)
     setPinInput('')
-    setPinStatus(null)
+    setPinFeedback(null)
     setShowPin(false)
     onPinLogin?.(employee)
     setIsVerifyingPin(false)
@@ -321,7 +324,7 @@ const Login = (props: LoginProps) => {
       return
     }
     setPinInput((prev) => prev + value)
-    setPinStatus(null)
+    setPinFeedback(null)
   }
 
   const handleBackspace = () => {
@@ -329,7 +332,7 @@ const Login = (props: LoginProps) => {
       return
     }
     setPinInput((prev) => prev.slice(0, -1))
-    setPinStatus(null)
+    setPinFeedback(null)
   }
 
   const handlePinFormSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -346,14 +349,14 @@ const Login = (props: LoginProps) => {
     }
     const next = event.currentTarget.value.replace(/\D/g, '').slice(0, MAX_PIN_LENGTH)
     setPinInput(next)
-    setPinStatus(null)
+    setPinFeedback(null)
   }
 
   useEffect(() => {
     if (!isPin || !pinNotice) {
       return
     }
-    setPinStatus(pinNotice)
+    setPinFeedback(pinNotice)
   }, [isPin, pinNotice])
 
   useEffect(() => {
@@ -395,7 +398,7 @@ const Login = (props: LoginProps) => {
     if (Date.now() >= lockedUntil) {
       setLockedUntil(null)
       setFailedAttempts(0)
-      setPinStatus(null)
+      setPinFeedback(null)
     }
   }, [isPin, lockTick, lockedUntil])
 
@@ -685,41 +688,22 @@ const Login = (props: LoginProps) => {
     applyRecoveryCode(text, index)
   }
 
-  const pinStatusMessage =
-    isLocked && lockSeconds > 0 ? `Bloqueado. Aguarde ${lockSeconds}s.` : pinStatus
-
-  useEffect(() => {
-    if (!isPin) {
-      setPinToast(null)
-      return
-    }
-    if (!pinStatusMessage) {
-      setPinToast(null)
-      return
-    }
-    setPinToast(pinStatusMessage)
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current)
-    }
-    toastTimerRef.current = setTimeout(() => {
-      setPinToast((current) => (current === pinStatusMessage ? null : current))
-      setPinStatus((current) => (current === pinStatusMessage ? null : current))
-      toastTimerRef.current = null
-    }, 3500)
-    return () => {
-      if (toastTimerRef.current) {
-        clearTimeout(toastTimerRef.current)
-        toastTimerRef.current = null
-      }
-    }
-  }, [isPin, pinStatusMessage])
+  const pinStatusMessage = pinStatus
 
   return (
     <div className={rootClassName}>
-      {isPin && pinToast && (
-        <div className="login__toast" role="status" aria-live="polite">
-          {pinToast}
-        </div>
+      {isPin && (
+        <QuickNotice message={pinStatusMessage} onClear={() => setPinFeedback(null)} />
+      )}
+      {!isPin && (
+        <>
+          <QuickNotice message={status} onClear={() => setStatus(null)} />
+          <QuickNotice
+            message={recoveryStatus}
+            onClear={() => setRecoveryStatus(null)}
+            slot={status ? 1 : 0}
+          />
+        </>
       )}
       <div className="login__panel">
         <div className="login__mock">
@@ -806,10 +790,10 @@ const Login = (props: LoginProps) => {
               </div>
             </form>
           ) : !supabaseEnabled ? (
-            <p className="login__status">
-              Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no arquivo `.env` para
-              ativar login.
-            </p>
+            <QuickNotice
+              message="Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` no arquivo `.env` para ativar login."
+              autoHideMs={0}
+            />
           ) : (
             <form
               className="login__form"
@@ -852,8 +836,6 @@ const Login = (props: LoginProps) => {
                       Esqueceu sua senha?
                     </button>
                   </div>
-
-                  {status && <p className="login__status">{status}</p>}
 
                   <div className="login__actions">
                     <label className="toggle login__remember" htmlFor="login-remember">
@@ -992,16 +974,6 @@ const Login = (props: LoginProps) => {
                         </div>
                       </div>
                     </>
-                  )}
-
-                  {recoveryStatus && (
-                    <p
-                      className={`login__status${
-                        isRecoveryDone ? ' login__status--success' : ''
-                      }`}
-                    >
-                      {recoveryStatus}
-                    </p>
                   )}
 
                   <div className="login__recovery-actions">

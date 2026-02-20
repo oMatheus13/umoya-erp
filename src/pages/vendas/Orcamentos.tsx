@@ -4,6 +4,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
 import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import logotipo from '../../assets/brand/logotipo.svg'
 import {
@@ -1045,7 +1046,7 @@ const Orcamentos = ({
           </button>
         }
       />
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -1530,7 +1531,6 @@ const Orcamentos = ({
             <strong>{formatCurrency(total)}</strong>
           </div>
 
-          {status && <p className="modal__status">{status}</p>}
           {!hasProducts && (
             <p className="modal__help">Cadastre produtos para liberar orcamentos.</p>
           )}

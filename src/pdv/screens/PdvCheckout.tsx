@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import DimensionInput from '../../components/DimensionInput'
+import QuickNotice from '../../components/QuickNotice'
 import {
   getPaymentCashboxId,
   getPaymentMethodOptions,
@@ -736,7 +737,7 @@ const PdvCheckout = ({
           </div>
 
           <div className="panel__section">
-            {status && <p className="form__status">{status}</p>}
+            <QuickNotice message={status} onClear={() => setStatus(null)} />
             <button
               className="button button--primary button--lg button--block"
               type="button"

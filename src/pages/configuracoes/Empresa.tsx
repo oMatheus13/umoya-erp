@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import { Page, PageHeader } from '../../components/ui'
+import QuickNotice from '../../components/QuickNotice'
 import type { CompanyProfile } from '../../types/erp'
 
 const Empresa = () => {
@@ -55,7 +56,7 @@ const Empresa = () => {
   return (
     <Page className="empresa">
       <PageHeader />
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <section className="panel">
         <div className="panel__header">

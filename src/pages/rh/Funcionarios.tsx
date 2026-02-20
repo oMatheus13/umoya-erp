@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { isSupabaseEnabled, supabaseNoPersist } from '../../services/supabaseClient'
@@ -882,8 +883,18 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
           </>
         }
       />
-      {employeeStatus && <p className="form__status">{employeeStatus}</p>}
-      {logStatus && <p className="form__status">{logStatus}</p>}
+      <QuickNotice
+        message={employeeStatus}
+        onClear={() => setEmployeeStatus(null)}
+        slot={0}
+      />
+      <QuickNotice message={logStatus} onClear={() => setLogStatus(null)} slot={1} />
+      <QuickNotice
+        message={accountStatus}
+        onClear={() => setAccountStatus(null)}
+        slot={3}
+      />
+      <QuickNotice message={status} onClear={() => setStatus(null)} slot={4} />
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -1190,7 +1201,11 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
             <span className="panel__meta">{users.length} registros</span>
           </div>
-          {accessStatus && <p className="form__status">{accessStatus}</p>}
+          <QuickNotice
+            message={accessStatus}
+            onClear={() => setAccessStatus(null)}
+            slot={2}
+          />
           <div className="table-card">
             <table className="table table--compact">
               <thead className="table__head table__head--mobile-hide">
@@ -1557,13 +1572,11 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                       />
                     </div>
                   </div>
-                  {accountStatus && <p className="modal__status">{accountStatus}</p>}
                 </>
               )}
             </div>
           )}
 
-          {employeeStatus && <p className="modal__status">{employeeStatus}</p>}
         </form>
       </Modal>
 
@@ -1624,7 +1637,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               onChange={(event) => updateRoleForm({ multiplier: Number(event.target.value) })}
             />
           </div>
-          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
@@ -1685,7 +1697,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               onChange={(event) => updateLevelForm({ multiplier: Number(event.target.value) })}
             />
           </div>
-          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
 
@@ -1825,7 +1836,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             </div>
           </div>
 
-          {logStatus && <p className="modal__status">{logStatus}</p>}
         </form>
       </Modal>
 

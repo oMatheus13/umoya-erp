@@ -37,25 +37,6 @@
   margin-top: var(--spacing-lg);
 }
 
-.pop-login .login__toast {
-  position: fixed;
-  top: var(--spacing-lg);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 50;
-  background: var(--pop-card);
-  color: var(--pop-text);
-  border: var(--border-thin);
-  border-radius: var(--border-radius-md);
-  padding: 0.6rem 0.9rem;
-  font-size: var(--font-size-sm);
-  box-shadow: var(--box-shadow-sm);
-  max-width: min(92vw, 360px);
-  text-align: center;
-  pointer-events: none;
-  animation: popFade 200ms ease;
-}
-
 .pop-header {
   display: inline-flex;
   justify-content: center;

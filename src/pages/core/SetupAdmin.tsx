@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import logotipo from '../../assets/brand/logotipo.svg'
 import loginMock from '../../assets/brand/login-mock-3.webp'
+import QuickNotice from '../../components/QuickNotice'
 import { supabase } from '../../services/supabaseClient'
 
 type SetupAdminProps = {
@@ -166,7 +167,7 @@ const SetupAdmin = ({ onComplete }: SetupAdminProps) => {
               </div>
             </div>
 
-            {status && <p className="login__status">{status}</p>}
+            <QuickNotice message={status} onClear={() => setStatus(null)} />
 
             <div className="login__actions">
               <div className="login__buttons">

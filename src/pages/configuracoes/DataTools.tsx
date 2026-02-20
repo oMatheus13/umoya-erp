@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { createEmptyState } from '../../services/storage'
@@ -80,7 +81,7 @@ const DataTools = () => {
               <strong className="panel__item-value">{data.usuarios.length}</strong>
             </div>
           </div>
-          {status && <p className="form__status">{status}</p>}
+          <QuickNotice message={status} onClear={() => setStatus(null)} />
         </section>
       </div>
       <ConfirmDialog

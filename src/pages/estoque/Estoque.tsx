@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
+import QuickNotice from '../../components/QuickNotice'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { ProductStockAdjustmentType } from '../../types/erp'
@@ -406,7 +407,7 @@ const Estoque = () => {
         }
       />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">

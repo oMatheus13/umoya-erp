@@ -1,0 +1,69 @@
+.quick-notice {
+  position: fixed;
+  top: calc(
+    env(safe-area-inset-top, 0px) +
+      var(--spacing-lg) +
+      (var(--quick-notice-slot, 0) * 56px)
+  );
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-index-toast, 2000);
+  background: var(--color-true-white);
+  color: var(--color-ink);
+  border: var(--border-thin);
+  border-radius: var(--border-radius-md);
+  padding: 0.6rem 0.9rem;
+  font-size: var(--font-size-sm);
+  box-shadow: var(--box-shadow-sm);
+  max-width: min(92vw, 420px);
+  text-align: center;
+  pointer-events: none;
+  animation: quickNoticeIn 200ms ease;
+}
+
+.quick-notice--interactive {
+  pointer-events: auto;
+}
+
+.quick-notice--interactive a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.quick-notice::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: inherit;
+  background: var(--quick-notice-accent, var(--color-ink-muted));
+}
+
+.quick-notice--info {
+  --quick-notice-accent: var(--color-ink-muted);
+}
+
+.quick-notice--success {
+  --quick-notice-accent: var(--color-success);
+}
+
+.quick-notice--warning {
+  --quick-notice-accent: var(--color-lime);
+}
+
+.quick-notice--danger {
+  --quick-notice-accent: var(--color-danger);
+}
+
+@keyframes quickNoticeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

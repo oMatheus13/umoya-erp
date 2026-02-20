@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
@@ -206,7 +207,7 @@ const Tabelas = () => {
     <Page className="tabelas">
       <PageHeader />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="tabelas__grid">
         <article className="panel">
@@ -342,7 +343,6 @@ const Tabelas = () => {
             <span className="toggle__label">Item ativo</span>
           </label>
 
-          {status && <p className="modal__status">{status}</p>}
         </form>
       </Modal>
     </Page>

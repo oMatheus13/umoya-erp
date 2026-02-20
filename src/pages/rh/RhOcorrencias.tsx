@@ -5,6 +5,7 @@ import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
+import QuickNotice from '../../components/QuickNotice'
 import type { EmployeeOccurrence } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
@@ -138,7 +139,7 @@ const RhOcorrencias = () => {
         }
       />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <section className="panel">
         <div className="panel__header">

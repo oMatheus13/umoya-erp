@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import Modal from '../../components/Modal'
+import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
@@ -486,7 +487,7 @@ const ConsumoProdutos = () => {
     <Page className="consumo-produtos">
       <PageHeader />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">
@@ -860,7 +861,7 @@ const ConsumoProdutos = () => {
         }
       >
         <div className="modal__form">
-          {batchStatus && <p className="modal__status">{batchStatus}</p>}
+          <QuickNotice message={batchStatus} onClear={() => setBatchStatus(null)} />
           <div className="modal__section">
             <p className="modal__help">
               Informe o traco de concreto e o rendimento para gerar o consumo automatico.

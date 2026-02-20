@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import Placeholder from '../shared/Placeholder'
 import { Page, PageHeader } from '../../components/ui'
+import QuickNotice from '../../components/QuickNotice'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { UserAccount } from '../../types/erp'
@@ -297,7 +298,7 @@ const Perfil = ({ currentUser, onUpdate }: PerfilProps) => {
     <Page className="perfil">
       <PageHeader />
 
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="grid grid--profile">
         <section className="card card--profile">

@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import Modal from '../../components/Modal'
 import { Page, PageHeader } from '../../components/ui'
+import QuickNotice from '../../components/QuickNotice'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import type { Material } from '../../types/erp'
@@ -129,7 +130,7 @@ const EstoqueMateriais = () => {
   return (
     <Page className="estoque-materiais">
       <PageHeader />
-      {status && <p className="form__status">{status}</p>}
+      <QuickNotice message={status} onClear={() => setStatus(null)} />
 
       <div className="summary summary-card">
         <article className="summary__item">
