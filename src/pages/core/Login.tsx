@@ -150,6 +150,7 @@ const Login = (props: LoginProps) => {
   const [showPassword, setShowPassword] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinStatus, setPinStatus] = useState<string | null>(pinNotice)
+  const [pinToast, setPinToast] = useState<string | null>(null)
   const [showPin, setShowPin] = useState(false)
   const [isVerifyingPin, setIsVerifyingPin] = useState(false)
   const { attempts: initialAttempts, lockedUntil: initialLockedUntil } = loadLockState()
@@ -173,6 +174,7 @@ const Login = (props: LoginProps) => {
   const lockTickerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [lockTick, setLockTick] = useState(0)
   const deviceIdRef = useRef(resolveDeviceId())
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const supabaseEnabled = isSupabaseEnabled()
   const recoveryToken = recoveryCode.join('')
   const appKind = resolveAppKind()
@@ -686,8 +688,39 @@ const Login = (props: LoginProps) => {
   const pinStatusMessage =
     isLocked && lockSeconds > 0 ? `Bloqueado. Aguarde ${lockSeconds}s.` : pinStatus
 
+  useEffect(() => {
+    if (!isPin) {
+      setPinToast(null)
+      return
+    }
+    if (!pinStatusMessage) {
+      setPinToast(null)
+      return
+    }
+    setPinToast(pinStatusMessage)
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current)
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setPinToast((current) => (current === pinStatusMessage ? null : current))
+      setPinStatus((current) => (current === pinStatusMessage ? null : current))
+      toastTimerRef.current = null
+    }, 3500)
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current)
+        toastTimerRef.current = null
+      }
+    }
+  }, [isPin, pinStatusMessage])
+
   return (
     <div className={rootClassName}>
+      {isPin && pinToast && (
+        <div className="login__toast" role="status" aria-live="polite">
+          {pinToast}
+        </div>
+      )}
       <div className="login__panel">
         <div className="login__mock">
           <img src={appMock} alt="" />
@@ -731,7 +764,6 @@ const Login = (props: LoginProps) => {
               {!pinDisabled && employeesWithPin.length === 0 && (
                 <p className="login__hint">Nenhum funcionario com PIN cadastrado.</p>
               )}
-              {pinStatusMessage && <p className="login__status">{pinStatusMessage}</p>}
               <div className="pop-keypad pop-keypad--login">
                 {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((digit) => (
                   <button
