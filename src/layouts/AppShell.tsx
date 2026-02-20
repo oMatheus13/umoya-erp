@@ -18,6 +18,7 @@ type AppShellProps = {
   canView?: (pageId: string) => boolean
   canEdit?: boolean
   isPageTransitioning?: boolean
+  showDevTools?: boolean
 }
 
 const AppShell = ({
@@ -34,6 +35,7 @@ const AppShell = ({
   canView,
   canEdit,
   isPageTransitioning,
+  showDevTools,
 }: AppShellProps) => {
   const [isSidebarHovered, setIsSidebarHovered] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -167,6 +169,7 @@ const AppShell = ({
           onProfileOpen={() => onNavigate('perfil')}
           onNavigate={handleNavigate}
           canView={canView}
+          showDevTools={showDevTools}
         />
         <PageProvider pageId={activePage}>
           <div

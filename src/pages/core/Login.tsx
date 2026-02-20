@@ -24,6 +24,7 @@ import { resolveAppKind } from '../../utils/appContext'
 import { resolveDeviceId, resolveDeviceInfo } from '../../utils/device'
 import { createId } from '../../utils/ids'
 import { verifyPin } from '../../utils/pin'
+import { playBeep, startTone, stopTone } from '../../utils/sound'
 import type { User } from '@supabase/supabase-js'
 
 type LoginProps =
@@ -39,6 +40,9 @@ type LoginProps =
       className?: string
       pinNotice?: string | null
       pinDisabled?: boolean
+      onPinDevLogin?: () => void
+      pinDevLabel?: string
+      pinBeep?: boolean
     }
 
 type LoginForm = {
@@ -70,6 +74,20 @@ const MIN_PIN_LENGTH = 4
 const MAX_ATTEMPTS = 5
 const LOCK_MS = 30000
 const LOCK_STORAGE_KEY = 'umoya_pop_lock'
+const PIN_TONES: Record<string, number> = {
+  '1': 262,
+  '2': 294,
+  '3': 330,
+  '4': 349,
+  '5': 392,
+  '6': 440,
+  '7': 494,
+  '8': 523,
+  '9': 587,
+  '0': 659,
+}
+const PIN_TONE_OK = 784
+const PIN_TONE_BACKSPACE = 196
 const RECOVERY_CODE_LENGTH = 6
 const createEmptyRecoveryCode = () =>
   Array.from({ length: RECOVERY_CODE_LENGTH }, () => '')
@@ -141,6 +159,9 @@ const Login = (props: LoginProps) => {
   const onLogin = 'onLogin' in props ? props.onLogin : undefined
   const onDevLogin = 'onDevLogin' in props ? props.onDevLogin : undefined
   const onPinLogin = 'onPinLogin' in props ? props.onPinLogin : undefined
+  const onPinDevLogin = 'onPinDevLogin' in props ? props.onPinDevLogin : undefined
+  const pinDevLabel = 'pinDevLabel' in props ? props.pinDevLabel ?? 'Dev' : 'Dev'
+  const enablePinBeep = 'pinBeep' in props ? props.pinBeep ?? false : false
   const pinNotice = 'pinNotice' in props ? props.pinNotice ?? null : null
   const pinDisabled = 'pinDisabled' in props ? props.pinDisabled ?? false : false
   const rootClassName = ['login', props.className].filter(Boolean).join(' ')
@@ -156,6 +177,7 @@ const Login = (props: LoginProps) => {
   const { attempts: initialAttempts, lockedUntil: initialLockedUntil } = loadLockState()
   const [failedAttempts, setFailedAttempts] = useState(initialAttempts)
   const [lockedUntil, setLockedUntil] = useState<number | null>(initialLockedUntil)
+  const lastPointerToneAtRef = useRef(0)
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const [recoveryIdentifier, setRecoveryIdentifier] = useState('')
   const [recoveryStatus, setRecoveryStatus] = useState<string | null>(null)
@@ -279,6 +301,49 @@ const Login = (props: LoginProps) => {
     setPinStatus(message)
   }
 
+  const triggerPinBeep = (tone?: number) => {
+    if (!enablePinBeep) {
+      return
+    }
+    playBeep({ frequency: tone ?? 760, durationMs: 70, volume: 0.06 })
+  }
+
+  const canPlayPinTone = () =>
+    enablePinBeep && !pinDisabled && !isLocked && !isVerifyingPin
+
+  const startPinTone = (tone?: number) => {
+    if (!canPlayPinTone()) {
+      return
+    }
+    startTone({ frequency: tone ?? 760, volume: 0.06 })
+  }
+
+  const startDigitTone = (tone?: number) => {
+    if (pinInput.length >= MAX_PIN_LENGTH) {
+      return
+    }
+    startPinTone(tone)
+  }
+
+  const startBackspaceTone = (tone?: number) => {
+    if (!pinInput) {
+      return
+    }
+    startPinTone(tone)
+  }
+
+  const stopPinTone = () => {
+    if (!enablePinBeep) {
+      return
+    }
+    stopTone()
+  }
+
+  const stopPointerTone = () => {
+    lastPointerToneAtRef.current = Date.now()
+    stopPinTone()
+  }
+
   const handlePinSubmit = async () => {
     if (!isPin || isVerifyingPin || pinDisabled) {
       return
@@ -331,6 +396,9 @@ const Login = (props: LoginProps) => {
     if (isLocked || pinDisabled) {
       return
     }
+    if (!pinInput) {
+      return
+    }
     setPinInput((prev) => prev.slice(0, -1))
     setPinFeedback(null)
   }
@@ -339,6 +407,9 @@ const Login = (props: LoginProps) => {
     event.preventDefault()
     if (pinDisabled) {
       return
+    }
+    if (Date.now() - lastPointerToneAtRef.current > 400) {
+      triggerPinBeep(PIN_TONE_OK)
     }
     void handlePinSubmit()
   }
@@ -358,6 +429,21 @@ const Login = (props: LoginProps) => {
     }
     setPinFeedback(pinNotice)
   }, [isPin, pinNotice])
+
+  useEffect(() => {
+    if (!isPin) {
+      return
+    }
+    if (pinDisabled || isLocked || isVerifyingPin) {
+      stopPinTone()
+    }
+  }, [isPin, pinDisabled, isLocked, isVerifyingPin])
+
+  useEffect(() => {
+    return () => {
+      stopPinTone()
+    }
+  }, [])
 
   useEffect(() => {
     if (!isPin) {
@@ -689,6 +775,8 @@ const Login = (props: LoginProps) => {
   }
 
   const pinStatusMessage = pinStatus
+  const showDevPinButton = isPin && !!onPinDevLogin
+  const devPinDisabled = isVerifyingPin || isLocked
 
   return (
     <div className={rootClassName}>
@@ -755,6 +843,10 @@ const Login = (props: LoginProps) => {
                     type="button"
                     className="pop-key"
                     onClick={() => handleDigit(digit)}
+                    onPointerDown={() => startDigitTone(PIN_TONES[digit])}
+                    onPointerUp={stopPointerTone}
+                    onPointerLeave={stopPointerTone}
+                    onPointerCancel={stopPointerTone}
                     disabled={isVerifyingPin || isLocked || pinDisabled}
                   >
                     {digit}
@@ -764,6 +856,10 @@ const Login = (props: LoginProps) => {
                   type="button"
                   className="pop-key pop-key--ghost"
                   onClick={handleBackspace}
+                  onPointerDown={() => startBackspaceTone(PIN_TONE_BACKSPACE)}
+                  onPointerUp={stopPointerTone}
+                  onPointerLeave={stopPointerTone}
+                  onPointerCancel={stopPointerTone}
                   disabled={isVerifyingPin || isLocked || pinDisabled}
                   aria-label="Apagar"
                 >
@@ -776,17 +872,45 @@ const Login = (props: LoginProps) => {
                   type="button"
                   className="pop-key"
                   onClick={() => handleDigit('0')}
+                  onPointerDown={() => startDigitTone(PIN_TONES['0'])}
+                  onPointerUp={stopPointerTone}
+                  onPointerLeave={stopPointerTone}
+                  onPointerCancel={stopPointerTone}
                   disabled={isVerifyingPin || isLocked || pinDisabled}
                 >
                   0
                 </button>
-                <button
-                  type="submit"
-                  className="pop-key pop-key--primary"
-                  disabled={isVerifyingPin || isLocked || pinDisabled}
-                >
-                  ok
-                </button>
+                {showDevPinButton ? (
+                  <button
+                    type="button"
+                    className="pop-key pop-key--primary pop-key--dev"
+                    onClick={() => {
+                      onPinDevLogin?.()
+                    }}
+                    onPointerDown={() => startPinTone(PIN_TONE_OK)}
+                    onPointerUp={stopPointerTone}
+                    onPointerLeave={stopPointerTone}
+                    onPointerCancel={stopPointerTone}
+                    disabled={devPinDisabled}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      science
+                    </span>
+                    <span>{pinDevLabel}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="pop-key pop-key--primary"
+                    onPointerDown={() => startPinTone(PIN_TONE_OK)}
+                    onPointerUp={stopPointerTone}
+                    onPointerLeave={stopPointerTone}
+                    onPointerCancel={stopPointerTone}
+                    disabled={isVerifyingPin || isLocked || pinDisabled}
+                  >
+                    ok
+                  </button>
+                )}
               </div>
             </form>
           ) : !supabaseEnabled ? (

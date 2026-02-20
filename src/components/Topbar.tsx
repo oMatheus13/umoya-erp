@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
+import QuickNotice, { type QuickNoticeTone } from './QuickNotice'
 import { NAVIGATION_GROUPS } from '../data/navigation'
 import { useERPData } from '../store/appStore'
 import type { PageIntentAction } from '../types/ui'
@@ -41,6 +42,7 @@ type TopbarProps = {
   searchPlaceholder?: string
   showSensitiveToggle?: boolean
   showNotifications?: boolean
+  showDevTools?: boolean
 }
 
 type SearchItem = TopbarSearchItem
@@ -51,6 +53,12 @@ type NotificationItem = {
   description?: string
   page?: string
   tone?: 'info' | 'warning' | 'alert'
+}
+
+type DevToast = {
+  message: string
+  tone: QuickNoticeTone
+  nonce: number
 }
 
 const Topbar = ({
@@ -73,14 +81,19 @@ const Topbar = ({
   searchPlaceholder = 'Pesquisar',
   showSensitiveToggle = true,
   showNotifications = true,
+  showDevTools = false,
 }: TopbarProps) => {
   const { data } = useERPData()
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
   const [query, setQuery] = useState('')
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  const [isDevToolsOpen, setIsDevToolsOpen] = useState(false)
+  const [devToast, setDevToast] = useState<DevToast | null>(null)
   const notificationsRef = useRef<HTMLDivElement | null>(null)
   const notificationsButtonRef = useRef<HTMLButtonElement | null>(null)
+  const devToolsRef = useRef<HTMLDivElement | null>(null)
+  const devToolsButtonRef = useRef<HTMLButtonElement | null>(null)
   const avatarFallback = userName?.[0] ?? 'U'
   const avatarPalette: Record<string, string> = {
     lime: 'var(--color-lime)',
@@ -93,18 +106,19 @@ const Topbar = ({
     : 'var(--color-ink)'
 
   useEffect(() => {
-    if (!isSearchOpen && !isNotificationsOpen) {
+    if (!isSearchOpen && !isNotificationsOpen && !isDevToolsOpen) {
       return
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setIsSearchOpen(false)
         setIsNotificationsOpen(false)
+        setIsDevToolsOpen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isSearchOpen, isNotificationsOpen])
+  }, [isSearchOpen, isNotificationsOpen, isDevToolsOpen])
 
   useEffect(() => {
     if (!isNotificationsOpen) {
@@ -123,6 +137,31 @@ const Topbar = ({
     window.addEventListener('mousedown', handleClickOutside)
     return () => window.removeEventListener('mousedown', handleClickOutside)
   }, [isNotificationsOpen])
+
+  useEffect(() => {
+    if (!isDevToolsOpen) {
+      return
+    }
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      if (
+        devToolsRef.current?.contains(target) ||
+        devToolsButtonRef.current?.contains(target)
+      ) {
+        return
+      }
+      setIsDevToolsOpen(false)
+    }
+    window.addEventListener('mousedown', handleClickOutside)
+    return () => window.removeEventListener('mousedown', handleClickOutside)
+  }, [isDevToolsOpen])
+
+  useEffect(() => {
+    if (showDevTools) {
+      return
+    }
+    setIsDevToolsOpen(false)
+  }, [showDevTools])
 
   const searchItems = useMemo<SearchItem[]>(() => {
     const items: SearchItem[] = []
@@ -499,6 +538,28 @@ const Topbar = ({
     }
   }
 
+  const pushDevToast = (tone: QuickNoticeTone, message: string) => {
+    setDevToast({ tone, message, nonce: Date.now() })
+  }
+
+  const handleLogSnapshot = () => {
+    console.info('[DevTools] ERP snapshot', data)
+    pushDevToast('info', 'Estado logado no console.')
+  }
+
+  const handleCopySnapshot = async () => {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      pushDevToast('warning', 'Clipboard indisponível.')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
+      pushDevToast('success', 'Estado copiado para a área de transferência.')
+    } catch {
+      pushDevToast('danger', 'Falha ao copiar o estado.')
+    }
+  }
+
   const renderSearchResults = (variant: 'dropdown' | 'overlay') => {
     if (!normalizedQuery) {
       return null
@@ -524,20 +585,20 @@ const Topbar = ({
         ) : (
           <>
             {items.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              className="topbar__search-result"
-              onClick={() => handleResultSelect(item)}
-            >
-              <div className="topbar__search-result-text">
-                <span className="topbar__search-result-title">{item.title}</span>
-                {item.subtitle && (
-                  <span className="topbar__search-result-meta">{item.subtitle}</span>
-                )}
-              </div>
-              <span className="topbar__search-result-tag">{item.category}</span>
-            </button>
+              <button
+                key={item.id}
+                type="button"
+                className="topbar__search-result"
+                onClick={() => handleResultSelect(item)}
+              >
+                <div className="topbar__search-result-text">
+                  <span className="topbar__search-result-title">{item.title}</span>
+                  {item.subtitle && (
+                    <span className="topbar__search-result-meta">{item.subtitle}</span>
+                  )}
+                </div>
+                <span className="topbar__search-result-tag">{item.category}</span>
+              </button>
             ))}
             {hasMore && (
               <div className="topbar__search-empty">
@@ -550,8 +611,17 @@ const Topbar = ({
     )
   }
   return (
-    <header className="topbar">
-      <div className="topbar__left">
+    <>
+      {showDevTools && devToast && (
+        <QuickNotice
+          message={<span key={devToast.nonce}>{devToast.message}</span>}
+          tone={devToast.tone}
+          onClear={() => setDevToast(null)}
+          slot={2}
+        />
+      )}
+      <header className="topbar">
+        <div className="topbar__left">
         {onMenuToggle && (
           <button
             className="topbar__menu"
@@ -572,6 +642,7 @@ const Topbar = ({
           onClick={() => {
             setIsSearchOpen(true)
             setIsNotificationsOpen(false)
+            setIsDevToolsOpen(false)
           }}
           aria-label="Pesquisar"
         >
@@ -610,118 +681,230 @@ const Topbar = ({
         </div>
       </div>
       <div className="topbar__right">
-        {readOnly && <span className="topbar__badge">Somente leitura</span>}
-        {showSensitiveToggle && (
-          <button
-            className="topbar__icon"
-            type="button"
-            onClick={onSensitiveToggle}
-            aria-label={isSensitiveHidden ? 'Mostrar informações' : 'Ocultar informações'}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true">
-              {isSensitiveHidden ? 'visibility_off' : 'visibility'}
-            </span>
-          </button>
-        )}
-        {showNotifications && (
-          <div className="topbar__notifications">
+          {readOnly && <span className="topbar__badge">Somente leitura</span>}
+          {showDevTools && (
+            <div className="topbar__devtools">
+              <button
+                className="topbar__icon"
+                type="button"
+                aria-label="Ferramentas de dev"
+                onClick={() => {
+                  setIsDevToolsOpen((prev) => !prev)
+                  setIsNotificationsOpen(false)
+                  setIsSearchOpen(false)
+                }}
+                ref={devToolsButtonRef}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  bug_report
+                </span>
+              </button>
+            </div>
+          )}
+          {showSensitiveToggle && (
             <button
               className="topbar__icon"
               type="button"
-              aria-label={
-                notifications.length > 0
-                  ? `Notificações (${notifications.length})`
-                  : 'Notificações'
-              }
-              onClick={() => {
-                setIsNotificationsOpen((prev) => !prev)
-                setIsSearchOpen(false)
-              }}
-              ref={notificationsButtonRef}
+              onClick={onSensitiveToggle}
+              aria-label={isSensitiveHidden ? 'Mostrar informações' : 'Ocultar informações'}
             >
               <span className="material-symbols-outlined" aria-hidden="true">
-                {notificationIcon}
-              </span>
-            </button>
-          </div>
-        )}
-        {showNotifications && isNotificationsOpen && (
-          <div
-            className="topbar__notifications-overlay"
-            role="dialog"
-            aria-modal="true"
-            onClick={() => setIsNotificationsOpen(false)}
-          >
-            <div
-              className="topbar__notifications-panel topbar__mini-modal"
-              ref={notificationsRef}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="topbar__notifications-header">
-                <strong>Notificações</strong>
-                <button
-                  className="topbar__notifications-close topbar__icon"
-                  type="button"
-                  onClick={() => setIsNotificationsOpen(false)}
-                  aria-label="Fechar notificações"
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    close
-                  </span>
-                </button>
-              </div>
-              <div className="topbar__notifications-list">
-                {notifications.length === 0 && (
-                  <div className="topbar__notification-empty">
-                    Sem notificações no momento.
-                  </div>
-                )}
-                {notifications.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`topbar__notification-item${
-                      item.tone ? ` topbar__notification-item--${item.tone}` : ''
-                    }`}
-                    onClick={() => {
-                      if (item.page && onNavigate) {
-                        onNavigate(item.page)
-                      }
-                      setIsNotificationsOpen(false)
-                    }}
-                  >
-                    <span className="topbar__notification-title">{item.title}</span>
-                    {item.description && (
-                      <span className="topbar__notification-meta">{item.description}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="topbar__profile">
-          <button className="topbar__profile-main" type="button" onClick={onProfileOpen}>
-            {userAvatarUrl ? (
-              <img className="topbar__avatar" src={userAvatarUrl} alt={userName ?? 'Usuario'} />
-            ) : (
-              <span className="topbar__avatar" style={{ background: avatarBackground }}>
-                {avatarFallback}
-              </span>
-            )}
-            <span className="topbar__profile-text">
-              <span className="topbar__profile-name">{userName ?? 'Usuario'}</span>
-              <span className="topbar__profile-role">{userRoleLabel ?? 'Equipe'}</span>
-            </span>
-          </button>
-          {onLogout && (
-            <button className="topbar__icon" type="button" onClick={onLogout}>
-              <span className="material-symbols-outlined" aria-hidden="true">
-                logout
+                {isSensitiveHidden ? 'visibility_off' : 'visibility'}
               </span>
             </button>
           )}
-        </div>
+          {showNotifications && (
+            <div className="topbar__notifications">
+              <button
+                className="topbar__icon"
+                type="button"
+                aria-label={
+                  notifications.length > 0
+                    ? `Notificações (${notifications.length})`
+                    : 'Notificações'
+                }
+                onClick={() => {
+                  setIsNotificationsOpen((prev) => !prev)
+                  setIsSearchOpen(false)
+                  setIsDevToolsOpen(false)
+                }}
+                ref={notificationsButtonRef}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  {notificationIcon}
+                </span>
+              </button>
+            </div>
+          )}
+          {showNotifications && isNotificationsOpen && (
+            <div
+              className="topbar__notifications-overlay"
+              role="dialog"
+              aria-modal="true"
+              onClick={() => setIsNotificationsOpen(false)}
+            >
+              <div
+                className="topbar__notifications-panel topbar__mini-modal"
+                ref={notificationsRef}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="topbar__notifications-header">
+                  <strong>Notificações</strong>
+                  <button
+                    className="topbar__notifications-close topbar__icon"
+                    type="button"
+                    onClick={() => setIsNotificationsOpen(false)}
+                    aria-label="Fechar notificações"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      close
+                    </span>
+                  </button>
+                </div>
+                <div className="topbar__notifications-list">
+                  {notifications.length === 0 && (
+                    <div className="topbar__notification-empty">
+                      Sem notificações no momento.
+                    </div>
+                  )}
+                  {notifications.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`topbar__notification-item${
+                        item.tone ? ` topbar__notification-item--${item.tone}` : ''
+                      }`}
+                      onClick={() => {
+                        if (item.page && onNavigate) {
+                          onNavigate(item.page)
+                        }
+                        setIsNotificationsOpen(false)
+                      }}
+                    >
+                      <span className="topbar__notification-title">{item.title}</span>
+                      {item.description && (
+                        <span className="topbar__notification-meta">{item.description}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          {showDevTools && isDevToolsOpen && (
+            <div
+              className="topbar__notifications-overlay topbar__devtools-overlay"
+              role="dialog"
+              aria-modal="true"
+              onClick={() => setIsDevToolsOpen(false)}
+            >
+              <div
+                className="topbar__devtools-panel topbar__mini-modal"
+                ref={devToolsRef}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="topbar__devtools-header">
+                  <strong>Dev tools</strong>
+                  <button
+                    className="topbar__devtools-close topbar__icon"
+                    type="button"
+                    onClick={() => setIsDevToolsOpen(false)}
+                    aria-label="Fechar dev tools"
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      close
+                    </span>
+                  </button>
+                </div>
+                <div className="topbar__devtools-section">
+                  <span className="topbar__devtools-title">Notificações rápidas</span>
+                  <div className="topbar__devtools-actions">
+                    <button
+                      className="button button--ghost button--sm"
+                      type="button"
+                      onClick={() =>
+                        pushDevToast('info', 'Notificação de teste (info).')
+                      }
+                    >
+                      Info
+                    </button>
+                    <button
+                      className="button button--ghost button--sm"
+                      type="button"
+                      onClick={() =>
+                        pushDevToast('success', 'Notificação de teste (sucesso).')
+                      }
+                    >
+                      Sucesso
+                    </button>
+                    <button
+                      className="button button--ghost button--sm"
+                      type="button"
+                      onClick={() =>
+                        pushDevToast('warning', 'Notificação de teste (alerta).')
+                      }
+                    >
+                      Alerta
+                    </button>
+                    <button
+                      className="button button--ghost button--sm"
+                      type="button"
+                      onClick={() =>
+                        pushDevToast('danger', 'Notificação de teste (erro).')
+                      }
+                    >
+                      Erro
+                    </button>
+                  </div>
+                </div>
+                <div className="topbar__devtools-section">
+                  <span className="topbar__devtools-title">Debug rápido</span>
+                  <div className="topbar__devtools-actions">
+                    <button
+                      className="button button--ghost button--sm"
+                      type="button"
+                      onClick={handleLogSnapshot}
+                    >
+                      Log do estado
+                    </button>
+                    <button
+                      className="button button--ghost button--sm"
+                      type="button"
+                      onClick={handleCopySnapshot}
+                    >
+                      Copiar estado
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div className="topbar__profile">
+            <button className="topbar__profile-main" type="button" onClick={onProfileOpen}>
+              {userAvatarUrl ? (
+                <img
+                  className="topbar__avatar"
+                  src={userAvatarUrl}
+                  alt={userName ?? 'Usuario'}
+                />
+              ) : (
+                <span className="topbar__avatar" style={{ background: avatarBackground }}>
+                  {avatarFallback}
+                </span>
+              )}
+              <span className="topbar__profile-text">
+                <span className="topbar__profile-name">{userName ?? 'Usuario'}</span>
+                <span className="topbar__profile-role">{userRoleLabel ?? 'Equipe'}</span>
+              </span>
+            </button>
+            {onLogout && (
+              <button className="topbar__icon" type="button" onClick={onLogout}>
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  logout
+                </span>
+              </button>
+            )}
+          </div>
       </div>
       {isSearchOpen && (
         <div
@@ -773,7 +956,8 @@ const Topbar = ({
           {renderSearchResults('overlay')}
         </div>
       )}
-    </header>
+      </header>
+    </>
   )
 }
 

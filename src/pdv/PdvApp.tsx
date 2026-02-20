@@ -872,6 +872,7 @@ const PdvApp = () => {
         onSearchSelect={handleSearchSelect}
         searchItems={searchItems}
         searchPlaceholder="Pesquisar"
+        showDevTools={allowDevMode}
       />
 
       <Modal

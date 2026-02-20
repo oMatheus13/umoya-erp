@@ -18,6 +18,7 @@ import type {
 import { resolveDeviceId } from '../utils/device'
 import { createId } from '../utils/ids'
 import { resolveOrderInternalCode } from '../utils/orderCode'
+import { hashPin } from '../utils/pin'
 
 type PopView = 'pin' | 'menu' | 'presence' | 'production' | 'confirm'
 type ProductionStep = 'select' | 'form'
@@ -31,6 +32,9 @@ type ProductionForm = {
 }
 
 const IDLE_TIMEOUT_MS = 25000
+const DEV_EMPLOYEE_ID = 'dev-pop'
+const DEV_EMPLOYEE_NAME = 'Dev POP'
+const DEV_EMPLOYEE_PIN = '0000'
 
 const formatNumber = (value: number) =>
   new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
@@ -86,6 +90,8 @@ const createEmptyProductionForm = (): ProductionForm => ({
 
 const PopApp = () => {
   const { data, refresh } = useERPData()
+  const allowDevMode =
+    (import.meta.env && import.meta.env.DEV) || import.meta.env.VITE_DEV_ACCESS === 'true'
   const [view, setView] = useState<PopView>('pin')
   const [pinNotice, setPinNotice] = useState<string | null>(null)
   const [formStatus, setFormStatus] = useState<string | null>(null)
@@ -105,6 +111,7 @@ const PopApp = () => {
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const syncHandlerRef = useRef<ReturnType<typeof createRemoteSync> | null>(null)
   const syncInFlightRef = useRef(false)
+  const devEmployeeRef = useRef<Employee | null>(null)
 
   const productsById = useMemo(
     () => new Map(data.produtos.map((product) => [product.id, product])),
@@ -247,6 +254,57 @@ const PopApp = () => {
     setConfirmation(null)
     setFormStatus(null)
     setPinNotice(message ?? null)
+  }
+
+  const ensureDevEmployee = async () => {
+    if (devEmployeeRef.current) {
+      return devEmployeeRef.current
+    }
+    const payload = dataService.getAll()
+    const existingIndex = payload.funcionarios.findIndex(
+      (employee) => employee.id === DEV_EMPLOYEE_ID,
+    )
+    const existing = existingIndex >= 0 ? payload.funcionarios[existingIndex] : null
+    if (existing?.pinHash) {
+      devEmployeeRef.current = existing
+      return existing
+    }
+    const pinHash = await hashPin(DEV_EMPLOYEE_PIN)
+    const nextEmployee: Employee = {
+      id: DEV_EMPLOYEE_ID,
+      name: existing?.name ?? DEV_EMPLOYEE_NAME,
+      pinHash,
+      roleId: existing?.roleId,
+      levelId: existing?.levelId,
+      cpf: existing?.cpf,
+      active: existing?.active ?? true,
+      isActive: existing?.isActive ?? true,
+      hiredAt: existing?.hiredAt,
+    }
+    if (existingIndex >= 0) {
+      payload.funcionarios[existingIndex] = nextEmployee
+    } else {
+      payload.funcionarios = [...payload.funcionarios, nextEmployee]
+    }
+    dataService.replaceAll(payload)
+    refresh()
+    devEmployeeRef.current = nextEmployee
+    return nextEmployee
+  }
+
+  const handleDevPinLogin = async () => {
+    if (!allowDevMode) {
+      return
+    }
+    const employee = await ensureDevEmployee()
+    if (!employee) {
+      setPinNotice('Nao foi possivel iniciar o modo dev.')
+      return
+    }
+    setCurrentEmployee(employee)
+    setFormStatus(null)
+    setPinNotice(null)
+    setView('menu')
   }
 
   const handlePresenceLog = (type: PresenceLogType) => {
@@ -488,6 +546,9 @@ const PopApp = () => {
           setPinNotice(null)
           setView('menu')
         }}
+        onPinDevLogin={allowDevMode ? () => void handleDevPinLogin() : undefined}
+        pinDevLabel="Dev"
+        pinBeep
       />
     )
   }

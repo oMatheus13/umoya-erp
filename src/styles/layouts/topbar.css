@@ -95,6 +95,10 @@
   position: relative;
 }
 
+.topbar__devtools {
+  position: relative;
+}
+
 .topbar__mini-modal {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(15, 17, 22, 0.08);
@@ -445,6 +449,48 @@
   color: rgba(15, 17, 22, 0.65);
 }
 
+.topbar__devtools-panel {
+  width: min(380px, 92vw);
+  max-height: min(70vh, 520px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  overflow-y: auto;
+}
+
+.topbar__devtools-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+}
+
+.topbar__devtools-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.topbar__devtools-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.topbar__devtools-title {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(15, 17, 22, 0.6);
+}
+
+.topbar__devtools-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
 @media (max-width: 1024px) {
   .topbar {
     padding: var(--spacing-sm) var(--spacing-md);
@@ -521,6 +567,10 @@
   }
 
   .topbar__notifications-panel {
+    width: 100%;
+  }
+
+  .topbar__devtools-panel {
     width: 100%;
   }
 }

@@ -804,6 +804,7 @@ function App() {
       canView={canView}
       canEdit={canEdit(activePage)}
       isPageTransitioning={isPageTransitioning}
+      showDevTools={allowDevMode}
     >
       {content}
     </AppShell>

@@ -2,12 +2,13 @@
   position: fixed;
   top: calc(
     env(safe-area-inset-top, 0px) +
+      var(--topbar-height, 0px) +
       var(--spacing-lg) +
       (var(--quick-notice-slot, 0) * 56px)
   );
   left: 50%;
   transform: translateX(-50%);
-  z-index: var(--z-index-toast, 2000);
+  z-index: var(--z-index-toast);
   background: var(--color-true-white);
   color: var(--color-ink);
   border: var(--border-thin);
