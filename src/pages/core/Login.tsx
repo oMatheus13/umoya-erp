@@ -17,6 +17,7 @@ import {
   getSupabaseClient,
   isSupabaseEnabled,
   setAuthPersistence,
+  supabaseNoPersist,
 } from '../../services/supabaseClient'
 import { useERPData } from '../../store/appStore'
 import type { Employee } from '../../types/erp'
@@ -33,6 +34,7 @@ type LoginProps =
       onLogin: (user: User) => void
       onDevLogin?: () => void
       className?: string
+      authMode?: AuthMode
     }
   | {
       variant: 'pin'
@@ -43,7 +45,10 @@ type LoginProps =
       onPinDevLogin?: () => void
       pinDevLabel?: string
       pinBeep?: boolean
+      authMode?: AuthMode
     }
+
+type AuthMode = 'default' | 'nopersist'
 
 type LoginForm = {
   identifier: string
@@ -156,6 +161,8 @@ const saveLockState = (attempts: number, lockedUntil: number | null) => {
 
 const Login = (props: LoginProps) => {
   const isPin = props.variant === 'pin'
+  const authMode = props.authMode ?? 'default'
+  const allowRemember = authMode !== 'nopersist'
   const onLogin = 'onLogin' in props ? props.onLogin : undefined
   const onDevLogin = 'onDevLogin' in props ? props.onDevLogin : undefined
   const onPinLogin = 'onPinLogin' in props ? props.onPinLogin : undefined
@@ -168,7 +175,9 @@ const Login = (props: LoginProps) => {
   const { data } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [loginForm, setLoginForm] = useState<LoginForm>(createEmptyLogin())
-  const [rememberMe, setRememberMe] = useState(() => getAuthPersistence())
+  const [rememberMe, setRememberMe] = useState(() =>
+    allowRemember ? getAuthPersistence() : false,
+  )
   const [showPassword, setShowPassword] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinStatus, setPinStatus] = useState<string | null>(pinNotice)
@@ -196,10 +205,20 @@ const Login = (props: LoginProps) => {
   const lockTickerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [lockTick, setLockTick] = useState(0)
   const deviceIdRef = useRef(resolveDeviceId())
-  const supabaseEnabled = isSupabaseEnabled()
+  const supabaseEnabled =
+    authMode === 'nopersist' ? !!supabaseNoPersist : isSupabaseEnabled()
+  const resolveAuthClient = () =>
+    authMode === 'nopersist' ? supabaseNoPersist : getSupabaseClient()
   const recoveryToken = recoveryCode.join('')
   const appKind = resolveAppKind()
-  const appLabel = appKind === 'pdv' ? 'PDV' : appKind === 'pop' ? 'POP' : 'ERP'
+  const appLabel =
+    appKind === 'pdv'
+      ? 'PDV'
+      : appKind === 'pop'
+        ? 'POP'
+        : appKind === 'ptc'
+          ? 'PTC'
+          : 'ERP'
   const appMock = appKind === 'pdv' ? loginMockPdv : loginMockErp
   const employeesWithPin = useMemo(
     () =>
@@ -224,8 +243,10 @@ const Login = (props: LoginProps) => {
       return
     }
 
-    setAuthPersistence(rememberMe)
-    const client = getSupabaseClient()
+    if (allowRemember) {
+      setAuthPersistence(rememberMe)
+    }
+    const client = resolveAuthClient()
     if (!client) {
       setStatus('Supabase nao configurado. Verifique as variaveis de ambiente.')
       return
@@ -559,7 +580,7 @@ const Login = (props: LoginProps) => {
   }
 
   const sendRecoveryCode = async (email: string) => {
-    const client = getSupabaseClient()
+    const client = resolveAuthClient()
     if (!client) {
       setRecoveryStatus('Supabase nao configurado. Verifique as variaveis de ambiente.')
       return false
@@ -627,7 +648,7 @@ const Login = (props: LoginProps) => {
       setRecoveryStep('request')
       return
     }
-    const client = getSupabaseClient()
+    const client = resolveAuthClient()
     if (!client) {
       setRecoveryStatus('Supabase nao configurado. Verifique as variaveis de ambiente.')
       return
@@ -663,7 +684,7 @@ const Login = (props: LoginProps) => {
       setRecoveryStatus('As senhas nao conferem.')
       return
     }
-    const client = getSupabaseClient()
+    const client = resolveAuthClient()
     if (!client) {
       setRecoveryStatus('Supabase nao configurado. Verifique as variaveis de ambiente.')
       return
@@ -962,18 +983,20 @@ const Login = (props: LoginProps) => {
                   </div>
 
                   <div className="login__actions">
-                    <label className="toggle login__remember" htmlFor="login-remember">
-                      <input
-                        id="login-remember"
-                        type="checkbox"
-                        checked={rememberMe}
-                        onChange={(event) => setRememberMe(event.target.checked)}
-                      />
-                      <span className="toggle__track" aria-hidden="true">
-                        <span className="toggle__thumb" />
-                      </span>
-                      <span className="toggle__label">Manter conectado</span>
-                    </label>
+                    {allowRemember && (
+                      <label className="toggle login__remember" htmlFor="login-remember">
+                        <input
+                          id="login-remember"
+                          type="checkbox"
+                          checked={rememberMe}
+                          onChange={(event) => setRememberMe(event.target.checked)}
+                        />
+                        <span className="toggle__track" aria-hidden="true">
+                          <span className="toggle__thumb" />
+                        </span>
+                        <span className="toggle__label">Manter conectado</span>
+                      </label>
+                    )}
 
                     <div className="login__buttons">
                       <button

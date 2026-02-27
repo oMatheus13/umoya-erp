@@ -1,4 +1,4 @@
-export type AppKind = 'erp' | 'pdv' | 'pop'
+export type AppKind = 'erp' | 'pdv' | 'pop' | 'ptc'
 
 export const resolveAppKind = (): AppKind => {
   if (typeof window === 'undefined') {
@@ -11,6 +11,9 @@ export const resolveAppKind = (): AppKind => {
   }
   if (host.startsWith('pop.') || path.startsWith('/pop') || path.startsWith('/apontamento')) {
     return 'pop'
+  }
+  if (host.startsWith('ptc.') || path.startsWith('/ptc')) {
+    return 'ptc'
   }
   return 'erp'
 }

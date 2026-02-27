@@ -1,0 +1,30 @@
+.ptc-body {
+  --ptc-accent: var(--color-lime);
+  --ptc-violet: var(--color-violet, #531DFF);
+  background:
+    radial-gradient(circle at 16% 12%, rgba(170, 255, 0, 0.18), transparent 45%),
+    radial-gradient(circle at 82% 10%, rgba(83, 29, 255, 0.14), transparent 55%),
+    linear-gradient(120deg, #f7f5f1 0%, #f1efe8 100%);
+  color: var(--color-ink);
+  min-height: 100%;
+  overflow: auto;
+}
+
+.ptc-body #root {
+  min-height: 100%;
+}
+
+.ptc {
+  min-height: 100vh;
+  position: relative;
+}
+
+.ptc::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--texture-paper);
+  opacity: 0.55;
+  pointer-events: none;
+  z-index: -1;
+}

@@ -12,6 +12,7 @@ export default defineConfig({
         pdv: fileURLToPath(new URL('pdv/index.html', import.meta.url)),
         rastreio: fileURLToPath(new URL('rastreio/index.html', import.meta.url)),
         pop: fileURLToPath(new URL('pop/index.html', import.meta.url)),
+        ptc: fileURLToPath(new URL('ptc/index.html', import.meta.url)),
       },
     },
   },
