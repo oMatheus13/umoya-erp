@@ -1,13 +1,19 @@
 :root {
-  /* Core palette */
+  /* main palette */
   --color-ink: #0f1116;
+  --color-cloud: #f0eee9;
+  --color-lime: #aaff00;
+
+  /* main secondary palette */
+  --color-violet: #531DFF;
+  --color-sunburst: #FFD300;
+
+  /* Core palette */
   --color-ink-soft: #1b1f2a;
   --color-ink-muted: rgba(15, 17, 22, 0.5);
-  --color-cloud: #f0eee9;
   --color-paper: #f7f5f1;
   --color-true-white: #ffffff;
   --color-true-black: #000000;
-  --color-lime: #aaff00;
   --color-lime-soft: rgba(170, 255, 0, 0.18);
   --color-line: rgba(15, 17, 22, 0.05);
   --color-line-strong: rgba(15, 17, 22, 0.2);
