@@ -13,6 +13,7 @@ export default defineConfig({
         rastreio: fileURLToPath(new URL('rastreio/index.html', import.meta.url)),
         pop: fileURLToPath(new URL('pop/index.html', import.meta.url)),
         ptc: fileURLToPath(new URL('ptc/index.html', import.meta.url)),
+        pas: fileURLToPath(new URL('pas/index.html', import.meta.url)),
       },
     },
   },

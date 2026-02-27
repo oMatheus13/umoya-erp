@@ -218,6 +218,8 @@ const Login = (props: LoginProps) => {
         ? 'POP'
         : appKind === 'ptc'
           ? 'PTC'
+          : appKind === 'pas'
+            ? 'PAS'
           : 'ERP'
   const appMock = appKind === 'pdv' ? loginMockPdv : loginMockErp
   const employeesWithPin = useMemo(

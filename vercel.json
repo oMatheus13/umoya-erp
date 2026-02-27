@@ -17,6 +17,8 @@
     { "src": "/pdv/(.*)", "dest": "/pdv/index.html" },
     { "src": "/ptc", "dest": "/ptc/index.html" },
     { "src": "/ptc/(.*)", "dest": "/ptc/index.html" },
+    { "src": "/pas", "dest": "/pas/index.html" },
+    { "src": "/pas/(.*)", "dest": "/pas/index.html" },
     { "src": "/apontamento", "dest": "/pop/index.html" },
     { "src": "/apontamento/(.*)", "dest": "/pop/index.html" },
     { "src": "/pop", "dest": "/pop/index.html" },
@@ -35,6 +37,11 @@
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "ptc.umoya.omatheus.com" }],
       "dest": "/ptc/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "pas.umoya.omatheus.com" }],
+      "dest": "/pas/index.html"
     },
     {
       "src": "/(.*)",

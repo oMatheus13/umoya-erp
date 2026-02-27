@@ -25,6 +25,8 @@ const ResetPassword = ({ onDone }: ResetPasswordProps) => {
         ? 'POP'
         : appKind === 'ptc'
           ? 'PTC'
+          : appKind === 'pas'
+            ? 'PAS'
           : 'ERP'
   const appMock = appKind === 'pdv' ? loginMockPdv : loginMockErp
 

@@ -60,6 +60,15 @@ const createRemoteSync = (syncId: string) => {
   }
 }
 
+const createDevUser = (id: string, name: string): User => ({
+  id,
+  email: 'dev@umoya.local',
+  user_metadata: { name },
+  app_metadata: {},
+  aud: 'authenticated',
+  created_at: new Date().toISOString(),
+})
+
 const PtcApp = () => {
   const allowDevMode = import.meta.env && import.meta.env.DEV
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -94,11 +103,7 @@ const PtcApp = () => {
   }
 
   const handleDevLogin = () => {
-    const devUser = {
-      id: 'dev-ptc',
-      email: 'dev@umoya.local',
-      user_metadata: { name: 'Dev PTC' },
-    } as User
+    const devUser = createDevUser('dev-ptc', 'Dev PTC')
     void startSession(devUser)
   }
 
