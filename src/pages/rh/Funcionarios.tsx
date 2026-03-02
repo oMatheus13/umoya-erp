@@ -435,7 +435,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       }
 
       const authEmail = normalizedEmail || buildCpfEmail(accountCpf)
-      const workspaceId = payload.meta?.workspaceId ?? currentUser?.id
 
       const { data: signupData, error } = await supabaseNoPersist.auth.signUp({
         email: authEmail,
@@ -446,7 +445,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
             employeeId: next.id,
             role: accountForm.role,
             cpf: accountCpf || undefined,
-            workspace_id: workspaceId || undefined,
           },
         },
       })

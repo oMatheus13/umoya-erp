@@ -3,6 +3,7 @@ import type {
   ERPData,
   FinanceEntry,
   Order,
+  OrderPayment,
   PdvCashMovement,
   PdvCashSession,
   Product,
@@ -326,7 +327,7 @@ const normalizeMaterialKind = (kind?: string): MaterialKind | undefined => {
 
 const normalizeData = (data: ERPData) => {
   let changed = false
-  const ensureArray = <T>(value: T[] | undefined, fallback: T[]) => {
+  const ensureArray = <T>(value: T[] | undefined | null, fallback: T[]) => {
     if (!Array.isArray(value)) {
       changed = true
       return fallback
@@ -658,18 +659,18 @@ const normalizeData = (data: ERPData) => {
       return next
     })
 
-  const normalizePayments = (payments: unknown) =>
-    ensureArray(payments, [])
+  const normalizePayments = (payments: unknown): OrderPayment[] => {
+    const raw = Array.isArray(payments) ? payments : []
+    if (!Array.isArray(payments)) {
+      changed = true
+    }
+    return raw
       .map((payment) => {
         if (!payment || typeof payment !== 'object') {
           changed = true
           return null
         }
-        const paymentRecord = payment as {
-          id?: string
-          amount?: number
-          receivedAt?: string
-        }
+        const paymentRecord = payment as Partial<OrderPayment>
         const amount = Number.isFinite(paymentRecord.amount) ? paymentRecord.amount : 0
         const receivedAt =
           typeof paymentRecord.receivedAt === 'string' && paymentRecord.receivedAt
@@ -684,13 +685,13 @@ const normalizeData = (data: ERPData) => {
           changed = true
         }
         return {
-          ...paymentRecord,
           id,
           amount,
           receivedAt,
         }
       })
-      .filter((payment): payment is NonNullable<typeof payment> => !!payment)
+      .filter((payment): payment is OrderPayment => !!payment)
+  }
 
   const clientes = ensureArray(data.clientes, []).map((client) => ({
     ...client,

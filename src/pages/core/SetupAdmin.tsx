@@ -80,9 +80,6 @@ const SetupAdmin = ({ onComplete }: SetupAdminProps) => {
         setStatus('Conta criada. Confirme o email para liberar o acesso.')
         return
       }
-      if (!data.user.user_metadata?.workspace_id) {
-        void supabase.auth.updateUser({ data: { workspace_id: data.user.id } })
-      }
       setStatus(null)
       onComplete(data.user)
     } catch (err) {

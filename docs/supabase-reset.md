@@ -9,6 +9,7 @@ Use no SQL Editor do Supabase:
 ```sql
 delete from public.erp_states_backup;
 delete from public.erp_states;
+delete from public.pas_graphs;
 delete from public.tracking_orders;
 ```
 
@@ -24,6 +25,7 @@ delete from auth.users;
 
 delete from public.erp_states_backup;
 delete from public.erp_states;
+delete from public.pas_graphs;
 delete from public.tracking_orders;
 ```
 

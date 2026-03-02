@@ -155,7 +155,7 @@ function App() {
     payload?.meta?.updatedAt ?? fallback
 
   const resolveSyncId = (user: User) =>
-    (user.user_metadata?.workspace_id as string | undefined) ?? user.id
+    (user.app_metadata?.workspace_id as string | undefined) ?? user.id
 
   const shouldBackup = () => {
     if (typeof window === 'undefined') {
@@ -365,10 +365,6 @@ function App() {
         : [...payload.usuarios, payloadUser]
       dataService.replaceAll(payload)
     }
-    if (!user.user_metadata?.workspace_id && supabase) {
-      void supabase.auth.updateUser({ data: { workspace_id: resolvedSyncId } })
-    }
-
     const localIsNewer =
       localHasData &&
       !!localUpdatedAt &&

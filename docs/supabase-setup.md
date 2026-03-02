@@ -1,7 +1,8 @@
 # Supabase setup (sync + backup)
 
 O front-end sincroniza os dados do ERP nas tabelas `erp_states` e `erp_states_backup`.
-O acesso remoto usa um `workspace_id` salvo em `user_metadata` para permitir que varias
+O PAS salva o estado em `pas_graphs`.
+O acesso remoto usa um `workspace_id` salvo em `app_metadata` para permitir que varias
 contas compartilhem o mesmo estado.
 
 ## 1) Tabelas
@@ -22,6 +23,12 @@ create table if not exists public.erp_states_backup (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.pas_graphs (
+  user_id uuid primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.tracking_orders (
   order_id text primary key,
   workspace_id uuid not null,
@@ -38,67 +45,79 @@ create index if not exists tracking_orders_workspace_idx
 ```sql
 alter table public.erp_states enable row level security;
 alter table public.erp_states_backup enable row level security;
+alter table public.pas_graphs enable row level security;
 alter table public.tracking_orders enable row level security;
 
 create policy "erp_states_select" on public.erp_states
   for select using (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "erp_states_insert" on public.erp_states
   for insert with check (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "erp_states_update" on public.erp_states
   for update using (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   )
   with check (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "erp_states_backup_insert" on public.erp_states_backup
   for insert with check (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
+  );
+
+create policy "pas_graphs read/write own" on public.pas_graphs
+  for all using (
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
+  )
+  with check (
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "tracking_orders_select" on public.tracking_orders
   for select using (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "tracking_orders_insert" on public.tracking_orders
   for insert with check (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "tracking_orders_update" on public.tracking_orders
   for update using (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   )
   with check (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "tracking_orders_delete" on public.tracking_orders
   for delete using (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
-create or replace function public.set_updated_at()
+create or replace function public.touch_tracking_orders_updated_at()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.updated_at = now();
@@ -110,7 +129,7 @@ drop trigger if exists tracking_orders_set_updated_at on public.tracking_orders;
 create trigger tracking_orders_set_updated_at
   before update on public.tracking_orders
   for each row
-  execute function public.set_updated_at();
+  execute function public.touch_tracking_orders_updated_at();
 
 create or replace function public.get_tracking_order(p_order_id text)
 returns table (payload jsonb, updated_at timestamptz)
@@ -129,9 +148,19 @@ grant execute on function public.get_tracking_order(text) to anon, authenticated
 
 ## 3) `workspace_id`
 
-- O app usa `user_metadata.workspace_id` quando existe; se nao existir, usa o `id` do usuario.
-- Ao criar novas contas em RH -> Funcionarios, o app grava o mesmo `workspace_id` nelas.
-- Para contas antigas, ajuste manualmente o metadata no painel do Supabase (Authentication).
+- O app usa `app_metadata.workspace_id` quando existe; se nao existir, usa o `id` do usuario.
+- `user_metadata` continua para dados de perfil, mas nao entra nas politicas RLS.
+- Para compartilhar o mesmo workspace entre contas, defina `app_metadata.workspace_id` nelas.
+- Para contas antigas, ajuste o `app_metadata` no painel do Supabase (Authentication -> Users).
+
+Exemplo SQL (service role) para ajustar `app_metadata`:
+
+```sql
+update auth.users
+set raw_app_meta_data =
+  jsonb_set(coalesce(raw_app_meta_data, '{}'::jsonb), '{workspace_id}', '"<UUID>"')
+where id = '<USER_ID>';
+```
 
 ## 4) POP (PIN) sync (Edge Function)
 
@@ -186,3 +215,7 @@ docs/supabase-storage.sql
 ```
 
 Se quiser outro nome de bucket, defina `VITE_SUPABASE_BUCKET` no `.env` e na Vercel.
+
+## 7) Seguranca (Auth)
+
+- Ative "Leaked password protection" em Authentication -> Settings -> Passwords.

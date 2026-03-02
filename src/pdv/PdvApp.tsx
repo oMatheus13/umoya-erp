@@ -74,7 +74,7 @@ const resolveDisplayName = (user: UserAccount) =>
   user.displayName?.trim() || user.name?.trim() || user.email || 'Usuario'
 
 const resolveSyncId = (user: User) =>
-  (user.user_metadata?.workspace_id as string | undefined) ?? user.id
+  (user.app_metadata?.workspace_id as string | undefined) ?? user.id
 
 const createDevAccount = (): UserAccount => ({
   id: 'dev-user',
@@ -377,10 +377,6 @@ const PdvApp = () => {
         ? payload.usuarios.map((item) => (item.id === user.id ? payloadUser : item))
         : [...payload.usuarios, payloadUser]
       dataService.replaceAll(payload)
-    }
-
-    if (!user.user_metadata?.workspace_id && supabase) {
-      void supabase.auth.updateUser({ data: { workspace_id: resolvedSyncId } })
     }
 
     const localIsNewer =

@@ -11,35 +11,52 @@ create table if not exists public.erp_states_backup (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.pas_graphs (
+  user_id uuid primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
 alter table public.erp_states enable row level security;
 alter table public.erp_states_backup enable row level security;
+alter table public.pas_graphs enable row level security;
 
 create policy "erp_states_select" on public.erp_states
   for select using (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "erp_states_insert" on public.erp_states
   for insert with check (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "erp_states_update" on public.erp_states
   for update using (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   )
   with check (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "erp_states_backup_insert" on public.erp_states_backup
   for insert with check (
-    user_id = auth.uid()
-    or user_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
+  );
+
+create policy "pas_graphs read/write own" on public.pas_graphs
+  for all using (
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
+  )
+  with check (
+    user_id = (select auth.uid())
+    or user_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create table if not exists public.tracking_orders (
@@ -56,35 +73,36 @@ alter table public.tracking_orders enable row level security;
 
 create policy "tracking_orders_select" on public.tracking_orders
   for select using (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "tracking_orders_insert" on public.tracking_orders
   for insert with check (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "tracking_orders_update" on public.tracking_orders
   for update using (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   )
   with check (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
 create policy "tracking_orders_delete" on public.tracking_orders
   for delete using (
-    workspace_id = auth.uid()
-    or workspace_id = (auth.jwt() -> 'user_metadata' ->> 'workspace_id')::uuid
+    workspace_id = (select auth.uid())
+    or workspace_id = ((select auth.jwt()) -> 'app_metadata' ->> 'workspace_id')::uuid
   );
 
-create or replace function public.set_updated_at()
+create or replace function public.touch_tracking_orders_updated_at()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.updated_at = now();
@@ -96,7 +114,7 @@ drop trigger if exists tracking_orders_set_updated_at on public.tracking_orders;
 create trigger tracking_orders_set_updated_at
   before update on public.tracking_orders
   for each row
-  execute function public.set_updated_at();
+  execute function public.touch_tracking_orders_updated_at();
 
 create or replace function public.get_tracking_order(p_order_id text)
 returns table (payload jsonb, updated_at timestamptz)

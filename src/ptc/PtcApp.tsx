@@ -19,7 +19,7 @@ const resolveRecoveryMode = () => {
 }
 
 const resolveSyncId = (user: User) =>
-  (user.user_metadata?.workspace_id as string | undefined) ?? user.id
+  (user.app_metadata?.workspace_id as string | undefined) ?? user.id
 
 const resolveDisplayName = (user: User | null) => {
   if (!user) {
