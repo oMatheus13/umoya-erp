@@ -10,6 +10,9 @@ pop.umoya.omatheus.com
 PTC – Painel Técnico
 ptc.umoya.omatheus.com
 
+PAS - Painel de Arquitetura do Sistema
+pas.umoya.omatheus.com
+
 
 Rastreio Umoya
 rastreio.umoya.omatheus.com

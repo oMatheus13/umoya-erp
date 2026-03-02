@@ -24,7 +24,12 @@ import {
   resolveOrderInternalCode,
   resolveOrderPublicCode,
 } from '../../utils/orderCode'
-import { getMaxDiscountSummary, getMinUnitPrice } from '../../utils/pricing'
+import {
+  getBaseCost,
+  getLaborUnitCost,
+  getMaxDiscountSummary,
+  getMinUnitPrice,
+} from '../../utils/pricing'
 import {
   resolveUnitPrice as resolveUnitPriceBase,
   resolveVariantPrice as resolveVariantPriceBase,
@@ -41,11 +46,18 @@ type OrderItemForm = {
   customHeight: number
 }
 
+type OrderPaymentForm = {
+  id: string
+  amount: number
+  receivedAt: string
+}
+
 type OrderForm = {
   clientId: string
   clientName: string
   obraId: string
   items: OrderItemForm[]
+  payments: OrderPaymentForm[]
   paymentMethod: string
   discountType: '' | 'percent' | 'value'
   discountValue: number
@@ -78,6 +90,12 @@ const createEmptyItem = (): OrderItemForm => ({
   customHeight: 0,
 })
 
+const createEmptyPayment = (): OrderPaymentForm => ({
+  id: createId(),
+  amount: 0,
+  receivedAt: new Date().toISOString().slice(0, 10),
+})
+
 type PedidosProps = {
   openOrderId?: string
   onConsumeOpen?: () => void
@@ -95,6 +113,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     clientName: '',
     obraId: '',
     items: [createEmptyItem()],
+    payments: [],
     paymentMethod: 'a_definir',
     discountType: '',
     discountValue: 0,
@@ -154,6 +173,38 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
   const appliedDiscount = Math.min(rawDiscount, maxDiscountValue)
   const total = Math.max(subtotal - appliedDiscount, 0)
   const appliedDiscountPercent = subtotal > 0 ? (appliedDiscount / subtotal) * 100 : 0
+  const costSummary = useMemo(
+    () =>
+      pricingItems.reduce(
+        (acc, item) => {
+          const baseUnitCost = getBaseCost(item.product, item.variant, {
+            materials: data.materiais,
+            customLength: item.customLength,
+            customWidth: item.customWidth,
+          })
+          const laborUnitCost = getLaborUnitCost(
+            item.product,
+            item.variant,
+            item.customLength,
+          )
+          const quantity = item.quantity
+          acc.base += baseUnitCost * quantity
+          acc.labor += laborUnitCost * quantity
+          return acc
+        },
+        { base: 0, labor: 0 },
+      ),
+    [data.materiais, pricingItems],
+  )
+  const estimatedCost = costSummary.base + costSummary.labor
+  const estimatedProfit = total - estimatedCost
+  const estimatedMargin = total > 0 ? (estimatedProfit / total) * 100 : 0
+  const paymentsTotal = useMemo(
+    () => form.payments.reduce((acc, payment) => acc + payment.amount, 0),
+    [form.payments],
+  )
+  const remainingBalance = Math.max(total - paymentsTotal, 0)
+  const overpaidAmount = Math.max(paymentsTotal - total, 0)
   const orderSummary = useMemo(() => {
     return data.pedidos.reduce(
       (acc, order) => {
@@ -303,12 +354,36 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     }))
   }
 
+  const updatePayment = (index: number, patch: Partial<OrderPaymentForm>) => {
+    setForm((prev) => ({
+      ...prev,
+      payments: prev.payments.map((payment, idx) =>
+        idx === index ? { ...payment, ...patch } : payment,
+      ),
+    }))
+  }
+
+  const addPayment = () => {
+    setForm((prev) => ({
+      ...prev,
+      payments: [...prev.payments, createEmptyPayment()],
+    }))
+  }
+
+  const removePayment = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      payments: prev.payments.filter((_, idx) => idx !== index),
+    }))
+  }
+
   const resetForm = () => {
     setForm({
       clientId: '',
       clientName: '',
       obraId: '',
       items: [createEmptyItem()],
+      payments: [],
       paymentMethod: 'a_definir',
       discountType: '',
       discountValue: 0,
@@ -800,6 +875,24 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
       )
       return
     }
+    for (const payment of form.payments) {
+      if (!payment.receivedAt) {
+        setStatus('Informe a data do recebimento.')
+        return
+      }
+      if (!Number.isFinite(payment.amount) || payment.amount <= 0) {
+        setStatus('Informe um valor maior que zero nos recebimentos.')
+        return
+      }
+    }
+    if (
+      form.status === 'pago' &&
+      form.payments.length > 0 &&
+      paymentsTotal + 0.01 < total
+    ) {
+      setStatus('Os recebimentos ainda nao completam o total do pedido.')
+      return
+    }
     const normalizedPayment =
       getPaymentMethodId(form.paymentMethod, data.tabelas?.paymentMethods) ||
       form.paymentMethod
@@ -863,6 +956,13 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
 
     const discountType = form.discountType || undefined
     const orderId = existingOrder?.id ?? createId()
+    const payments = form.payments
+      .filter((payment) => payment.amount > 0 && payment.receivedAt)
+      .map((payment) => ({
+        id: payment.id || createId(),
+        amount: payment.amount,
+        receivedAt: payment.receivedAt,
+      }))
     const order: Order = {
       id: orderId,
       trackingCode: existingOrder?.trackingCode ?? resolveOrderCode({ id: orderId }),
@@ -876,6 +976,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
       discountValue: discountType ? appliedDiscount : undefined,
       discountPercent: discountType ? appliedDiscountPercent : undefined,
       status: form.status,
+      payments,
       createdAt: existingOrder?.createdAt ?? new Date().toISOString(),
       sourceQuoteId: existingOrder?.sourceQuoteId,
     }
@@ -985,6 +1086,11 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
           customHeight,
         }
       }),
+      payments: (order.payments ?? []).map((payment) => ({
+        id: payment.id,
+        amount: payment.amount,
+        receivedAt: payment.receivedAt.slice(0, 10),
+      })),
       paymentMethod:
         getPaymentMethodId(order.paymentMethod, data.tabelas?.paymentMethods) ||
         order.paymentMethod ||
@@ -1501,6 +1607,81 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
             </p>
           </div>
 
+          <div className="modal__section">
+            <div className="modal__form-actions">
+              <strong>Recebimentos parciais</strong>
+              <button className="button button--ghost" type="button" onClick={addPayment}>
+                Adicionar recebimento
+              </button>
+            </div>
+            {form.payments.length === 0 ? (
+              <p className="modal__help">Nenhum recebimento registrado.</p>
+            ) : (
+              form.payments.map((payment, index) => (
+                <div key={payment.id} className="modal__row">
+                  <div className="modal__group">
+                    <label
+                      className="modal__label"
+                      htmlFor={`order-payment-date-${payment.id}`}
+                    >
+                      Data
+                    </label>
+                    <input
+                      id={`order-payment-date-${payment.id}`}
+                      className="modal__input"
+                      type="date"
+                      value={payment.receivedAt}
+                      onChange={(event) =>
+                        updatePayment(index, { receivedAt: event.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="modal__group">
+                    <label
+                      className="modal__label"
+                      htmlFor={`order-payment-amount-${payment.id}`}
+                    >
+                      Valor recebido
+                    </label>
+                    <CurrencyInput
+                      id={`order-payment-amount-${payment.id}`}
+                      className="modal__input"
+                      value={payment.amount}
+                      onValueChange={(value) =>
+                        updatePayment(index, { amount: value ?? 0 })
+                      }
+                    />
+                  </div>
+                  <div className="modal__group">
+                    <span className="modal__label">Acoes</span>
+                    <button
+                      className="button button--ghost"
+                      type="button"
+                      onClick={() => removePayment(index)}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+            <div className="modal__row">
+              <div className="summary">
+                <span>Recebido</span>
+                <strong>{formatCurrency(paymentsTotal)}</strong>
+              </div>
+              <div className="summary">
+                <span>Saldo a receber</span>
+                <strong>{formatCurrency(remainingBalance)}</strong>
+              </div>
+            </div>
+            {overpaidAmount > 0 && (
+              <p className="modal__help">
+                Recebido acima do total: {formatCurrency(overpaidAmount)}.
+              </p>
+            )}
+          </div>
+
           <div className="modal__row">
             <div className="modal__group">
               <label className="modal__label" htmlFor="order-fulfillment">
@@ -1571,6 +1752,37 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
             <span>Total do pedido</span>
             <strong>{formatCurrency(total)}</strong>
           </div>
+
+          <div className="modal__row">
+            <div className="summary">
+              <span>Custo base</span>
+              <strong>{formatCurrency(costSummary.base)}</strong>
+            </div>
+            <div className="summary">
+              <span>Custo mao de obra</span>
+              <strong>{formatCurrency(costSummary.labor)}</strong>
+            </div>
+          </div>
+
+          <div className="modal__row">
+            <div className="summary">
+              <span>Custo estimado</span>
+              <strong>{formatCurrency(estimatedCost)}</strong>
+            </div>
+            <div className="summary">
+              <span>Lucro estimado</span>
+              <strong>{formatCurrency(estimatedProfit)}</strong>
+            </div>
+          </div>
+
+          <div className="summary">
+            <span>Margem estimada</span>
+            <strong>{formatPercent(estimatedMargin)}%</strong>
+          </div>
+
+          <p className="modal__help">
+            Previa calculada com base nos custos cadastrados do produto.
+          </p>
 
           {!hasProducts && <p className="modal__help">Cadastre produtos para liberar pedidos.</p>}
         </form>

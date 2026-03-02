@@ -658,6 +658,40 @@ const normalizeData = (data: ERPData) => {
       return next
     })
 
+  const normalizePayments = (payments: unknown) =>
+    ensureArray(payments, [])
+      .map((payment) => {
+        if (!payment || typeof payment !== 'object') {
+          changed = true
+          return null
+        }
+        const paymentRecord = payment as {
+          id?: string
+          amount?: number
+          receivedAt?: string
+        }
+        const amount = Number.isFinite(paymentRecord.amount) ? paymentRecord.amount : 0
+        const receivedAt =
+          typeof paymentRecord.receivedAt === 'string' && paymentRecord.receivedAt
+            ? paymentRecord.receivedAt
+            : new Date().toISOString().slice(0, 10)
+        const id = paymentRecord.id || createId()
+        if (
+          amount !== paymentRecord.amount ||
+          receivedAt !== paymentRecord.receivedAt ||
+          id !== paymentRecord.id
+        ) {
+          changed = true
+        }
+        return {
+          ...paymentRecord,
+          id,
+          amount,
+          receivedAt,
+        }
+      })
+      .filter((payment): payment is NonNullable<typeof payment> => !!payment)
+
   const clientes = ensureArray(data.clientes, []).map((client) => ({
     ...client,
     obras: Array.isArray(client.obras) ? client.obras : [],
@@ -862,6 +896,7 @@ const normalizeData = (data: ERPData) => {
     ...order,
     paymentMethod: order.paymentMethod?.trim() || 'a_definir',
     items: normalizeItems(order.items),
+    payments: normalizePayments(order.payments),
   }))
   let pedidos = (() => {
     const indexById = new Map<string, number>()

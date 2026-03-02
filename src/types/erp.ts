@@ -239,6 +239,12 @@ export type OrderItem = {
   customHeight?: number
 }
 
+export type OrderPayment = {
+  id: UUID
+  amount: number
+  receivedAt: string
+}
+
 export type Order = {
   id: UUID
   code?: string
@@ -255,6 +261,7 @@ export type Order = {
   discountValue?: number
   discountPercent?: number
   status: 'aguardando_pagamento' | 'pago' | 'em_producao' | 'entregue'
+  payments?: OrderPayment[]
   createdAt: string
   sourceQuoteId?: UUID
 }
@@ -597,14 +604,12 @@ export type CompanyProfile = {
 export type EmployeeRole = {
   id: UUID
   name: string
-  multiplier: number
   permissions?: RolePermissions
 }
 
 export type EmployeeLevel = {
   id: UUID
   name: string
-  multiplier: number
 }
 
 export type Employee = {
@@ -682,8 +687,6 @@ export type WorkLog = {
   workDate: string
   createdAt: string
   unitLaborCost: number
-  roleMultiplier: number
-  levelMultiplier: number
   totalPay: number
 }
 

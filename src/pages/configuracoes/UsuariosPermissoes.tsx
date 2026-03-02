@@ -194,9 +194,7 @@ const UsuariosPermissoes = ({ currentUser, onPermissionsChange }: UsuariosPermis
                   >
                     <div>
                       <strong>{role.name}</strong>
-                      <span className="list__meta">
-                        {totalEmployees} funcionarios · {role.multiplier.toFixed(2)}x
-                      </span>
+                      <span className="list__meta">{totalEmployees} funcionarios</span>
                     </div>
                     <span
                       className={`badge ${isControlled ? 'badge--aprovado' : 'badge--rascunho'}`}

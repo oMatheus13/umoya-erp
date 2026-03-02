@@ -24,12 +24,10 @@ type EmployeeForm = {
 
 type RoleForm = {
   name: string
-  multiplier: number
 }
 
 type LevelForm = {
   name: string
-  multiplier: number
 }
 
 type WorkLogForm = {
@@ -60,12 +58,10 @@ const createEmptyEmployeeForm = (): EmployeeForm => ({
 
 const createEmptyRoleForm = (): RoleForm => ({
   name: '',
-  multiplier: 1,
 })
 
 const createEmptyLevelForm = (): LevelForm => ({
   name: '',
-  multiplier: 1,
 })
 
 const createEmptyWorkLogForm = (): WorkLogForm => ({
@@ -496,16 +492,11 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       setStatus('Informe o nome do cargo.')
       return
     }
-    if (roleForm.multiplier <= 0) {
-      setStatus('O multiplicador deve ser maior que zero.')
-      return
-    }
 
     const payload = dataService.getAll()
     const next: EmployeeRole = {
       id: editingRoleId ?? createId(),
       name: roleForm.name.trim(),
-      multiplier: roleForm.multiplier,
     }
 
     if (editingRoleId) {
@@ -527,16 +518,11 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       setStatus('Informe o nome do nivel.')
       return
     }
-    if (levelForm.multiplier <= 0) {
-      setStatus('O multiplicador deve ser maior que zero.')
-      return
-    }
 
     const payload = dataService.getAll()
     const next: EmployeeLevel = {
       id: editingLevelId ?? createId(),
       name: levelForm.name.trim(),
-      multiplier: levelForm.multiplier,
     }
 
     if (editingLevelId) {
@@ -598,8 +584,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       return
     }
 
-    const roleMultiplier = getRole(employee.roleId)?.multiplier ?? 1
-    const levelMultiplier = getLevel(employee.levelId)?.multiplier ?? 1
     const unitLaborCost = product.laborCost ?? 0
     if (unitLaborCost <= 0) {
       setLogStatus('Defina a mao de obra do produto antes de registrar a producao.')
@@ -615,7 +599,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       }
       laborQuantity = logForm.quantity * length
     }
-    const totalPay = laborQuantity * unitLaborCost * roleMultiplier * levelMultiplier
+    const totalPay = laborQuantity * unitLaborCost
 
     const existingLog = editingLogId
       ? payload.apontamentos.find((item) => item.id === editingLogId)
@@ -630,8 +614,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       workDate: logForm.workDate,
       createdAt: existingLog?.createdAt ?? new Date().toISOString(),
       unitLaborCost,
-      roleMultiplier,
-      levelMultiplier,
       totalPay,
     }
 
@@ -677,7 +659,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     setEditingRoleId(role.id)
     setRoleForm({
       name: role.name,
-      multiplier: role.multiplier,
     })
     setIsRoleModalOpen(true)
   }
@@ -686,7 +667,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
     setEditingLevelId(level.id)
     setLevelForm({
       name: level.name,
-      multiplier: level.multiplier,
     })
     setIsLevelModalOpen(true)
   }
@@ -1095,7 +1075,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
           <div className="panel__header">
             <div>
               <h2>Cargos</h2>
-              <p>Multiplicadores aplicados a mao de obra.</p>
+              <p>Cargos cadastrados para a equipe.</p>
             </div>
             <span className="panel__meta">{roles.length} registros</span>
           </div>
@@ -1104,14 +1084,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Nome</th>
-                  <th>Multiplicador</th>
                   <th className="table__actions table__actions--end">Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {roles.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="table__empty">
+                    <td colSpan={2} className="table__empty">
                       Nenhum cargo cadastrado ainda.
                     </td>
                   </tr>
@@ -1121,12 +1100,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                     <td className="table__cell--truncate">
                       <div className="table__stack">
                         <strong>{role.name}</strong>
-                        <span className="table__sub table__sub--mobile">
-                          {role.multiplier.toFixed(2)}x
-                        </span>
                       </div>
                     </td>
-                    <td className="table__cell--mobile-hide">{role.multiplier.toFixed(2)}x</td>
                     <td className="table__actions table__actions--end">
                       <ActionMenu
                         items={[
@@ -1145,7 +1120,7 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
           <div className="panel__header">
             <div>
               <h2>Niveis</h2>
-              <p>Ajuste por experiencia e desempenho.</p>
+              <p>Niveis de senioridade para a equipe.</p>
             </div>
             <span className="panel__meta">{levels.length} registros</span>
           </div>
@@ -1154,14 +1129,13 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               <thead className="table__head table__head--mobile-hide">
                 <tr>
                   <th>Nome</th>
-                  <th>Multiplicador</th>
                   <th className="table__actions table__actions--end">Editar</th>
                 </tr>
               </thead>
               <tbody>
                 {levels.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="table__empty">
+                    <td colSpan={2} className="table__empty">
                       Nenhum nivel cadastrado ainda.
                     </td>
                   </tr>
@@ -1171,12 +1145,8 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
                     <td className="table__cell--truncate">
                       <div className="table__stack">
                         <strong>{level.name}</strong>
-                        <span className="table__sub table__sub--mobile">
-                          {level.multiplier.toFixed(2)}x
-                        </span>
                       </div>
                     </td>
-                    <td className="table__cell--mobile-hide">{level.multiplier.toFixed(2)}x</td>
                     <td className="table__actions table__actions--end">
                       <ActionMenu
                         items={[
@@ -1623,20 +1593,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               onChange={(event) => updateRoleForm({ name: event.target.value })}
             />
           </div>
-          <div className="modal__group">
-            <label className="modal__label" htmlFor="role-multiplier">
-              Multiplicador
-            </label>
-            <input
-              id="role-multiplier"
-              className="modal__input"
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={roleForm.multiplier}
-              onChange={(event) => updateRoleForm({ multiplier: Number(event.target.value) })}
-            />
-          </div>
         </form>
       </Modal>
 
@@ -1681,20 +1637,6 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
               type="text"
               value={levelForm.name}
               onChange={(event) => updateLevelForm({ name: event.target.value })}
-            />
-          </div>
-          <div className="modal__group">
-            <label className="modal__label" htmlFor="level-multiplier">
-              Multiplicador
-            </label>
-            <input
-              id="level-multiplier"
-              className="modal__input"
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={levelForm.multiplier}
-              onChange={(event) => updateLevelForm({ multiplier: Number(event.target.value) })}
             />
           </div>
         </form>
