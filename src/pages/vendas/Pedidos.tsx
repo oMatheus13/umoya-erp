@@ -671,7 +671,6 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     )
     const nextPayments = nextOrder.payments ?? []
     const previousPayments = previousOrder?.payments ?? []
-    const hasPayments = nextPayments.length > 0
 
     if (nextPayments.length > 0 || previousPayments.length > 0) {
       const previousById = new Map(previousPayments.map((payment) => [payment.id, payment]))
