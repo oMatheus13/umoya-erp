@@ -26,3 +26,24 @@ export const resolveDeviceInfo = () => {
   const parts = [navigator.platform, navigator.userAgent].filter(Boolean)
   return parts.join(' | ')
 }
+
+export const isMobileDevice = () => {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false
+  }
+  const agent = navigator.userAgent || navigator.vendor || ''
+  const isMobileAgent = /android|iphone|ipad|ipod|mobile|opera mini|iemobile/i.test(agent)
+  const isTouch =
+    'ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0
+  const isSmallScreen = window.matchMedia
+    ? window.matchMedia('(max-width: 768px)').matches
+    : false
+  return isMobileAgent || (isTouch && isSmallScreen)
+}
+
+export const hasCameraSupport = () => {
+  if (typeof navigator === 'undefined') {
+    return false
+  }
+  return typeof navigator.mediaDevices?.getUserMedia === 'function'
+}

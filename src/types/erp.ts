@@ -1,3 +1,5 @@
+import type { NfceItemAlias } from './nfce'
+
 export type UUID = string
 
 export type SequenceEntry = {
@@ -303,6 +305,15 @@ export type PurchaseRecord = {
   items: PurchaseItem[]
   total: number
   createdAt: string
+  source?: 'nfce'
+  accessKey?: string
+  sourceUrl?: string
+  noteNumber?: string
+  noteSeries?: string
+  issuedAt?: string
+  authorizationProtocol?: string
+  paymentMethod?: string
+  paymentValue?: number
 }
 
 export type Delivery = {
@@ -736,6 +747,7 @@ export type ERPData = {
   pedidos: Order[]
   recibos: Receipt[]
   comprasHistorico: PurchaseRecord[]
+  nfceItemAliases: NfceItemAlias[]
   entregas: Delivery[]
   fiscalNotas: FiscalNote[]
   qualidadeChecks: QualityCheck[]

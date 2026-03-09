@@ -699,6 +699,7 @@ const normalizeData = (data: ERPData) => {
   }))
   const meta = data.meta && typeof data.meta === 'object' ? data.meta : undefined
   const fornecedores = ensureArray(data.fornecedores, [])
+  const nfceItemAliases = ensureArray(data.nfceItemAliases, [])
   const materiais = rawMaterials.map((material) => {
     const unit = normalizeMaterialUnit(material.unit)
     if (unit !== material.unit) {
@@ -1324,6 +1325,7 @@ const normalizeData = (data: ERPData) => {
     pedidos,
     recibos,
     comprasHistorico,
+    nfceItemAliases,
     entregas,
     fiscalNotas,
     qualidadeChecks,

@@ -92,6 +92,7 @@ export const createEmptyState = (): ERPData => ({
   pedidos: [],
   recibos: [],
   comprasHistorico: [],
+  nfceItemAliases: [],
   entregas: [],
   fiscalNotas: [],
   qualidadeChecks: [],
