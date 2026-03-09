@@ -756,24 +756,24 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     return next.toISOString().slice(0, 10)
   }
 
-  const isBusinessDay = (date: Date) => {
+  function isBusinessDay(date: Date) {
     const day = date.getDay()
     return day !== 0 && day !== 6
   }
 
-  const toDateKey = (date: Date) => {
+  function toDateKey(date: Date) {
     const year = date.getFullYear()
     const month = `${date.getMonth() + 1}`.padStart(2, '0')
     const day = `${date.getDate()}`.padStart(2, '0')
     return `${year}-${month}-${day}`
   }
 
-  const parseDateKey = (value: string) => {
+  function parseDateKey(value: string) {
     const [year, month, day] = value.split('-').map(Number)
     return new Date(year, month - 1, day)
   }
 
-  const ensureBusinessDay = (date: Date) => {
+  function ensureBusinessDay(date: Date) {
     const next = new Date(date)
     while (!isBusinessDay(next)) {
       next.setDate(next.getDate() + 1)
@@ -781,7 +781,7 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     return next
   }
 
-  const addBusinessDays = (base: Date, days: number) => {
+  function addBusinessDays(base: Date, days: number) {
     const safeDays = Number.isFinite(days) ? Math.max(0, Math.round(days)) : 0
     let current = new Date(base)
     if (safeDays === 0) {
@@ -797,7 +797,7 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     return current
   }
 
-  const addBusinessDaysToKey = (value: string, days: number) => {
+  function addBusinessDaysToKey(value: string, days: number) {
     if (!value) {
       return ''
     }
