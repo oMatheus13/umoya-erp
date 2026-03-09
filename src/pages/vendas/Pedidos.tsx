@@ -655,11 +655,75 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
       payload.pedidos = [...payload.pedidos, nextOrder]
     }
 
+    const cashboxId = getPaymentCashboxId(
+      nextOrder.paymentMethod,
+      data.tabelas?.paymentMethods,
+    )
+    const nextPayments = nextOrder.payments ?? []
+    const previousPayments = previousOrder?.payments ?? []
+    const hasPayments = nextPayments.length > 0
+
+    if (nextPayments.length > 0 || previousPayments.length > 0) {
+      const previousById = new Map(previousPayments.map((payment) => [payment.id, payment]))
+      const nextById = new Map(nextPayments.map((payment) => [payment.id, payment]))
+      const orderLabel = nextOrder.id.slice(0, 8)
+      const paymentDescription = `Recebimento pedido ${orderLabel}`
+      const paymentAdjustmentDescription = `Ajuste recebimento pedido ${orderLabel}`
+      const paymentReversalDescription = `Estorno recebimento pedido ${orderLabel}`
+      const paymentEntries: typeof payload.financeiro = []
+      const pushPaymentEntry = (
+        amount: number,
+        type: 'entrada' | 'saida',
+        description: string,
+        receivedAt: string,
+      ) => {
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return
+        }
+        paymentEntries.push({
+          id: createId(),
+          type,
+          description,
+          amount,
+          createdAt: receivedAt || new Date().toISOString().slice(0, 10),
+          cashboxId,
+        })
+      }
+
+      nextPayments.forEach((payment) => {
+        const previous = previousById.get(payment.id)
+        if (!previous) {
+          pushPaymentEntry(payment.amount, 'entrada', paymentDescription, payment.receivedAt)
+          return
+        }
+        const delta = payment.amount - previous.amount
+        if (Math.abs(delta) > 0.01) {
+          pushPaymentEntry(
+            Math.abs(delta),
+            delta > 0 ? 'entrada' : 'saida',
+            paymentAdjustmentDescription,
+            payment.receivedAt,
+          )
+        }
+      })
+
+      previousPayments.forEach((payment) => {
+        if (!nextById.has(payment.id)) {
+          pushPaymentEntry(
+            payment.amount,
+            'saida',
+            paymentReversalDescription,
+            payment.receivedAt,
+          )
+        }
+      })
+
+      if (paymentEntries.length > 0) {
+        payload.financeiro = [...payload.financeiro, ...paymentEntries]
+      }
+    }
+
     if (nextOrder.status === 'pago' && previousOrder?.status !== 'pago') {
-      const cashboxId = getPaymentCashboxId(
-        nextOrder.paymentMethod,
-        data.tabelas?.paymentMethods,
-      )
       payload.recibos = [
         ...payload.recibos,
         {
@@ -670,17 +734,19 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
           issuedAt: new Date().toISOString(),
         },
       ]
-      payload.financeiro = [
-        ...payload.financeiro,
-        {
-          id: createId(),
-          type: 'entrada',
-          description: `Pedido ${nextOrder.id.slice(0, 8)}`,
-          amount: nextOrder.total,
-          createdAt: new Date().toISOString(),
-          cashboxId,
-        },
-      ]
+      if (!hasPayments) {
+        payload.financeiro = [
+          ...payload.financeiro,
+          {
+            id: createId(),
+            type: 'entrada',
+            description: `Pedido ${nextOrder.id.slice(0, 8)}`,
+            amount: nextOrder.total,
+            createdAt: new Date().toISOString(),
+            cashboxId,
+          },
+        ]
+      }
     }
 
     if (
@@ -1603,7 +1669,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
               ))}
             </select>
             <p className="modal__help">
-              O meio escolhido define o caixa da entrada quando o pedido for pago.
+              O meio escolhido define o caixa das entradas de recebimento.
             </p>
           </div>
 
@@ -1732,7 +1798,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
                   ))}
               </select>
               <p className="modal__help">
-                Status pago gera recibo e entrada automatica no financeiro.
+                Status pago gera recibo. Os recebimentos alimentam o financeiro.
               </p>
             </div>
           </div>
