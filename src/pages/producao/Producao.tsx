@@ -3,6 +3,7 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import QuickNotice from '../../components/QuickNotice'
+import logotipo from '../../assets/brand/logotipo.svg'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
@@ -61,6 +62,7 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const [status, setStatus] = useState<string | null>(null)
   const [isManualOpen, setIsManualOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [printGroupId, setPrintGroupId] = useState<string | null>(null)
   const [manualForm, setManualForm] = useState({
     productId: '',
     variantId: '',
@@ -184,6 +186,81 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   }
   const getProductionCode = (order: ProductionOrder) =>
     order.code?.trim() || order.id.slice(0, 6)
+
+  const printContext = useMemo(() => {
+    if (!printGroupId) {
+      return null
+    }
+    const group = productionGroups.find((entry) => entry.id === printGroupId)
+    if (!group) {
+      return null
+    }
+    const linkedOrder =
+      data.pedidos.find((order) => order.id === group.id) ?? null
+    const client = linkedOrder
+      ? data.clientes.find((entry) => entry.id === linkedOrder.clientId) ?? null
+      : null
+    const obra =
+      linkedOrder && client?.obras
+        ? client.obras.find((entry) => entry.id === linkedOrder.obraId) ?? null
+        : null
+    const fallbackName = group.meta?.startsWith('Cliente:')
+      ? group.meta.replace('Cliente:', '').trim()
+      : 'Estoque interno'
+    const plannedAt =
+      linkedOrder?.createdAt ??
+      group.orders.find((order) => order.plannedAt)?.plannedAt ??
+      new Date().toISOString()
+    return {
+      group,
+      linkedOrder,
+      clientName: client?.name ?? fallbackName,
+      clientDocument: client?.document?.trim() || '',
+      clientContactLine: [client?.phone, client?.email].filter(Boolean).join(' • '),
+      clientAddressLine: [obra?.address, obra?.city ?? client?.city]
+        .filter(Boolean)
+        .join(' - '),
+      obraName: obra?.name ?? '',
+      orderCode: linkedOrder ? resolveOrderInternalCode(linkedOrder) : '',
+      plannedAt,
+    }
+  }, [data.clientes, data.pedidos, printGroupId, productionGroups])
+
+  const printItems = useMemo(() => {
+    if (!printContext) {
+      return []
+    }
+    return printContext.group.orders
+      .map((order) => {
+        const product = data.produtos.find((entry) => entry.id === order.productId)
+        if (!product?.producedInternally) {
+          return null
+        }
+        const variant = product.variants?.find((entry) => entry.id === order.variantId)
+        const isLinear = product.unit === 'metro_linear'
+        const length =
+          order.customLength ?? (isLinear ? product.length ?? 0 : undefined)
+        const sizeLabel = isLinear
+          ? buildDimensionLabel([length ?? 0])
+          : buildDimensionLabel([
+              variant?.length ?? product.length ?? 0,
+              variant?.width ?? product.width ?? 0,
+              variant?.height ?? product.height ?? 0,
+            ])
+        const plannedQty = Number.isFinite(order.plannedQty)
+          ? order.plannedQty ?? 0
+          : order.quantity
+        const variantLabel = variant ? ` • ${variant.name}` : ''
+        return {
+          id: order.id,
+          opCode: getProductionCode(order),
+          name: `${product.name ?? 'Produto'}${variantLabel}`,
+          sizeLabel,
+          plannedQty,
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => Boolean(item))
+  }, [data.produtos, printContext])
 
   const availableProducts = data.produtos.filter((product) => product.active !== false)
   const manualProduct = data.produtos.find((product) => product.id === manualForm.productId)
@@ -713,6 +790,39 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     onConsumeIntent?.()
   }, [pageIntent, onConsumeIntent])
 
+  useEffect(() => {
+    if (!printGroupId || typeof window === 'undefined') {
+      return
+    }
+    let cancelled = false
+    const runPrint = async () => {
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve())
+        })
+      })
+      if (document.fonts?.ready) {
+        await document.fonts.ready
+      }
+      if (!cancelled) {
+        window.print()
+      }
+    }
+    void runPrint()
+    return () => {
+      cancelled = true
+    }
+  }, [printGroupId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+    const handleAfterPrint = () => setPrintGroupId(null)
+    window.addEventListener('afterprint', handleAfterPrint)
+    return () => window.removeEventListener('afterprint', handleAfterPrint)
+  }, [])
+
   const handleManualSubmit = () => {
     if (!manualForm.productId) {
       setStatus('Selecione um produto.')
@@ -756,6 +866,26 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     setStatus('Ordem de producao criada para estoque.')
     setIsManualOpen(false)
   }
+
+  const company = data.empresa
+  const companyName = company.name?.trim() || company.tradeName?.trim() || ''
+  const companyDocument = company.document?.trim() || ''
+  const companyAddressLine = [company.street, company.number, company.neighborhood]
+    .filter(Boolean)
+    .join(', ')
+  const companyCityLine = [company.city, company.state, company.zip]
+    .filter(Boolean)
+    .join(' - ')
+  const companyContactLine = [company.phone, company.email, company.website]
+    .filter(Boolean)
+    .join(' • ')
+  const companyLines = [
+    companyName,
+    companyDocument,
+    companyAddressLine,
+    companyCityLine,
+    companyContactLine,
+  ].filter((value) => value && value.trim().length > 0)
 
   const orderToDelete = deleteId
     ? data.ordensProducao.find((order) => order.id === deleteId)
@@ -849,6 +979,90 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
 
   return (
     <Page className="producao">
+      {printContext && (
+        <div id="quote-print" className="quote-print">
+          <section className="quote-print__copy">
+            <header className="quote-print__header">
+              <div className="quote-print__brand">
+                <img className="quote-print__logo" src={logotipo} alt={companyName} />
+                {companyLines.length > 0 && (
+                  <div className="quote-print__company">
+                    {companyLines.map((line, index) => {
+                      const isNameLine = index === 0 && companyName && line === companyName
+                      return isNameLine ? (
+                        <strong key={`company-${index}`}>{line}</strong>
+                      ) : (
+                        <span key={`company-${index}`}>{line}</span>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+              <div className="quote-print__meta">
+                <span>Documento: Ordem de producao</span>
+                <span>Emissao: {formatDateShort(printContext.plannedAt)}</span>
+                {printContext.orderCode && (
+                  <span>Pedido #{printContext.orderCode}</span>
+                )}
+                {!printContext.orderCode && <span>{printContext.group.title}</span>}
+                <span className="quote-print__copy-tag">Chao de fabrica</span>
+              </div>
+            </header>
+
+            <section className="quote-print__client">
+              <div className="quote-print__client-block">
+                <span>Cliente</span>
+                <strong>{printContext.clientName}</strong>
+                {printContext.clientDocument && (
+                  <span>Documento: {printContext.clientDocument}</span>
+                )}
+                {printContext.clientContactLine && (
+                  <span>{printContext.clientContactLine}</span>
+                )}
+              </div>
+              <div className="quote-print__client-block">
+                <span>Obra / Endereco</span>
+                <strong>{printContext.obraName || '—'}</strong>
+                <span>{printContext.clientAddressLine || '—'}</span>
+              </div>
+            </section>
+
+            <table className="quote-print__table">
+              <thead>
+                <tr>
+                  <th>Item</th>
+                  <th>Medidas</th>
+                  <th>Qtd</th>
+                  <th>Pronto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {printItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={4}>
+                      Nenhum item com linha de producao neste pedido.
+                    </td>
+                  </tr>
+                ) : (
+                  printItems.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        {item.name}
+                        <span className="quote-print__dimension">OP {item.opCode}</span>
+                      </td>
+                      <td>{item.sizeLabel || '-'}</td>
+                      <td>{item.plannedQty}</td>
+                      <td>
+                        <span className="quote-print__checkbox" aria-hidden="true" />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </section>
+        </div>
+      )}
       <PageHeader
         actions={
           <button className="button button--ghost" type="button" onClick={handleManualOrder}>
@@ -902,6 +1116,18 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                   <strong>{group.title}</strong>
                   {group.meta && <span className="list__meta">{group.meta}</span>}
                   <span className="list__meta">Itens: {group.orders.length}</span>
+                </div>
+                <div className="list__actions">
+                  <button
+                    className="button button--ghost"
+                    type="button"
+                    onClick={() => setPrintGroupId(group.id)}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      print
+                    </span>
+                    <span>Imprimir OP</span>
+                  </button>
                 </div>
               </div>
               {group.orders.map((order) => {
