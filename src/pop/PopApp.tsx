@@ -414,12 +414,15 @@ const PopApp = () => {
     const plannedQty = Number.isFinite(order.plannedQty)
       ? order.plannedQty ?? 0
       : order.quantity
-    const lengthM =
-      Number.isFinite(order.plannedLengthM) && order.plannedLengthM
-        ? order.plannedLengthM
-        : Number.isFinite(order.customLength)
-        ? order.customLength
-        : product?.length ?? 0
+    const lengthM = (() => {
+      if (Number.isFinite(order.plannedLengthM) && order.plannedLengthM) {
+        return order.plannedLengthM ?? 0
+      }
+      if (Number.isFinite(order.customLength) && order.customLength) {
+        return order.customLength ?? 0
+      }
+      return product?.length ?? 0
+    })()
     const producedQty = Number.isFinite(order.producedQty) ? order.producedQty ?? 0 : 0
     const remainingQty = Math.max(0, plannedQty - producedQty)
     const sizeLabel = isLinear
