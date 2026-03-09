@@ -39,6 +39,30 @@
   padding-top: 0;
 }
 
+.list__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
+  border-top: var(--border-thin);
+}
+
+.list__group:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.list__group .list__item {
+  border-top: none;
+}
+
+.list__item.list__item--group {
+  border: var(--border-thin);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-sm);
+  background: var(--color-paper);
+}
+
 .list__meta {
   display: block;
   margin-top: var(--spacing-2xs);

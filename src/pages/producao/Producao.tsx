@@ -15,6 +15,7 @@ import type {
 import type { PageIntentAction } from '../../types/ui'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
+import { resolveOrderInternalCode } from '../../utils/orderCode'
 import { getUnitFactor } from '../../utils/pricing'
 import { convertUsageToPurchaseQuantity, getDefaultUsageUnit } from '../../utils/materialUsage'
 import { findStockItemIndex } from '../../utils/stockItems'
@@ -29,6 +30,15 @@ const statusLabels: Record<ProductionOrder['status'], string> = {
 
 const toCentimeters = (value: number) =>
   Number.isFinite(value) ? Math.max(0, value * 100) : 0
+
+const buildDimensionLabel = (values: number[]) => {
+  const filtered = values.filter((value) => Number.isFinite(value) && value > 0)
+  if (filtered.length === 0) {
+    return ''
+  }
+  const label = filtered.map((value) => Math.round(toCentimeters(value))).join(' x ')
+  return `${label} cm`
+}
 
 type ProducaoProps = {
   pageIntent?: PageIntentAction
@@ -119,6 +129,39 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const getOrder = (id: string) => data.pedidos.find((order) => order.id === id)
   const getClientName = (id: string) =>
     data.clientes.find((client) => client.id === id)?.name ?? 'Cliente'
+  const productionGroups = useMemo(() => {
+    const groups: {
+      id: string
+      title: string
+      meta?: string
+      orders: ProductionOrder[]
+    }[] = []
+    const indexById = new Map<string, number>()
+    productionOrders.forEach((order) => {
+      const groupId = order.linkedOrderId ?? order.orderId
+      let index = indexById.get(groupId)
+      if (index === undefined) {
+        const linkedOrder = data.pedidos.find((item) => item.id === groupId)
+        const orderCode = linkedOrder ? resolveOrderInternalCode(linkedOrder) : groupId.slice(0, 6)
+        const clientName = linkedOrder ? getClientName(linkedOrder.clientId) : ''
+        const title = linkedOrder
+          ? `Pedido #${orderCode}`
+          : order.source === 'estoque'
+            ? 'Estoque interno'
+            : `Pedido #${orderCode}`
+        const meta = clientName
+          ? `Cliente: ${clientName}`
+          : order.source === 'estoque'
+            ? 'Ordem de estoque'
+            : undefined
+        index = groups.length
+        indexById.set(groupId, index)
+        groups.push({ id: groupId, title, meta, orders: [] })
+      }
+      groups[index].orders.push(order)
+    })
+    return groups
+  }, [data.clientes, data.pedidos, productionOrders])
   const getEmployeeName = (id?: string) =>
     employees.find((employee) => employee.id === id)?.name ?? 'Equipe'
   const getProductName = (id: string) =>
@@ -852,162 +895,166 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
               Nenhuma ordem criada. Marque pedidos como pagos para gerar producao.
             </div>
           )}
-          {productionOrders.map((order) => {
-            const orderLinkId = order.linkedOrderId ?? order.orderId
-            const pedido = getOrder(orderLinkId)
-            const item = pedido?.items[0]
-            const productId = item?.productId ?? order.productId
-            const product = productId
-              ? data.produtos.find((entry) => entry.id === productId)
-              : undefined
-            const variant =
-              product && product.unit !== 'metro_linear' && product.hasVariants
-                ? getVariant(productId, item?.variantId ?? order.variantId)
-                : undefined
-            const length =
-              order.customLength ??
-              item?.customLength ??
-              (product?.unit === 'metro_linear' ? product.length : undefined)
-            const lengthLabel =
-              product?.unit === 'metro_linear' && length
-                ? `${toCentimeters(length).toFixed(0)} cm`
-                : ''
-            const sourceLabel =
-              order.source === 'estoque'
-                ? 'Estoque interno'
-                : pedido
-                  ? getClientName(pedido.clientId)
-                  : 'Pedido'
-            const originProduction = order.originProductionOrderId
-              ? data.ordensProducao.find(
-                  (entry) => entry.id === order.originProductionOrderId,
-                )
-              : null
-            const originLabel = originProduction
-              ? `Retrabalho de OP #${getProductionCode(originProduction)}`
-              : ''
-            const statusKey = order.status.toLowerCase()
-            const plannedQty = Number.isFinite(order.plannedQty)
-              ? order.plannedQty ?? 0
-              : order.quantity
-            const producedQty = Number.isFinite(order.producedQty) ? order.producedQty ?? 0 : 0
-            const isLinear = product?.unit === 'metro_linear'
-            const plannedLength = isLinear
-              ? Number.isFinite(order.plannedLengthM)
-                ? order.plannedLengthM ?? 0
-                : Number.isFinite(length)
-                  ? length ?? 0
-                  : 0
-              : 0
-            const plannedTotalLength = isLinear ? plannedQty * plannedLength : 0
-            const producedLength = isLinear
-              ? Number.isFinite(order.producedLengthM)
-                ? order.producedLengthM ?? 0
-                : 0
-              : 0
-            const remainingQty = Math.max(0, plannedQty - producedQty)
-            const remainingLength = isLinear
-              ? Math.max(0, plannedTotalLength - producedLength)
-              : 0
-            const entries = productionEntriesByOrder.get(order.id) ?? []
-            const entryHistory = entries.slice(0, 3)
-            return (
-              <div key={order.id} className="list__item">
+          {productionGroups.map((group) => (
+            <div key={group.id} className="list__group">
+              <div className="list__item list__item--group">
                 <div>
-                  <strong>Ordem #{getProductionCode(order)}</strong>
-                  <span className="list__meta">{sourceLabel}</span>
-                  {originLabel && <span className="list__meta">{originLabel}</span>}
-                  <span className="list__meta">
-                    {productId ? getProductName(productId) : 'Produto'}
-                    {variant ? ` • ${variant.name}` : ''}
-                    {lengthLabel ? ` • ${lengthLabel}` : ''}
-                    {' • '}
-                    {plannedQty} un
-                  </span>
-                  <span className="list__meta">
-                    <span className={`badge badge--${statusKey}`}>
-                      {statusLabels[order.status]}
-                    </span>
-                    {' · '}
-                    <span>Inicio: {formatDateShort(order.plannedAt ?? '')}</span>
-                    {' · '}
-                    <span>Fim: {formatDateShort(order.finishedAt ?? '')}</span>
-                  </span>
-                  <span className="list__meta">
-                    Planejado: {plannedQty} un
-                    {isLinear ? ` (${formatMeasurement(plannedTotalLength)} m)` : ''}
-                    {' · '}
-                    Produzido: {producedQty} un
-                    {isLinear ? ` (${formatMeasurement(producedLength)} m)` : ''}
-                    {' · '}
-                    Faltam: {remainingQty} un
-                    {isLinear ? ` (${formatMeasurement(remainingLength)} m)` : ''}
-                  </span>
-                  {entryHistory.map((entry) => {
-                    const entryLength = isLinear
-                      ? Number.isFinite(entry.lengthM)
-                        ? entry.lengthM ?? plannedLength
-                        : plannedLength
-                      : 0
-                    const entryTotal = isLinear ? entry.quantity * entryLength : 0
-                    const scrapLabel =
-                      entry.scrapQuantity && entry.scrapQuantity > 0
-                        ? ` · Refugo ${entry.scrapQuantity} un`
-                        : ''
-                    return (
-                      <span key={entry.id} className="list__meta">
-                        {formatDateShort(entry.date)} · {entry.quantity} un
-                        {isLinear ? ` (${formatMeasurement(entryTotal)} m)` : ''}
-                        {' · '}
-                        {getEmployeeName(entry.employeeId)}
-                        {scrapLabel}
-                      </span>
-                    )
-                  })}
-                  {entries.length > entryHistory.length && (
-                    <span className="list__meta">
-                      +{entries.length - entryHistory.length} apontamento(s)
-                    </span>
-                  )}
-                </div>
-                <div className="list__actions">
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={() => handleStart(order)}
-                    disabled={order.status !== 'ABERTA'}
-                  >
-                    Iniciar
-                  </button>
-                  <button
-                    className="button button--ghost"
-                    type="button"
-                    onClick={() => openEntryModal(order)}
-                    disabled={order.status === 'CONCLUIDA' || order.status === 'CANCELADA'}
-                  >
-                    Apontar
-                  </button>
-                  <button
-                    className="button button--primary"
-                    type="button"
-                    onClick={() => handleFinish(order)}
-                    disabled={
-                      order.status !== 'EM_ANDAMENTO' && order.status !== 'PARCIAL'
-                    }
-                  >
-                    Concluir
-                  </button>
-                  <button
-                    className="button button--danger"
-                    type="button"
-                    onClick={() => setDeleteId(order.id)}
-                  >
-                    Excluir
-                  </button>
+                  <strong>{group.title}</strong>
+                  {group.meta && <span className="list__meta">{group.meta}</span>}
+                  <span className="list__meta">Itens: {group.orders.length}</span>
                 </div>
               </div>
-            )
-          })}
+              {group.orders.map((order) => {
+                const orderLinkId = order.linkedOrderId ?? order.orderId
+                const pedido = getOrder(orderLinkId)
+                const item = pedido?.items[0]
+                const productId = item?.productId ?? order.productId
+                const product = productId
+                  ? data.produtos.find((entry) => entry.id === productId)
+                  : undefined
+                const variant =
+                  product && product.unit !== 'metro_linear' && product.hasVariants
+                    ? getVariant(productId, item?.variantId ?? order.variantId)
+                    : undefined
+                const length =
+                  order.customLength ??
+                  item?.customLength ??
+                  (product?.unit === 'metro_linear' ? product.length : undefined)
+                const sizeLabel = product?.unit === 'metro_linear'
+                  ? buildDimensionLabel([length ?? 0])
+                  : buildDimensionLabel([
+                      variant?.length ?? product?.length ?? 0,
+                      variant?.width ?? product?.width ?? 0,
+                      variant?.height ?? product?.height ?? 0,
+                    ])
+                const sourceLabel =
+                  order.source === 'estoque'
+                    ? 'Estoque interno'
+                    : pedido
+                      ? `Cliente: ${getClientName(pedido.clientId)}`
+                      : 'Pedido'
+                const originProduction = order.originProductionOrderId
+                  ? data.ordensProducao.find(
+                      (entry) => entry.id === order.originProductionOrderId,
+                    )
+                  : null
+                const originLabel = originProduction
+                  ? `Retrabalho de OP #${getProductionCode(originProduction)}`
+                  : ''
+                const statusKey = order.status.toLowerCase()
+                const plannedQty = Number.isFinite(order.plannedQty)
+                  ? order.plannedQty ?? 0
+                  : order.quantity
+                const producedQty = Number.isFinite(order.producedQty)
+                  ? order.producedQty ?? 0
+                  : 0
+                const isLinear = product?.unit === 'metro_linear'
+                const plannedLength = isLinear
+                  ? Number.isFinite(order.plannedLengthM)
+                    ? order.plannedLengthM ?? 0
+                    : Number.isFinite(length)
+                      ? length ?? 0
+                      : 0
+                  : 0
+                const remainingQty = Math.max(0, plannedQty - producedQty)
+                const entries = productionEntriesByOrder.get(order.id) ?? []
+                const entryHistory = entries.slice(0, 3)
+                return (
+                  <div key={order.id} className="list__item">
+                    <div>
+                      <strong>Ordem #{getProductionCode(order)}</strong>
+                      <span className="list__meta">{sourceLabel}</span>
+                      {originLabel && <span className="list__meta">{originLabel}</span>}
+                      <span className="list__meta">
+                        {productId ? getProductName(productId) : 'Produto'}
+                        {variant ? ` • ${variant.name}` : ''}
+                        {sizeLabel ? ` • ${sizeLabel}` : ''}
+                        {' • '}
+                        {plannedQty} un
+                      </span>
+                      <span className="list__meta">
+                        <span className={`badge badge--${statusKey}`}>
+                          {statusLabels[order.status]}
+                        </span>
+                        {' · '}
+                        <span>Inicio: {formatDateShort(order.plannedAt ?? '')}</span>
+                        {' · '}
+                        <span>Fim: {formatDateShort(order.finishedAt ?? '')}</span>
+                      </span>
+                      <span className="list__meta">
+                        Planejado: {plannedQty} un · Produzido: {producedQty} un ·
+                        Faltam: {remainingQty} un
+                      </span>
+                      {entryHistory.map((entry) => {
+                        const entryLength = isLinear
+                          ? Number.isFinite(entry.lengthM)
+                            ? entry.lengthM ?? plannedLength
+                            : plannedLength
+                          : 0
+                        const entryTotal = isLinear ? entry.quantity * entryLength : 0
+                        const scrapLabel =
+                          entry.scrapQuantity && entry.scrapQuantity > 0
+                            ? ` · Refugo ${entry.scrapQuantity} un`
+                            : ''
+                        return (
+                          <span key={entry.id} className="list__meta">
+                            {formatDateShort(entry.date)} · {entry.quantity} un
+                            {isLinear ? ` (${formatMeasurement(entryTotal)} m)` : ''}
+                            {' · '}
+                            {getEmployeeName(entry.employeeId)}
+                            {scrapLabel}
+                          </span>
+                        )
+                      })}
+                      {entries.length > entryHistory.length && (
+                        <span className="list__meta">
+                          +{entries.length - entryHistory.length} apontamento(s)
+                        </span>
+                      )}
+                    </div>
+                    <div className="list__actions">
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        onClick={() => handleStart(order)}
+                        disabled={order.status !== 'ABERTA'}
+                      >
+                        Iniciar
+                      </button>
+                      <button
+                        className="button button--ghost"
+                        type="button"
+                        onClick={() => openEntryModal(order)}
+                        disabled={
+                          order.status === 'CONCLUIDA' || order.status === 'CANCELADA'
+                        }
+                      >
+                        Apontar
+                      </button>
+                      <button
+                        className="button button--primary"
+                        type="button"
+                        onClick={() => handleFinish(order)}
+                        disabled={
+                          order.status !== 'EM_ANDAMENTO' &&
+                          order.status !== 'PARCIAL'
+                        }
+                      >
+                        Concluir
+                      </button>
+                      <button
+                        className="button button--danger"
+                        type="button"
+                        onClick={() => setDeleteId(order.id)}
+                      >
+                        Excluir
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </section>
       <Modal

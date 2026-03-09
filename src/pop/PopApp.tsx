@@ -41,6 +41,18 @@ const DEV_EMPLOYEE_PIN = '0000'
 const formatNumber = (value: number) =>
   new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
 
+const toCentimeters = (value: number) =>
+  Number.isFinite(value) ? Math.max(0, value * 100) : 0
+
+const buildDimensionLabel = (values: number[]) => {
+  const filtered = values.filter((value) => Number.isFinite(value) && value > 0)
+  if (filtered.length === 0) {
+    return ''
+  }
+  const label = filtered.map((value) => formatNumber(toCentimeters(value))).join(' x ')
+  return `${label} cm`
+}
+
 const hasMeaningfulData = (payload: ERPData) =>
   payload.produtos.length > 0 ||
   payload.clientes.length > 0 ||
@@ -379,19 +391,25 @@ const PopApp = () => {
   const resolveOrderLabel = (order: ProductionOrder) => {
     const product = productsById.get(order.productId)
     const variant = product?.variants?.find((item) => item.id === order.variantId)
-    const pedido = ordersById.get(order.orderId)
+    const linkedOrderId = order.linkedOrderId ?? order.orderId
+    const pedido = ordersById.get(linkedOrderId)
     const orderCode = pedido ? resolveOrderInternalCode(pedido) : ''
+    const clientName = pedido
+      ? data.clientes.find((client) => client.id === pedido.clientId)?.name ?? ''
+      : ''
     const code = order.code || order.id.slice(0, 6).toUpperCase()
     const variantLabel = variant ? ` - ${variant.name}` : ''
     return {
       code: `OP ${code}`,
       title: `${product?.name ?? 'Produto'}${variantLabel}`,
       orderCode: orderCode ? `Pedido ${orderCode}` : '',
+      clientName,
     }
   }
 
   const resolveOrderProgress = (order: ProductionOrder) => {
     const product = productsById.get(order.productId)
+    const variant = product?.variants?.find((item) => item.id === order.variantId)
     const isLinear = product?.unit === 'metro_linear'
     const plannedQty = Number.isFinite(order.plannedQty)
       ? order.plannedQty ?? 0
@@ -400,20 +418,22 @@ const PopApp = () => {
       Number.isFinite(order.plannedLengthM) && order.plannedLengthM
         ? order.plannedLengthM
         : Number.isFinite(order.customLength)
-          ? order.customLength
-          : product?.length ?? 0
+        ? order.customLength
+        : product?.length ?? 0
     const producedQty = Number.isFinite(order.producedQty) ? order.producedQty ?? 0 : 0
-    const producedLength = Number.isFinite(order.producedLengthM)
-      ? order.producedLengthM ?? 0
-      : 0
-    const plannedTotal = isLinear ? plannedQty * (lengthM || 0) : plannedQty
-    const producedTotal = isLinear ? producedLength : producedQty
-    const remaining = Math.max(0, plannedTotal - producedTotal)
+    const remainingQty = Math.max(0, plannedQty - producedQty)
+    const sizeLabel = isLinear
+      ? buildDimensionLabel([lengthM])
+      : buildDimensionLabel([
+          variant?.length ?? product?.length ?? 0,
+          variant?.width ?? product?.width ?? 0,
+          variant?.height ?? product?.height ?? 0,
+        ])
     return {
-      planned: plannedTotal,
-      produced: producedTotal,
-      remaining,
-      unit: isLinear ? 'm' : 'un',
+      plannedQty,
+      producedQty,
+      remainingQty,
+      sizeLabel,
       lengthM: isLinear ? lengthM : undefined,
       isLinear,
     }
@@ -537,17 +557,58 @@ const PopApp = () => {
     }
     return availableOrders.filter((order) => {
       const product = productsById.get(order.productId)
-      const pedido = ordersById.get(order.orderId)
+      const linkedOrderId = order.linkedOrderId ?? order.orderId
+      const pedido = ordersById.get(linkedOrderId)
+      const clientName = pedido
+        ? data.clientes.find((client) => client.id === pedido.clientId)?.name.toLowerCase() ?? ''
+        : ''
       const code = order.code?.toLowerCase() ?? ''
       const orderCode = pedido ? resolveOrderInternalCode(pedido).toLowerCase() : ''
       const productName = product?.name.toLowerCase() ?? ''
       return (
         code.includes(term) ||
         orderCode.includes(term) ||
-        productName.includes(term)
+        productName.includes(term) ||
+        clientName.includes(term)
       )
     })
-  }, [availableOrders, ordersById, productsById, search])
+  }, [availableOrders, data.clientes, ordersById, productsById, search])
+
+  const groupedOrders = useMemo(() => {
+    const groups: {
+      id: string
+      title: string
+      meta?: string
+      orders: ProductionOrder[]
+    }[] = []
+    const indexById = new Map<string, number>()
+    filteredOrders.forEach((order) => {
+      const groupId = order.linkedOrderId ?? order.orderId
+      let index = indexById.get(groupId)
+      if (index === undefined) {
+        const pedido = ordersById.get(groupId)
+        const orderCode = pedido ? resolveOrderInternalCode(pedido) : groupId.slice(0, 6)
+        const clientName = pedido
+          ? data.clientes.find((client) => client.id === pedido.clientId)?.name ?? ''
+          : ''
+        const title = pedido
+          ? `Pedido #${orderCode}`
+          : order.source === 'estoque'
+            ? 'Estoque interno'
+            : `Pedido #${orderCode}`
+        const meta = clientName
+          ? `Cliente: ${clientName}`
+          : order.source === 'estoque'
+            ? 'Ordem de estoque'
+            : undefined
+        index = groups.length
+        indexById.set(groupId, index)
+        groups.push({ id: groupId, title, meta, orders: [] })
+      }
+      groups[index].orders.push(order)
+    })
+    return groups
+  }, [data.clientes, filteredOrders, ordersById])
 
   useEffect(() => {
     if (view === 'pin') {
@@ -732,32 +793,51 @@ const PopApp = () => {
                 placeholder="Buscar por codigo ou produto"
               />
               <div className="pop-list">
-                {filteredOrders.length === 0 && (
+                {groupedOrders.length === 0 && (
                   <p className="pop-status">Nenhuma OP aberta.</p>
                 )}
-                {filteredOrders.map((order) => {
-                  const label = resolveOrderLabel(order)
-                  const progress = resolveOrderProgress(order)
-                  return (
-                    <button
-                      key={order.id}
-                      type="button"
-                      className="pop-card"
-                      onClick={() => handleSelectOrder(order)}
-                    >
-                      <div className="pop-card__title">{label.code}</div>
-                      <div className="pop-card__subtitle">{label.title}</div>
-                      {label.orderCode && (
-                        <div className="pop-card__meta">{label.orderCode}</div>
-                      )}
-                      <div className="pop-card__progress">
-                        Planejado {formatNumber(progress.planned)} {progress.unit} · Produzido{' '}
-                        {formatNumber(progress.produced)} {progress.unit} · Faltam{' '}
-                        {formatNumber(progress.remaining)} {progress.unit}
+                {groupedOrders.map((group) => (
+                  <div key={group.id} className="pop-group">
+                    <div className="pop-group__header">
+                      <div className="pop-group__title">{group.title}</div>
+                      {group.meta && <div className="pop-group__meta">{group.meta}</div>}
+                      <div className="pop-group__meta">
+                        Itens: {group.orders.length}
                       </div>
-                    </button>
-                  )
-                })}
+                    </div>
+                    <div className="pop-group__orders">
+                      {group.orders.map((order) => {
+                        const label = resolveOrderLabel(order)
+                        const progress = resolveOrderProgress(order)
+                        return (
+                          <button
+                            key={order.id}
+                            type="button"
+                            className="pop-card"
+                            onClick={() => handleSelectOrder(order)}
+                          >
+                            <div className="pop-card__title">{label.code}</div>
+                            <div className="pop-card__subtitle">{label.title}</div>
+                            {label.orderCode && (
+                              <div className="pop-card__meta">{label.orderCode}</div>
+                            )}
+                            {label.clientName && (
+                              <div className="pop-card__meta">Cliente: {label.clientName}</div>
+                            )}
+                            {progress.sizeLabel && (
+                              <div className="pop-card__meta">Tamanho: {progress.sizeLabel}</div>
+                            )}
+                            <div className="pop-card__progress">
+                              Qtde {formatNumber(progress.plannedQty)} un · Produzido{' '}
+                              {formatNumber(progress.producedQty)} un · Faltam{' '}
+                              {formatNumber(progress.remainingQty)} un
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </>
           )}
@@ -781,9 +861,15 @@ const PopApp = () => {
                       {label.orderCode && (
                         <div className="pop-card__meta">{label.orderCode}</div>
                       )}
+                      {label.clientName && (
+                        <div className="pop-card__meta">Cliente: {label.clientName}</div>
+                      )}
+                      {progress.sizeLabel && (
+                        <div className="pop-card__meta">Tamanho: {progress.sizeLabel}</div>
+                      )}
                       <div className="pop-card__progress">
-                        Planejado {formatNumber(progress.planned)} {progress.unit} · Produzido{' '}
-                        {formatNumber(progress.produced)} {progress.unit}
+                        Qtde {formatNumber(progress.plannedQty)} un · Produzido{' '}
+                        {formatNumber(progress.producedQty)} un
                       </div>
                     </div>
                     {formStatus && (

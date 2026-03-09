@@ -5,6 +5,7 @@ import CurrencyInput from '../../components/CurrencyInput'
 import DimensionInput from '../../components/DimensionInput'
 import Modal from '../../components/Modal'
 import QuickNotice from '../../components/QuickNotice'
+import logotipo from '../../assets/brand/logotipo.svg'
 import { Page, PageHeader } from '../../components/ui'
 import {
   getPaymentCashboxId,
@@ -17,7 +18,7 @@ import { buildTrackingPayloads } from '../../services/trackingPayload'
 import { trackingRemote } from '../../services/trackingRemote'
 import { useERPData } from '../../store/appStore'
 import type { Client, FulfillmentMode, Order, ProductVariant, ProductionOrder } from '../../types/erp'
-import { formatCurrency } from '../../utils/format'
+import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import {
   resolveOrderCode,
@@ -35,6 +36,7 @@ import {
   resolveVariantPrice as resolveVariantPriceBase,
 } from '../../utils/sales'
 import { findStockItem, findStockItemIndex } from '../../utils/stockItems'
+import { getProductUnitLabel } from '../../utils/units'
 
 type OrderItemForm = {
   productId: string
@@ -106,6 +108,7 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
   const [status, setStatus] = useState<string | null>(null)
   const [trackingLink, setTrackingLink] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [printId, setPrintId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [form, setForm] = useState<OrderForm>({
@@ -1091,6 +1094,12 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
       .find((product) => product.id === productId)
       ?.variants?.find((variant) => variant.id === variantId)
 
+  const getProductUnit = (productId: string) =>
+    getProductUnitLabel(
+      data.produtos.find((product) => product.id === productId)?.unit,
+      data.tabelas,
+    )
+
   const formatItemsSummary = (items: Order['items']) => {
     if (items.length === 0) {
       return '-'
@@ -1106,6 +1115,43 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
   const formatPercent = (value: number) =>
     Number.isFinite(value) ? (value % 1 === 0 ? value.toFixed(0) : value.toFixed(1)) : '0'
 
+  const formatMeasurement = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
+
+  const buildDimensionLabel = (values: number[]) => {
+    const filtered = values.filter((value) => Number.isFinite(value) && value > 0)
+    if (filtered.length === 0) {
+      return null
+    }
+    const label = filtered.map((value) => formatMeasurement(value)).join(' x ')
+    return `${label} m`
+  }
+
+  const getItemDimensions = (item: Order['items'][number]) => {
+    const product = data.produtos.find((entry) => entry.id === item.productId)
+    const variant = item.variantId ? getVariant(item.productId, item.variantId) : undefined
+    const length = item.customLength ?? variant?.length ?? product?.length ?? 0
+    const width = item.customWidth ?? variant?.width ?? product?.width ?? 0
+    const height = item.customHeight ?? variant?.height ?? product?.height ?? 0
+    if (product?.unit === 'metro_linear') {
+      return buildDimensionLabel([length])
+    }
+    return buildDimensionLabel([length, width, height])
+  }
+
+  const getProductNameLabel = (item: Order['items'][number]) => {
+    const product = data.produtos.find((entry) => entry.id === item.productId)
+    const productName = getProductName(item.productId)
+    if (product && !product.hasVariants) {
+      return productName
+    }
+    const variant = getVariant(item.productId, item.variantId)
+    if (!variant) {
+      return productName
+    }
+    return `${productName} - ${variant.name}`
+  }
+
   const getOrderDiscountInfo = (order: Order) => {
     const subtotalValue = order.items.reduce(
       (acc, item) => acc + item.quantity * item.unitPrice,
@@ -1120,6 +1166,33 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
       (subtotalValue > 0 ? (discountValue / subtotalValue) * 100 : 0)
     return { subtotalValue, discountValue, discountPercent }
   }
+
+  const printOrder = printId ? data.pedidos.find((order) => order.id === printId) : null
+  const printDiscountInfo = printOrder ? getOrderDiscountInfo(printOrder) : null
+  const company = data.empresa
+  const companyName = company.name?.trim() || company.tradeName?.trim() || ''
+  const companyDocument = company.document?.trim() || ''
+  const addressLine = [company.street, company.number, company.neighborhood]
+    .filter(Boolean)
+    .join(', ')
+  const cityLine = [company.city, company.state, company.zip].filter(Boolean).join(' - ')
+  const contactLine = [company.phone, company.email, company.website].filter(Boolean).join(' • ')
+  const companyLines = [companyName, companyDocument, addressLine, cityLine, contactLine].filter(
+    (value) => value && value.trim().length > 0,
+  )
+  const printClient = printOrder
+    ? data.clientes.find((client) => client.id === printOrder.clientId)
+    : null
+  const printObra =
+    printOrder && printClient?.obras
+      ? printClient.obras.find((obra) => obra.id === printOrder.obraId)
+      : null
+  const clientDocument = printClient?.document?.trim() || ''
+  const clientContactLine = [printClient?.phone, printClient?.email].filter(Boolean).join(' • ')
+  const clientAddressLine = [printObra?.address, printObra?.city ?? printClient?.city]
+    .filter(Boolean)
+    .join(' - ')
+  const clientNotes = [printObra?.notes, printClient?.notes].filter(Boolean).join(' • ')
 
   const handleEdit = (order: Order) => {
     setEditingId(order.id)
@@ -1181,6 +1254,43 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     setIsModalOpen(true)
   }
 
+  const handlePrint = (order: Order) => {
+    setPrintId(order.id)
+  }
+
+  useEffect(() => {
+    if (!printId || typeof window === 'undefined') {
+      return
+    }
+    let cancelled = false
+    const runPrint = async () => {
+      await new Promise<void>((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => resolve())
+        })
+      })
+      if (document.fonts?.ready) {
+        await document.fonts.ready
+      }
+      if (!cancelled) {
+        window.print()
+      }
+    }
+    void runPrint()
+    return () => {
+      cancelled = true
+    }
+  }, [printId])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined
+    }
+    const handleAfterPrint = () => setPrintId(null)
+    window.addEventListener('afterprint', handleAfterPrint)
+    return () => window.removeEventListener('afterprint', handleAfterPrint)
+  }, [])
+
   useEffect(() => {
     if (!openOrderId) {
       return
@@ -1193,6 +1303,9 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     onConsumeOpen?.()
   }, [data.pedidos, handleEdit, onConsumeOpen, openOrderId])
 
+  const editingOrder = editingId
+    ? data.pedidos.find((order) => order.id === editingId) ?? null
+    : null
   const orderToDelete = deleteId
     ? data.pedidos.find((order) => order.id === deleteId)
     : null
@@ -1252,6 +1365,136 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
 
   return (
     <Page className="pedidos">
+      {printOrder && (
+        <div id="quote-print" className="quote-print">
+          {[
+            { id: 'cliente', label: 'Via do cliente' },
+            { id: 'empresa', label: 'Via da empresa' },
+          ].map((copy) => (
+            <section key={copy.id} className="quote-print__copy">
+              <header className="quote-print__header">
+                <div className="quote-print__brand">
+                  <img className="quote-print__logo" src={logotipo} alt={companyName} />
+                  {companyLines.length > 0 && (
+                    <div className="quote-print__company">
+                      {companyLines.map((line, index) => {
+                        const isNameLine = index === 0 && companyName && line === companyName
+                        return isNameLine ? (
+                          <strong key={`${copy.id}-company-${index}`}>{line}</strong>
+                        ) : (
+                          <span key={`${copy.id}-company-${index}`}>{line}</span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="quote-print__meta">
+                  <span>Emissao: {formatDateShort(printOrder.createdAt)}</span>
+                  <span>Status: {statusLabels[printOrder.status]}</span>
+                  <span>
+                    Pagamento:{' '}
+                    {getPaymentMethodLabel(
+                      printOrder.paymentMethod,
+                      data.tabelas?.paymentMethods,
+                    )}
+                  </span>
+                  <span>Pedido #{resolveOrderInternalCode(printOrder)}</span>
+                  <span className="quote-print__copy-tag">{copy.label}</span>
+                </div>
+              </header>
+
+              <section className="quote-print__client">
+                <div className="quote-print__client-block">
+                  <span>Cliente</span>
+                  <strong>{getClientName(printOrder.clientId)}</strong>
+                  {clientDocument && <span>Documento: {clientDocument}</span>}
+                  {clientContactLine && <span>{clientContactLine}</span>}
+                </div>
+                <div className="quote-print__client-block">
+                  <span>Obra / Endereco</span>
+                  <strong>{printObra?.name || '—'}</strong>
+                  <span>{clientAddressLine || '—'}</span>
+                </div>
+              </section>
+
+              <table className="quote-print__table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Medidas (m)</th>
+                    <th>Qtd</th>
+                    <th>Unidade</th>
+                    <th>Valor unitario</th>
+                    <th>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {printOrder.items.map((item, index) => {
+                    const dimensions = getItemDimensions(item)
+                    return (
+                      <tr key={`${printOrder.id}-${copy.id}-item-${index}`}>
+                        <td>{getProductNameLabel(item)}</td>
+                        <td>
+                          {dimensions ? (
+                            <span className="quote-print__dimension">{dimensions}</span>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td>{item.quantity}</td>
+                        <td>{getProductUnit(item.productId) || '-'}</td>
+                        <td>{formatCurrency(item.unitPrice)}</td>
+                        <td>{formatCurrency(item.quantity * item.unitPrice)}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+
+              <div className="quote-print__total">
+                {printDiscountInfo && (
+                  <div className="quote-print__total-row">
+                    <span>Subtotal</span>
+                    <strong>{formatCurrency(printDiscountInfo.subtotalValue)}</strong>
+                  </div>
+                )}
+                {printDiscountInfo && printDiscountInfo.discountValue > 0 && (
+                  <div className="quote-print__total-row">
+                    <span>
+                      Desconto ({formatPercent(printDiscountInfo.discountPercent)}%)
+                    </span>
+                    <strong>-{formatCurrency(printDiscountInfo.discountValue)}</strong>
+                  </div>
+                )}
+                <div className="quote-print__total-row quote-print__total-main">
+                  <span>Total do pedido</span>
+                  <strong>{formatCurrency(printOrder.total)}</strong>
+                </div>
+              </div>
+
+              <section className="quote-print__notes">
+                <span>Observacoes</span>
+                {clientNotes ? <p>{clientNotes}</p> : <div className="quote-print__notes-line" />}
+              </section>
+
+              <section className="quote-print__signatures">
+                <div className="quote-print__signature">
+                  <span>Assinatura do cliente</span>
+                  <div className="quote-print__line" />
+                  <span>Data: ____/____/______</span>
+                </div>
+                <div className="quote-print__signature">
+                  <span>
+                    {companyName ? `Responsavel ${companyName}` : 'Responsavel'}
+                  </span>
+                  <div className="quote-print__line" />
+                  <span>Data: ____/____/______</span>
+                </div>
+              </section>
+            </section>
+          ))}
+        </div>
+      )}
       <PageHeader
         actions={
           <button
@@ -1306,6 +1549,18 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
         size="lg"
         actions={
           <>
+            {editingOrder && (
+              <button
+                className="button button--ghost"
+                type="button"
+                onClick={() => handlePrint(editingOrder)}
+              >
+                <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+                  print
+                </span>
+                <span className="modal__action-label">Imprimir</span>
+              </button>
+            )}
             {editingId && (
               <button
                 className="button button--danger"
