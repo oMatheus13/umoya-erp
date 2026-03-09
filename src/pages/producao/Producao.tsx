@@ -471,6 +471,22 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       productionPlan.unschedulableCount,
   )
 
+  const printMolds = useMemo(
+    () => moldSelections.filter((mold) => (mold.selected ?? 0) > 0),
+    [moldSelections],
+  )
+
+  const printScheduleDays = useMemo(() => {
+    const limit = 14
+    const days = productionPlan.days.slice(0, limit)
+    return {
+      days,
+      limit,
+      total: productionPlan.days.length,
+      truncated: productionPlan.days.length > limit,
+    }
+  }, [productionPlan.days])
+
   const printContext = useMemo(() => {
     if (!printGroupId) {
       return null
@@ -509,6 +525,17 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       plannedAt,
     }
   }, [data.clientes, data.pedidos, printGroupId, productionGroups])
+
+  const printForecast = useMemo(() => {
+    if (!printContext) {
+      return null
+    }
+    return (
+      productionPlan.forecasts.find(
+        (item) => item.id === printContext.group.id,
+      ) ?? null
+    )
+  }, [printContext, productionPlan.forecasts])
 
   const printItems = useMemo(() => {
     if (!printContext) {
@@ -1412,6 +1439,82 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
                 )}
               </tbody>
             </table>
+
+            <section className="quote-print__notes">
+              <span>Formas selecionadas</span>
+              {printMolds.length === 0 ? (
+                <p>Nenhuma forma selecionada para o calculo.</p>
+              ) : (
+                <div className="quote-print__molds">
+                  {printMolds.map((mold) => (
+                    <span key={mold.id} className="quote-print__mold">
+                      {mold.name} ({formatMeasurement(mold.length ?? 0)} m) x
+                      {mold.selected ?? 0}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="quote-print__notes">
+              <span>Calendario de producao</span>
+              {printScheduleDays.days.length === 0 ? (
+                <p>Sem previsao disponivel para as formas atuais.</p>
+              ) : (
+                <>
+                  <div className="quote-print__plan-meta">
+                    Capacidade/dia: {formatMeasurement(productionPlan.capacityPerDay)} m
+                    {printScheduleDays.truncated
+                      ? ` • Mostrando ${printScheduleDays.limit} de ${printScheduleDays.total} dias`
+                      : ''}
+                  </div>
+                  <table className="quote-print__table quote-print__table--plan">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Capacidade</th>
+                        <th>Planejado</th>
+                        <th>Itens</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {printScheduleDays.days.map((day) => (
+                        <tr key={day.dateKey}>
+                          <td>{formatScheduleDate(day.dateKey)}</td>
+                          <td>{formatMeasurement(day.capacityLength)} m</td>
+                          <td>{formatMeasurement(day.usedLength)} m</td>
+                          <td>
+                            {day.summary.length === 0
+                              ? '-'
+                              : day.summary
+                                  .map(
+                                    (item) =>
+                                      `${formatMeasurement(item.length)} m x${item.qty}`,
+                                  )
+                                  .join(' · ')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </section>
+
+            <section className="quote-print__notes">
+              <span>Previsao do pedido</span>
+              {printForecast ? (
+                <div className="quote-print__forecast">
+                  <span>
+                    Ultima producao: {formatScheduleDate(printForecast.lastProduction)}
+                  </span>
+                  <span>Cura ate: {formatScheduleDate(printForecast.readyAt)}</span>
+                  <span>Entrega prevista: {formatScheduleDate(printForecast.readyAt)}</span>
+                </div>
+              ) : (
+                <p>Sem previsao calculada para este pedido.</p>
+              )}
+            </section>
           </section>
         </div>
       )}

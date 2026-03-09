@@ -209,6 +209,58 @@
     page-break-inside: avoid;
   }
 
+  #quote-print .quote-print__table--plan th:nth-child(1),
+  #quote-print .quote-print__table--plan td:nth-child(1) {
+    width: 90px;
+  }
+
+  #quote-print .quote-print__table--plan th:nth-child(2),
+  #quote-print .quote-print__table--plan td:nth-child(2) {
+    width: 90px;
+    text-align: right;
+  }
+
+  #quote-print .quote-print__table--plan th:nth-child(3),
+  #quote-print .quote-print__table--plan td:nth-child(3) {
+    width: 90px;
+    text-align: right;
+  }
+
+  #quote-print .quote-print__table--plan th:nth-child(4),
+  #quote-print .quote-print__table--plan td:nth-child(4) {
+    width: auto;
+    text-align: left;
+  }
+
+  #quote-print .quote-print__molds {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  #quote-print .quote-print__mold {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    font-size: 11px;
+  }
+
+  #quote-print .quote-print__plan-meta {
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: rgba(0, 0, 0, 0.7);
+  }
+
+  #quote-print .quote-print__forecast {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: rgba(0, 0, 0, 0.8);
+  }
+
   #quote-print .quote-print__total {
     margin-top: 16px;
     margin-left: auto;
