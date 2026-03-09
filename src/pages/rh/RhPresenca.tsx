@@ -6,7 +6,7 @@ import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { useERPData } from '../../store/appStore'
 import QuickNotice from '../../components/QuickNotice'
-import type { PresenceEntry, PresenceStatus } from '../../types/erp'
+import type { PresenceEntry, PresenceLog, PresenceStatus } from '../../types/erp'
 import { formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 
@@ -29,6 +29,16 @@ const presenceStatusStyles: Record<PresenceStatus, string> = {
   meio_periodo: 'badge--pendente',
   falta: 'badge--recusado',
   ferias: 'badge--info',
+}
+
+const formatTime = (value?: string) => {
+  if (!value) {
+    return '-'
+  }
+  return new Intl.DateTimeFormat('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value))
 }
 
 const createEmptyPresence = (): PresenceForm => ({
@@ -55,6 +65,18 @@ const RhPresenca = () => {
     () => [...data.presencas].sort((a, b) => b.date.localeCompare(a.date)),
     [data.presencas],
   )
+  const presenceLogsByKey = useMemo(() => {
+    const map = new Map<string, PresenceLog[]>()
+    data.presenceLogs.forEach((entry) => {
+      const date = entry.timestamp.slice(0, 10)
+      const key = `${entry.employeeId}-${date}`
+      const current = map.get(key) ?? []
+      current.push(entry)
+      map.set(key, current)
+    })
+    map.forEach((logs) => logs.sort((a, b) => a.timestamp.localeCompare(b.timestamp)))
+    return map
+  }, [data.presenceLogs])
 
   const today = new Date().toISOString().slice(0, 10)
   const todayEntries = presencas.filter((entry) => entry.date === today)
@@ -69,6 +91,28 @@ const RhPresenca = () => {
 
   const getEmployeeName = (id: string) =>
     employees.find((employee) => employee.id === id)?.name ?? '-'
+  const resolvePresenceTimes = (entry: PresenceEntry) => {
+    const key = `${entry.employeeId}-${entry.date}`
+    const logs = presenceLogsByKey.get(key) ?? []
+    if (logs.length === 0) {
+      return {
+        inTime: '-',
+        breakIn: '-',
+        breakOut: '-',
+        outTime: '-',
+      }
+    }
+    const first = (type: PresenceLog['type']) =>
+      logs.find((log) => log.type === type)
+    const last = (type: PresenceLog['type']) =>
+      [...logs].reverse().find((log) => log.type === type)
+    return {
+      inTime: formatTime(first('IN')?.timestamp),
+      breakIn: formatTime(first('BREAK_IN')?.timestamp),
+      breakOut: formatTime(last('BREAK_OUT')?.timestamp),
+      outTime: formatTime(last('OUT')?.timestamp),
+    }
+  }
 
   const openModal = () => {
     setStatus(null)
@@ -199,6 +243,7 @@ const RhPresenca = () => {
               <tr>
                 <th>Funcionario</th>
                 <th>Data</th>
+                <th>Ponto</th>
                 <th>Observacoes</th>
                 <th className="table__actions table__actions--end">Status / Editar</th>
               </tr>
@@ -206,39 +251,56 @@ const RhPresenca = () => {
             <tbody>
               {presencas.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="table__empty">
+                  <td colSpan={5} className="table__empty">
                     Nenhuma presenca registrada ainda.
                   </td>
                 </tr>
               )}
-              {presencas.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="table__cell--truncate">
-                    <div className="table__stack">
-                      <strong>{getEmployeeName(entry.employeeId)}</strong>
-                      <span className="table__sub table__sub--mobile">
-                        {formatDateShort(entry.date)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="table__cell--mobile-hide">{formatDateShort(entry.date)}</td>
-                  <td className="table__cell--mobile-hide">{entry.notes ?? '-'}</td>
-                  <td className="table__actions table__actions--end">
-                    <div className="table__end">
-                      <div className="table__status">
-                        <span className={`badge ${presenceStatusStyles[entry.status]}`}>
-                          {presenceOptions.find((item) => item.value === entry.status)?.label}
+              {presencas.map((entry) => {
+                const times = resolvePresenceTimes(entry)
+                const intervalLabel =
+                  times.breakIn === '-' && times.breakOut === '-'
+                    ? '-'
+                    : `${times.breakIn} - ${times.breakOut}`
+                return (
+                  <tr key={entry.id}>
+                    <td className="table__cell--truncate">
+                      <div className="table__stack">
+                        <strong>{getEmployeeName(entry.employeeId)}</strong>
+                        <span className="table__sub table__sub--mobile">
+                          {formatDateShort(entry.date)}
+                        </span>
+                        <span className="table__sub table__sub--mobile">
+                          Ponto: {times.inTime} · Pausa: {intervalLabel} · Saida: {times.outTime}
                         </span>
                       </div>
-                      <ActionMenu
-                        items={[
-                          { label: 'Editar', onClick: () => handleEdit(entry) },
-                        ]}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="table__cell--mobile-hide">{formatDateShort(entry.date)}</td>
+                    <td className="table__cell--mobile-hide">
+                      <div className="table__stack">
+                        <span>Entrada: {times.inTime}</span>
+                        <span>Pausa: {intervalLabel}</span>
+                        <span>Saida: {times.outTime}</span>
+                      </div>
+                    </td>
+                    <td className="table__cell--mobile-hide">{entry.notes ?? '-'}</td>
+                    <td className="table__actions table__actions--end">
+                      <div className="table__end">
+                        <div className="table__status">
+                          <span className={`badge ${presenceStatusStyles[entry.status]}`}>
+                            {presenceOptions.find((item) => item.value === entry.status)?.label}
+                          </span>
+                        </div>
+                        <ActionMenu
+                          items={[
+                            { label: 'Editar', onClick: () => handleEdit(entry) },
+                          ]}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>

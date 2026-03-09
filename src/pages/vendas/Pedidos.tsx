@@ -582,8 +582,18 @@ const Pedidos = ({ openOrderId, onConsumeOpen }: PedidosProps) => {
     const movingToProduction =
       fulfillment !== 'estoque' &&
       (nextOrder.status === 'em_producao' || nextOrder.status === 'entregue')
-    if (movingToProduction && (!previousOrder || previousOrder.status === 'aguardando_pagamento')) {
-      return { error: 'O pedido precisa estar pago antes de iniciar a producao.' }
+    const paymentsTotal = (nextOrder.payments ?? []).reduce(
+      (acc, payment) => acc + (Number.isFinite(payment.amount) ? payment.amount : 0),
+      0,
+    )
+    const hasPayments = paymentsTotal > 0
+    if (
+      movingToProduction &&
+      (!previousOrder || previousOrder.status === 'aguardando_pagamento') &&
+      nextOrder.status !== 'pago' &&
+      !hasPayments
+    ) {
+      return { error: 'O pedido precisa ter recebimento para iniciar a producao.' }
     }
     if (nextOrder.status === 'pago' && (!nextOrder.paymentMethod || nextOrder.paymentMethod === 'a_definir')) {
       return { error: 'Defina a forma de pagamento antes de marcar como pago.' }

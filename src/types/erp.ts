@@ -666,6 +666,7 @@ export type EmployeePayment = {
   createdAt: string
   paidAt?: string
   notes?: string
+  autoFromLogs?: boolean
 }
 
 export type EmployeeOccurrence = {

@@ -8,6 +8,7 @@ import { dataService } from '../../services/dataService'
 import { isSupabaseEnabled, supabaseNoPersist } from '../../services/supabaseClient'
 import { useERPData } from '../../store/appStore'
 import type { Employee, EmployeeLevel, EmployeeRole, UserAccount, WorkLog } from '../../types/erp'
+import { syncOpenEmployeePayment } from '../../utils/employeePayments'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import { hashPin } from '../../utils/pin'
@@ -632,6 +633,10 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       updateStock(payload, next.productId, next.variantId, next.quantity)
     }
 
+    syncOpenEmployeePayment(payload, next.employeeId)
+    if (existingLog && existingLog.employeeId !== next.employeeId) {
+      syncOpenEmployeePayment(payload, existingLog.employeeId)
+    }
     dataService.replaceAll(payload)
     refresh()
     setLogStatus(existingLog ? 'Apontamento atualizado.' : 'Apontamento registrado.')
@@ -750,6 +755,9 @@ const Funcionarios = ({ currentUser }: FuncionariosProps) => {
       updateStock(payload, log.productId, log.variantId, -log.quantity)
     }
     payload.apontamentos = payload.apontamentos.filter((item) => item.id !== deleteLogId)
+    if (log) {
+      syncOpenEmployeePayment(payload, log.employeeId)
+    }
     dataService.replaceAll(payload)
     refresh()
     setIsLogModalOpen(false)

@@ -14,8 +14,10 @@ import type {
   ERPData,
   PresenceLogType,
   ProductionOrder,
+  WorkLog,
 } from '../types/erp'
 import { resolveDeviceId } from '../utils/device'
+import { syncOpenEmployeePayment } from '../utils/employeePayments'
 import { createId } from '../utils/ids'
 import { resolveOrderInternalCode } from '../utils/orderCode'
 import { hashPin } from '../utils/pin'
@@ -441,6 +443,10 @@ const PopApp = () => {
       return
     }
     const product = productsById.get(order.productId)
+    if (!product) {
+      setFormStatus('Produto nao encontrado.')
+      return
+    }
     const isLinear = product?.unit === 'metro_linear'
     const quantity = Number(productionForm.quantity)
     const lengthM = Number(productionForm.lengthM)
@@ -454,6 +460,31 @@ const PopApp = () => {
       setFormStatus('Informe o comprimento.')
       return
     }
+    const unitLaborCost = product.laborCost ?? 0
+    if (unitLaborCost <= 0) {
+      setFormStatus('Defina a mao de obra do produto antes de registrar a producao.')
+      return
+    }
+    const netQuantity =
+      Number.isFinite(scrapQuantity) && scrapQuantity > 0
+        ? Math.max(0, quantity - scrapQuantity)
+        : quantity
+    const laborBasis = product.laborBasis ?? 'unidade'
+    let laborQuantity = netQuantity
+    if (laborBasis === 'metro') {
+      const variant = product.variants?.find((item) => item.id === order.variantId)
+      const resolvedLength = isLinear
+        ? lengthM
+        : variant?.length ?? product.length ?? 0
+      if (!Number.isFinite(resolvedLength) || resolvedLength <= 0) {
+        setFormStatus(
+          'Defina o comprimento da variacao ou do produto para calcular por metro.',
+        )
+        return
+      }
+      laborQuantity = netQuantity * resolvedLength
+    }
+    const totalPay = laborQuantity * unitLaborCost
     const now = new Date().toISOString()
     const entry = {
       id: createId(),
@@ -473,6 +504,21 @@ const PopApp = () => {
       deviceId: deviceIdRef.current,
     }
     const payload = dataService.getAll()
+    if (netQuantity > 0) {
+      const workLog: WorkLog = {
+        id: createId(),
+        employeeId: currentEmployee.id,
+        productId: order.productId,
+        variantId: order.variantId,
+        quantity: netQuantity,
+        workDate: entry.date,
+        createdAt: now,
+        unitLaborCost,
+        totalPay,
+      }
+      payload.apontamentos = [...payload.apontamentos, workLog]
+      syncOpenEmployeePayment(payload, currentEmployee.id)
+    }
     payload.productionEntries = [...payload.productionEntries, entry]
     dataService.replaceAll(payload)
     refresh()
