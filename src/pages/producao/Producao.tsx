@@ -63,6 +63,7 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const [isManualOpen, setIsManualOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [printGroupId, setPrintGroupId] = useState<string | null>(null)
+  const [selectedMolds, setSelectedMolds] = useState<Record<string, number>>({})
   const [manualForm, setManualForm] = useState({
     productId: '',
     variantId: '',
@@ -89,6 +90,10 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
         (b.plannedAt ?? '').localeCompare(a.plannedAt ?? ''),
       ),
     [data.ordensProducao],
+  )
+  const productsById = useMemo(
+    () => new Map(data.produtos.map((product) => [product.id, product])),
+    [data.produtos],
   )
   const employees = useMemo(
     () => [...data.funcionarios].sort((a, b) => a.name.localeCompare(b.name)),
@@ -131,6 +136,19 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const getOrder = (id: string) => data.pedidos.find((order) => order.id === id)
   const getClientName = (id: string) =>
     data.clientes.find((client) => client.id === id)?.name ?? 'Cliente'
+  const resolveLinearLength = (order: ProductionOrder) => {
+    const product = productsById.get(order.productId)
+    if (!product || product.unit !== 'metro_linear') {
+      return 0
+    }
+    if (Number.isFinite(order.plannedLengthM) && order.plannedLengthM) {
+      return order.plannedLengthM ?? 0
+    }
+    if (Number.isFinite(order.customLength) && order.customLength) {
+      return order.customLength ?? 0
+    }
+    return product.length ?? 0
+  }
   const productionGroups = useMemo(() => {
     const groups: {
       id: string
@@ -139,6 +157,9 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       orders: ProductionOrder[]
     }[] = []
     const indexById = new Map<string, number>()
+    const orderIndex = new Map(
+      productionOrders.map((order, index) => [order.id, index]),
+    )
     productionOrders.forEach((order) => {
       const groupId = order.linkedOrderId ?? order.orderId
       let index = indexById.get(groupId)
@@ -162,8 +183,24 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
       }
       groups[index].orders.push(order)
     })
+    groups.forEach((group) => {
+      group.orders.sort((a, b) => {
+        const aLinear = resolveLinearLength(a) > 0
+        const bLinear = resolveLinearLength(b) > 0
+        if (aLinear !== bLinear) {
+          return aLinear ? -1 : 1
+        }
+        if (aLinear && bLinear) {
+          const diff = resolveLinearLength(b) - resolveLinearLength(a)
+          if (Math.abs(diff) > 0.0001) {
+            return diff
+          }
+        }
+        return (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0)
+      })
+    })
     return groups
-  }, [data.clientes, data.pedidos, productionOrders])
+  }, [data.clientes, data.pedidos, productionOrders, productsById])
   const getEmployeeName = (id?: string) =>
     employees.find((employee) => employee.id === id)?.name ?? 'Equipe'
   const getProductName = (id: string) =>
@@ -186,6 +223,253 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   }
   const getProductionCode = (order: ProductionOrder) =>
     order.code?.trim() || order.id.slice(0, 6)
+
+  const molds = useMemo(
+    () =>
+      [...data.moldes].sort((a, b) => {
+        const lengthDiff = (b.length ?? 0) - (a.length ?? 0)
+        if (Math.abs(lengthDiff) > 0.0001) {
+          return lengthDiff
+        }
+        return a.name.localeCompare(b.name)
+      }),
+    [data.moldes],
+  )
+
+  const moldSelections = useMemo(
+    () =>
+      molds.map((mold) => ({
+        ...mold,
+        selected: Math.min(
+          selectedMolds[mold.id] ?? 0,
+          mold.stock ?? 0,
+        ),
+      })),
+    [molds, selectedMolds],
+  )
+
+  const productionPlan = useMemo(() => {
+    const selectedSlots = moldSelections
+      .flatMap((mold) =>
+        Array.from({ length: mold.selected }, () => mold.length ?? 0),
+      )
+      .filter((length) => Number.isFinite(length) && length > 0)
+
+    const capacityPerDay = selectedSlots.reduce((acc, length) => acc + length, 0)
+
+    const pieces: {
+      id: string
+      orderId: string
+      groupId: string
+      length: number
+      demoldDays: number
+    }[] = []
+
+    productionOrders.forEach((order) => {
+      if (order.status === 'CONCLUIDA' || order.status === 'CANCELADA') {
+        return
+      }
+      const product = productsById.get(order.productId)
+      if (!product || product.unit !== 'metro_linear' || !product.producedInternally) {
+        return
+      }
+      const length = resolveLinearLength(order)
+      if (!Number.isFinite(length) || length <= 0) {
+        return
+      }
+      const plannedQty = Number.isFinite(order.plannedQty)
+        ? order.plannedQty ?? 0
+        : order.quantity
+      const producedQty = Number.isFinite(order.producedQty) ? order.producedQty ?? 0 : 0
+      const remainingQty = Math.max(0, Math.ceil(plannedQty - producedQty))
+      if (remainingQty <= 0) {
+        return
+      }
+      const demoldDays = Number.isFinite(product.demoldTimeDays)
+        ? product.demoldTimeDays ?? 0
+        : 0
+      const groupId = order.linkedOrderId ?? order.orderId
+      for (let index = 0; index < remainingQty; index += 1) {
+        pieces.push({
+          id: `${order.id}-${index}`,
+          orderId: order.id,
+          groupId,
+          length,
+          demoldDays,
+        })
+      }
+    })
+
+    if (pieces.length === 0 || selectedSlots.length === 0) {
+      return {
+        days: [],
+        forecasts: [],
+        capacityPerDay,
+        totalPieces: pieces.length,
+        scheduledPieces: 0,
+        unschedulableCount: 0,
+        truncated: false,
+        stalled: false,
+      }
+    }
+
+    pieces.sort((a, b) => b.length - a.length)
+
+    const maxSlot = Math.max(...selectedSlots)
+    const schedulablePieces = pieces.filter((piece) => piece.length <= maxSlot)
+    const unschedulableCount = pieces.length - schedulablePieces.length
+
+    const startDate = ensureBusinessDay(new Date())
+    const maxDays = 45
+    const days: {
+      dateKey: string
+      assignments: typeof schedulablePieces
+      usedLength: number
+      capacityLength: number
+      summary: { length: number; qty: number }[]
+    }[] = []
+
+    let remaining = schedulablePieces
+    let stalled = false
+
+    for (let dayIndex = 0; dayIndex < maxDays && remaining.length > 0; dayIndex += 1) {
+      const dayDate = addBusinessDays(startDate, dayIndex)
+      const daySlots = selectedSlots.map((length) => ({
+        capacity: length,
+        remaining: length,
+      }))
+      const dayAssignments: typeof schedulablePieces = []
+      const nextRemaining: typeof schedulablePieces = []
+      remaining.forEach((piece) => {
+        let placed = false
+        for (const slot of daySlots) {
+          if (piece.length <= slot.remaining + 0.0001) {
+            slot.remaining -= piece.length
+            placed = true
+            dayAssignments.push(piece)
+            break
+          }
+        }
+        if (!placed) {
+          nextRemaining.push(piece)
+        }
+      })
+      if (dayAssignments.length === 0) {
+        stalled = true
+        break
+      }
+      const capacityLength = daySlots.reduce((acc, slot) => acc + slot.capacity, 0)
+      const usedLength = daySlots.reduce(
+        (acc, slot) => acc + (slot.capacity - slot.remaining),
+        0,
+      )
+      const summaryMap = new Map<number, number>()
+      dayAssignments.forEach((piece) => {
+        summaryMap.set(piece.length, (summaryMap.get(piece.length) ?? 0) + 1)
+      })
+      const summary = Array.from(summaryMap.entries())
+        .map(([length, qty]) => ({ length, qty }))
+        .sort((a, b) => b.length - a.length)
+      days.push({
+        dateKey: toDateKey(dayDate),
+        assignments: dayAssignments,
+        usedLength,
+        capacityLength,
+        summary,
+      })
+      remaining = nextRemaining
+    }
+
+    const orderForecastMap = new Map<
+      string,
+      { lastProduction: string; readyAt: string }
+    >()
+    days.forEach((day) => {
+      day.assignments.forEach((piece) => {
+        const readyAt = addBusinessDaysToKey(day.dateKey, piece.demoldDays)
+        const current = orderForecastMap.get(piece.groupId)
+        const lastProduction =
+          !current || day.dateKey > current.lastProduction
+            ? day.dateKey
+            : current.lastProduction
+        const nextReady =
+          !current || readyAt > current.readyAt ? readyAt : current.readyAt
+        orderForecastMap.set(piece.groupId, {
+          lastProduction,
+          readyAt: nextReady,
+        })
+      })
+    })
+
+    const forecasts = Array.from(orderForecastMap.entries()).map(([groupId, info]) => {
+      const group = productionGroups.find((entry) => entry.id === groupId)
+      const linkedOrder = data.pedidos.find((order) => order.id === groupId)
+      const orderCode = linkedOrder
+        ? resolveOrderInternalCode(linkedOrder)
+        : group?.title ?? groupId
+      const clientName = linkedOrder
+        ? getClientName(linkedOrder.clientId)
+        : group?.meta?.replace('Cliente:', '').trim() || 'Estoque interno'
+      return {
+        id: groupId,
+        orderCode,
+        clientName,
+        lastProduction: info.lastProduction,
+        readyAt: info.readyAt,
+      }
+    })
+
+    forecasts.sort((a, b) => a.readyAt.localeCompare(b.readyAt))
+
+    return {
+      days,
+      forecasts,
+      capacityPerDay,
+      totalPieces: pieces.length,
+      scheduledPieces: schedulablePieces.length - remaining.length,
+      unschedulableCount,
+      truncated: remaining.length > 0,
+      stalled,
+    }
+  }, [
+    data.clientes,
+    data.pedidos,
+    moldSelections,
+    productionGroups,
+    productionOrders,
+    productsById,
+  ])
+
+  const selectedMoldsCount = moldSelections.reduce(
+    (acc, mold) => acc + (mold.selected ?? 0),
+    0,
+  )
+
+  const handleMoldQuantityChange = (moldId: string, value: number) => {
+    const mold = moldSelections.find((entry) => entry.id === moldId)
+    const maxValue = mold?.stock ?? 0
+    const safeValue = Math.max(0, Math.min(maxValue, Math.round(value)))
+    setSelectedMolds((prev) => ({ ...prev, [moldId]: safeValue }))
+  }
+
+  const handleSelectAllMolds = () => {
+    const next: Record<string, number> = {}
+    moldSelections.forEach((mold) => {
+      next[mold.id] = mold.stock ?? 0
+    })
+    setSelectedMolds(next)
+  }
+
+  const handleClearMolds = () => {
+    setSelectedMolds({})
+  }
+
+  const remainingPieces = Math.max(
+    0,
+    productionPlan.totalPieces -
+      productionPlan.scheduledPieces -
+      productionPlan.unschedulableCount,
+  )
 
   const printContext = useMemo(() => {
     if (!printGroupId) {
@@ -230,8 +514,8 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     if (!printContext) {
       return []
     }
-    return printContext.group.orders
-      .map((order) => {
+    const items = printContext.group.orders
+      .map((order, index) => {
         const product = data.produtos.find((entry) => entry.id === order.productId)
         if (!product?.producedInternally) {
           return null
@@ -257,9 +541,25 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
           name: `${product.name ?? 'Produto'}${variantLabel}`,
           sizeLabel,
           plannedQty,
+          lengthValue: isLinear ? length ?? 0 : 0,
+          isLinear,
+          index,
         }
       })
       .filter((item): item is NonNullable<typeof item> => Boolean(item))
+    items.sort((a, b) => {
+      if (a.isLinear !== b.isLinear) {
+        return a.isLinear ? -1 : 1
+      }
+      if (a.isLinear && b.isLinear) {
+        const diff = (b.lengthValue ?? 0) - (a.lengthValue ?? 0)
+        if (Math.abs(diff) > 0.0001) {
+          return diff
+        }
+      }
+      return a.index - b.index
+    })
+    return items
   }, [data.produtos, printContext])
 
   const availableProducts = data.produtos.filter((product) => product.active !== false)
@@ -437,6 +737,9 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
   const formatMeasurement = (value: number) =>
     new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(value)
 
+  const formatScheduleDate = (value: string) =>
+    value ? formatDateShort(`${value}T00:00:00`) : '-'
+
   const toDateInputValue = (value?: string) =>
     value ? value.slice(0, 10) : new Date().toISOString().slice(0, 10)
 
@@ -451,6 +754,55 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
     const base = new Date(`${value}T00:00:00Z`)
     const next = new Date(base.getTime() + safeDays * 24 * 60 * 60 * 1000)
     return next.toISOString().slice(0, 10)
+  }
+
+  const isBusinessDay = (date: Date) => {
+    const day = date.getDay()
+    return day !== 0 && day !== 6
+  }
+
+  const toDateKey = (date: Date) => {
+    const year = date.getFullYear()
+    const month = `${date.getMonth() + 1}`.padStart(2, '0')
+    const day = `${date.getDate()}`.padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const parseDateKey = (value: string) => {
+    const [year, month, day] = value.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  const ensureBusinessDay = (date: Date) => {
+    const next = new Date(date)
+    while (!isBusinessDay(next)) {
+      next.setDate(next.getDate() + 1)
+    }
+    return next
+  }
+
+  const addBusinessDays = (base: Date, days: number) => {
+    const safeDays = Number.isFinite(days) ? Math.max(0, Math.round(days)) : 0
+    let current = new Date(base)
+    if (safeDays === 0) {
+      return current
+    }
+    let remaining = safeDays
+    while (remaining > 0) {
+      current.setDate(current.getDate() + 1)
+      if (isBusinessDay(current)) {
+        remaining -= 1
+      }
+    }
+    return current
+  }
+
+  const addBusinessDaysToKey = (value: string, days: number) => {
+    if (!value) {
+      return ''
+    }
+    const base = ensureBusinessDay(parseDateKey(value))
+    return toDateKey(addBusinessDays(base, days))
   }
 
   const upsertLinearStockVariant = (
@@ -1094,6 +1446,163 @@ const Producao = ({ pageIntent, onConsumeIntent }: ProducaoProps) => {
           <strong className="summary__value">{productionSummary.done}</strong>
         </article>
       </div>
+
+      <section className="panel production-plan">
+        <div className="panel__header">
+          <div>
+            <h2>Linha de producao (vigas)</h2>
+            <p>Ordenacao por tamanho para metro linear e previsao por formas.</p>
+          </div>
+          <span className="panel__meta">
+            {productionPlan.totalPieces} item(ns) lineares pendentes
+          </span>
+        </div>
+
+        <div className="production-plan__layout">
+          <div className="production-plan__forms">
+            <div className="production-plan__forms-header">
+              <h3>Formas selecionadas</h3>
+              <div className="production-plan__actions">
+                <button
+                  className="button button--ghost"
+                  type="button"
+                  onClick={handleSelectAllMolds}
+                >
+                  Usar estoque
+                </button>
+                <button
+                  className="button button--ghost"
+                  type="button"
+                  onClick={handleClearMolds}
+                >
+                  Limpar
+                </button>
+              </div>
+            </div>
+            <div className="production-plan__forms-list">
+              {moldSelections.length === 0 && (
+                <div className="list__empty">Nenhuma forma cadastrada.</div>
+              )}
+              {moldSelections.map((mold) => (
+                <div key={mold.id} className="production-plan__form">
+                  <div>
+                    <strong>{mold.name}</strong>
+                    <span className="list__meta">
+                      {formatMeasurement(mold.length ?? 0)} m · Estoque{' '}
+                      {mold.stock ?? 0}
+                    </span>
+                  </div>
+                  <input
+                    className="modal__input production-plan__input"
+                    type="number"
+                    min={0}
+                    max={mold.stock ?? 0}
+                    step={1}
+                    value={mold.selected ?? 0}
+                    onChange={(event) =>
+                      handleMoldQuantityChange(mold.id, Number(event.target.value))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="production-plan__summary">
+              <span>Formas selecionadas: {selectedMoldsCount}</span>
+              <span>
+                Capacidade/dia: {formatMeasurement(productionPlan.capacityPerDay)} m
+              </span>
+            </div>
+            {productionPlan.unschedulableCount > 0 && (
+              <p className="production-plan__warning">
+                {productionPlan.unschedulableCount} item(ns) maiores do que as formas
+                selecionadas.
+              </p>
+            )}
+          </div>
+
+          <div className="production-plan__calendar">
+            <h3>Calendario de producao (seg-sex)</h3>
+            {productionPlan.days.length === 0 ? (
+              <div className="list__empty">
+                {selectedMoldsCount === 0
+                  ? 'Selecione as formas para calcular a previsao.'
+                  : 'Nenhuma viga pendente para planejamento.'}
+              </div>
+            ) : (
+              <table className="table table--compact">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Capacidade</th>
+                    <th>Planejado</th>
+                    <th>Itens</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productionPlan.days.map((day) => (
+                    <tr key={day.dateKey}>
+                      <td>{formatScheduleDate(day.dateKey)}</td>
+                      <td>{formatMeasurement(day.capacityLength)} m</td>
+                      <td>{formatMeasurement(day.usedLength)} m</td>
+                      <td>
+                        {day.summary.length === 0 ? (
+                          '-'
+                        ) : (
+                          <div className="production-plan__tags">
+                            {day.summary.map((item) => (
+                              <span
+                                key={`${day.dateKey}-${item.length}`}
+                                className="production-plan__tag"
+                              >
+                                {formatMeasurement(item.length)} m x{item.qty}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            {(productionPlan.truncated || productionPlan.stalled) && (
+              <p className="production-plan__warning">
+                Previsao limitada. Restam {remainingPieces} item(ns) sem agenda.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="production-plan__forecast">
+          <h3>Previsao por pedido</h3>
+          {productionPlan.forecasts.length === 0 ? (
+            <div className="list__empty">Sem previsao disponivel.</div>
+          ) : (
+            <table className="table table--compact">
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Ultima producao</th>
+                  <th>Cura ate</th>
+                  <th>Entrega prevista</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productionPlan.forecasts.map((item) => (
+                  <tr key={item.id}>
+                    <td>{item.orderCode}</td>
+                    <td>{item.clientName}</td>
+                    <td>{formatScheduleDate(item.lastProduction)}</td>
+                    <td>{formatScheduleDate(item.readyAt)}</td>
+                    <td>{formatScheduleDate(item.readyAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </section>
 
       <section className="panel">
         <div className="panel__header">

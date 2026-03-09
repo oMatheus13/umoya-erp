@@ -442,6 +442,20 @@ const PopApp = () => {
     }
   }
 
+  const resolveLinearLength = (order: ProductionOrder) => {
+    const product = productsById.get(order.productId)
+    if (!product || product.unit !== 'metro_linear') {
+      return 0
+    }
+    if (Number.isFinite(order.plannedLengthM) && order.plannedLengthM) {
+      return order.plannedLengthM ?? 0
+    }
+    if (Number.isFinite(order.customLength) && order.customLength) {
+      return order.customLength ?? 0
+    }
+    return product.length ?? 0
+  }
+
   const handleSelectOrder = (order: ProductionOrder) => {
     const progress = resolveOrderProgress(order)
     setSelectedOrderId(order.id)
@@ -585,6 +599,7 @@ const PopApp = () => {
       orders: ProductionOrder[]
     }[] = []
     const indexById = new Map<string, number>()
+    const orderIndex = new Map(filteredOrders.map((order, index) => [order.id, index]))
     filteredOrders.forEach((order) => {
       const groupId = order.linkedOrderId ?? order.orderId
       let index = indexById.get(groupId)
@@ -610,8 +625,24 @@ const PopApp = () => {
       }
       groups[index].orders.push(order)
     })
+    groups.forEach((group) => {
+      group.orders.sort((a, b) => {
+        const aLinear = resolveLinearLength(a) > 0
+        const bLinear = resolveLinearLength(b) > 0
+        if (aLinear !== bLinear) {
+          return aLinear ? -1 : 1
+        }
+        if (aLinear && bLinear) {
+          const diff = resolveLinearLength(b) - resolveLinearLength(a)
+          if (Math.abs(diff) > 0.0001) {
+            return diff
+          }
+        }
+        return (orderIndex.get(a.id) ?? 0) - (orderIndex.get(b.id) ?? 0)
+      })
+    })
     return groups
-  }, [data.clientes, filteredOrders, ordersById])
+  }, [data.clientes, filteredOrders, ordersById, productsById])
 
   useEffect(() => {
     if (view === 'pin') {
