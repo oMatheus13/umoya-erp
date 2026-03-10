@@ -4,9 +4,10 @@ import { Html5Qrcode } from 'html5-qrcode'
 type NfceQrScannerProps = {
   onScan: (value: string) => void
   onError?: (message: string) => void
+  successLabel?: string
 }
 
-const NfceQrScanner = ({ onScan, onError }: NfceQrScannerProps) => {
+const NfceQrScanner = ({ onScan, onError, successLabel }: NfceQrScannerProps) => {
   const containerIdRef = useRef(`nfce-qr-${Math.random().toString(36).slice(2)}`)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const [status, setStatus] = useState('Abrindo camera...')
@@ -44,7 +45,7 @@ const NfceQrScanner = ({ onScan, onError }: NfceQrScannerProps) => {
               return
             }
             scannedRef.current = true
-            setStatus('QR Code lido. Importando...')
+            setStatus(successLabel ?? 'QR Code lido. Importando...')
             onScan(decodedText)
             const instance = scannerRef.current
             if (instance) {
@@ -81,7 +82,7 @@ const NfceQrScanner = ({ onScan, onError }: NfceQrScannerProps) => {
           })
       }
     }
-  }, [onError, onScan])
+  }, [onError, onScan, successLabel])
 
   return (
     <div className="nfce-qr">

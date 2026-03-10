@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import type { RealtimeChannel } from '@supabase/supabase-js'
 import CurrencyInput from '../../components/CurrencyInput'
 import Modal from '../../components/Modal'
 import NfceQrScanner from '../../components/NfceQrScanner'
@@ -6,12 +7,13 @@ import QuickNotice from '../../components/QuickNotice'
 import { Page, PageHeader } from '../../components/ui'
 import { dataService } from '../../services/dataService'
 import { importPeNfceData } from '../../services/nfceImportService'
+import { getSupabaseClient, isSupabaseEnabled } from '../../services/supabaseClient'
 import { useERPData } from '../../store/appStore'
 import type { Material, PurchaseRecord } from '../../types/erp'
 import type { ImportedNfceData } from '../../types/nfce'
 import type { PageIntentAction } from '../../types/ui'
 import { getPaymentCashboxId, getPaymentMethodLabel } from '../../data/paymentMethods'
-import { hasCameraSupport, isMobileDevice } from '../../utils/device'
+import { hasCameraSupport, isMobileDevice, resolveDeviceId } from '../../utils/device'
 import { formatCurrency, formatDateShort } from '../../utils/format'
 import { createId } from '../../utils/ids'
 import {
@@ -112,6 +114,13 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
   const [importData, setImportData] = useState<ImportedNfceData | null>(null)
   const [importItems, setImportItems] = useState<NfceImportItemForm[]>([])
   const [importSaveMode, setImportSaveMode] = useState<NfceSaveMode>('finance')
+  const deviceIdRef = useRef(resolveDeviceId())
+  const importStartRef = useRef<
+    (input: { url?: string; accessKey?: string }) => Promise<void>
+  >(async () => undefined)
+  const bridgeChannelRef = useRef<RealtimeChannel | null>(null)
+  const [bridgeId, setBridgeId] = useState<string | null>(null)
+  const [bridgeStatus, setBridgeStatus] = useState<string | null>(null)
 
   const suppliers = useMemo(
     () => [...data.fornecedores].sort((a, b) => a.name.localeCompare(b.name)),
@@ -256,6 +265,9 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
   )
 
   const canScanNfce = isMobileDevice() && hasCameraSupport()
+  const canBridgeNfce = isSupabaseEnabled()
+  const shouldSendNfceToDesktop = canScanNfce && canBridgeNfce
+  const shouldListenNfceBridge = !canScanNfce && canBridgeNfce
 
   const getSupplierName = (id?: string) =>
     suppliers.find((supplier) => supplier.id === id)?.name ?? 'Sem fornecedor'
@@ -348,6 +360,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
     setImportUrl('')
     setImportAccessKey('')
     setImportStatus(null)
+    setBridgeStatus(null)
     setIsImportLoading(false)
     setImportData(null)
     setImportItems([])
@@ -364,6 +377,119 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
     setIsImportOpen(false)
     resetImportState()
   }
+
+  useEffect(() => {
+    if (!isImportOpen) {
+      setBridgeId(null)
+      return
+    }
+    if (!isSupabaseEnabled()) {
+      setBridgeId(null)
+      return
+    }
+    if (data.meta?.workspaceId) {
+      setBridgeId(data.meta.workspaceId)
+      return
+    }
+    const supabaseClient = getSupabaseClient()
+    if (!supabaseClient) {
+      setBridgeId(null)
+      return
+    }
+    let active = true
+    supabaseClient.auth
+      .getSession()
+      .then(({ data: sessionData }) => {
+        if (!active) {
+          return
+        }
+        const user = sessionData.session?.user
+        if (!user) {
+          setBridgeId(null)
+          return
+        }
+        const workspaceId =
+          (user.app_metadata?.workspace_id as string | undefined) ?? user.id
+        setBridgeId(workspaceId ?? null)
+      })
+      .catch(() => {
+        if (active) {
+          setBridgeId(null)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [data.meta?.workspaceId, isImportOpen])
+
+  useEffect(() => {
+    if (!isImportOpen || !bridgeId || !isSupabaseEnabled()) {
+      return
+    }
+    const supabaseClient = getSupabaseClient()
+    if (!supabaseClient) {
+      return
+    }
+    setBridgeStatus(null)
+    const channel = supabaseClient.channel(`nfce_bridge_${bridgeId}`, {
+      config: {
+        broadcast: {
+          ack: true,
+          self: false,
+        },
+      },
+    })
+    bridgeChannelRef.current = channel
+
+    if (!canScanNfce) {
+      channel.on('broadcast', { event: 'nfce_qr' }, (payload) => {
+        const message =
+          payload && typeof payload === 'object'
+            ? (payload as { payload?: Record<string, unknown> })
+            : null
+        const data = (message?.payload ?? message) as
+          | {
+              url?: string
+              accessKey?: string
+              deviceId?: string
+            }
+          | null
+        if (!data?.url) {
+          return
+        }
+        if (data.deviceId && data.deviceId === deviceIdRef.current) {
+          return
+        }
+        setImportStatus(null)
+        setBridgeStatus('NFC-e recebida do celular.')
+        setImportUrl(data.url)
+        setImportAccessKey(data.accessKey ?? extractAccessKeyFromUrl(data.url))
+        void importStartRef.current({ url: data.url, accessKey: data.accessKey })
+      })
+    }
+
+    channel.subscribe((status) => {
+      if (status === 'SUBSCRIBED') {
+        if (!canScanNfce) {
+          setBridgeStatus('Aguardando leitura do celular.')
+        }
+        return
+      }
+      if (status === 'CHANNEL_ERROR') {
+        setBridgeStatus('Nao foi possivel conectar ao canal do celular.')
+      }
+      if (status === 'TIMED_OUT') {
+        setBridgeStatus('Conexao com o celular expirou.')
+      }
+    })
+
+    return () => {
+      void supabaseClient.removeChannel(channel)
+      if (bridgeChannelRef.current === channel) {
+        bridgeChannelRef.current = null
+      }
+    }
+  }, [bridgeId, canScanNfce, isImportOpen])
 
   const updateImportItem = (id: string, patch: Partial<NfceImportItemForm>) => {
     setImportStatus(null)
@@ -472,6 +598,44 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
     }
   }
 
+  useEffect(() => {
+    importStartRef.current = handleImportStart
+  }, [handleImportStart])
+
+  const sendNfceToDesktop = async (value: string) => {
+    if (!canBridgeNfce) {
+      setBridgeStatus('Envio para o desktop indisponivel.')
+      return false
+    }
+    if (!bridgeId) {
+      setBridgeStatus('Conecte sua conta no desktop para receber a leitura.')
+      return false
+    }
+    const channel = bridgeChannelRef.current
+    if (!channel) {
+      setBridgeStatus('Nao foi possivel conectar ao desktop.')
+      return false
+    }
+    setImportStatus(null)
+    setBridgeStatus('Enviando leitura para o desktop...')
+    const response = await channel.send({
+      type: 'broadcast',
+      event: 'nfce_qr',
+      payload: {
+        url: value,
+        accessKey: extractAccessKeyFromUrl(value),
+        deviceId: deviceIdRef.current,
+        createdAt: new Date().toISOString(),
+      },
+    })
+    if (response !== 'ok') {
+      setBridgeStatus('Nao foi possivel enviar para o desktop.')
+      return false
+    }
+    setBridgeStatus('QR enviado para o desktop. Abra o ERP no computador para importar.')
+    return true
+  }
+
   const handleImportSubmit = () => {
     if (!importUrl.trim() && !importAccessKey.trim()) {
       setImportStatus('Informe a URL da NFC-e ou a chave de acesso.')
@@ -492,9 +656,15 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
     handleImportStart({ url: importUrl.trim(), accessKey: importAccessKey.trim() })
   }
 
-  const handleQrScan = (value: string) => {
+  const handleQrScan = async (value: string) => {
     setImportUrl(value)
     setImportAccessKey(extractAccessKeyFromUrl(value))
+    if (shouldSendNfceToDesktop) {
+      const sent = await sendNfceToDesktop(value)
+      if (sent) {
+        return
+      }
+    }
     handleImportStart({ url: value })
   }
 
@@ -1222,10 +1392,23 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             <p className="modal__description">
               Aponte a camera para o QR Code da NFC-e.
             </p>
+            {shouldSendNfceToDesktop && !bridgeStatus && (
+              <p className="modal__help">
+                A leitura sera enviada automaticamente para o desktop conectado.
+              </p>
+            )}
+            {bridgeStatus && <p className="modal__help">{bridgeStatus}</p>}
             {importStatus && <p className="modal__status">{importStatus}</p>}
             <NfceQrScanner
-              onScan={handleQrScan}
+              onScan={(value) => {
+                void handleQrScan(value)
+              }}
               onError={(message) => setImportStatus(message)}
+              successLabel={
+                shouldSendNfceToDesktop
+                  ? 'QR Code lido. Enviando para o desktop...'
+                  : undefined
+              }
             />
             <div className="modal__form-actions">
               <button
@@ -1254,6 +1437,14 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             <p className="modal__description">
               Cole a URL da consulta da NFC-e ou digite a chave de acesso.
             </p>
+            {shouldListenNfceBridge && (
+              <p className="modal__help">
+                {bridgeStatus ??
+                  (bridgeId
+                    ? 'Abra a leitura no celular e a NFC-e chega aqui automaticamente.'
+                    : 'Conectando ao canal para receber do celular...')}
+              </p>
+            )}
             <div className="modal__group">
               <label className="modal__label" htmlFor="nfce-url">
                 URL da NFC-e
