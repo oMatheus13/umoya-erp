@@ -18,11 +18,15 @@ const parseNumber = (value?: string) => {
   if (!value) {
     return 0
   }
-  const cleaned = value
-    .replace(/[^\d,.-]/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.')
-  const parsed = Number(cleaned)
+  const cleaned = value.replace(/[^\d,.-]/g, '')
+  if (!cleaned) {
+    return 0
+  }
+  const hasComma = cleaned.includes(',')
+  const normalized = hasComma
+    ? cleaned.replace(/\./g, '').replace(',', '.')
+    : cleaned
+  const parsed = Number(normalized)
   return Number.isFinite(parsed) ? parsed : 0
 }
 
