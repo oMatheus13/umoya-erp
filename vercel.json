@@ -20,48 +20,48 @@
     { "src": "/apontamento/favicon\\.ico", "dest": "/pop/favicon.ico" },
     { "src": "/apontamento/favicon\\.svg", "dest": "/pop/favicon.svg" },
     { "src": "/robots\\.txt", "dest": "/robots.txt" },
-    { "src": "/rastreio", "dest": "/rastreio/index.html" },
-    { "src": "/rastreio/(.*)", "dest": "/rastreio/index.html" },
-    { "src": "/pdv", "dest": "/pdv/index.html" },
-    { "src": "/pdv/(.*)", "dest": "/pdv/index.html" },
-    { "src": "/ptc", "dest": "/ptc/index.html" },
-    { "src": "/ptc/(.*)", "dest": "/ptc/index.html" },
-    { "src": "/pas", "dest": "/pas/index.html" },
-    { "src": "/pas/(.*)", "dest": "/pas/index.html" },
-    { "src": "/apontamento", "dest": "/pop/index.html" },
-    { "src": "/apontamento/(.*)", "dest": "/pop/index.html" },
-    { "src": "/pop", "dest": "/pop/index.html" },
-    { "src": "/pop/(.*)", "dest": "/pop/index.html" },
+    { "src": "/rastreio", "dest": "/apps/rastreio/index.html" },
+    { "src": "/rastreio/(.*)", "dest": "/apps/rastreio/index.html" },
+    { "src": "/pdv", "dest": "/apps/pdv/index.html" },
+    { "src": "/pdv/(.*)", "dest": "/apps/pdv/index.html" },
+    { "src": "/ptc", "dest": "/apps/ptc/index.html" },
+    { "src": "/ptc/(.*)", "dest": "/apps/ptc/index.html" },
+    { "src": "/pas", "dest": "/apps/pas/index.html" },
+    { "src": "/pas/(.*)", "dest": "/apps/pas/index.html" },
+    { "src": "/apontamento", "dest": "/apps/pop/index.html" },
+    { "src": "/apontamento/(.*)", "dest": "/apps/pop/index.html" },
+    { "src": "/pop", "dest": "/apps/pop/index.html" },
+    { "src": "/pop/(.*)", "dest": "/apps/pop/index.html" },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "rastreio.umoya.omatheus.com" }],
-      "dest": "/rastreio/index.html"
+      "dest": "/apps/rastreio/index.html"
     },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "pdv.umoya.omatheus.com" }],
-      "dest": "/pdv/index.html"
+      "dest": "/apps/pdv/index.html"
     },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "ptc.umoya.omatheus.com" }],
-      "dest": "/ptc/index.html"
+      "dest": "/apps/ptc/index.html"
     },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "pas.umoya.omatheus.com" }],
-      "dest": "/pas/index.html"
+      "dest": "/apps/pas/index.html"
     },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "pop.umoya.omatheus.com" }],
-      "dest": "/pop/index.html"
+      "dest": "/apps/pop/index.html"
     },
     {
       "src": "/(.*)",
       "has": [{ "type": "host", "value": "erp.umoya.omatheus.com" }],
-      "dest": "/index.html"
+      "dest": "/apps/erp/index.html"
     },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/(.*)", "dest": "/apps/erp/index.html" }
   ]
 }

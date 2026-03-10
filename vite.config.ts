@@ -22,11 +22,11 @@ export default defineConfig({
     rollupOptions: {
       input: {
         erp: fileURLToPath(new URL('apps/erp/index.html', import.meta.url)),
-        pdv: fileURLToPath(new URL('pdv/index.html', import.meta.url)),
-        rastreio: fileURLToPath(new URL('rastreio/index.html', import.meta.url)),
-        pop: fileURLToPath(new URL('pop/index.html', import.meta.url)),
-        ptc: fileURLToPath(new URL('ptc/index.html', import.meta.url)),
-        pas: fileURLToPath(new URL('pas/index.html', import.meta.url)),
+        pdv: fileURLToPath(new URL('apps/pdv/index.html', import.meta.url)),
+        rastreio: fileURLToPath(new URL('apps/rastreio/index.html', import.meta.url)),
+        pop: fileURLToPath(new URL('apps/pop/index.html', import.meta.url)),
+        ptc: fileURLToPath(new URL('apps/ptc/index.html', import.meta.url)),
+        pas: fileURLToPath(new URL('apps/pas/index.html', import.meta.url)),
       },
     },
   },
