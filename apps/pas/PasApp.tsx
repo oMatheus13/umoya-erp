@@ -10,9 +10,9 @@ import {
   type WheelEvent as ReactWheelEvent,
 } from 'react'
 import type { User } from '@supabase/supabase-js'
-import Topbar from '../components/Topbar'
-import Login from '../pages/core/Login'
-import ResetPassword from '../pages/core/ResetPassword'
+import Topbar from '@erp/components/Topbar'
+import Login from '@erp/pages/core/Login'
+import ResetPassword from '@erp/pages/core/ResetPassword'
 import logotipo from '@shared/assets/brand/logotipo.svg'
 import { pasRemote } from '@shared/services/pasRemote'
 import { supabase } from '@shared/services/supabaseClient'
