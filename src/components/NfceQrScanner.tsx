@@ -14,7 +14,24 @@ const NfceQrScanner = ({ onScan, onError }: NfceQrScannerProps) => {
 
   useEffect(() => {
     const elementId = containerIdRef.current
-    const scanner = new Html5Qrcode(elementId)
+    if (typeof document === 'undefined') {
+      return
+    }
+    if (!document.getElementById(elementId)) {
+      setStatus('Nao foi possivel iniciar o scanner.')
+      onError?.('Nao foi possivel iniciar o scanner.')
+      return
+    }
+    let scanner: Html5Qrcode
+    try {
+      scanner = new Html5Qrcode(elementId)
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Erro ao iniciar o scanner.'
+      setStatus(message)
+      onError?.(message)
+      return
+    }
     scannerRef.current = scanner
 
     const start = async () => {
@@ -29,6 +46,10 @@ const NfceQrScanner = ({ onScan, onError }: NfceQrScannerProps) => {
             scannedRef.current = true
             setStatus('QR Code lido. Importando...')
             onScan(decodedText)
+            const instance = scannerRef.current
+            if (instance) {
+              instance.stop().catch(() => undefined)
+            }
           },
           () => {
             // ignore scan errors to keep camera active
@@ -51,7 +72,11 @@ const NfceQrScanner = ({ onScan, onError }: NfceQrScannerProps) => {
           .stop()
           .catch(() => undefined)
           .finally(() => {
-            instance.clear()
+            try {
+              instance.clear()
+            } catch {
+              // ignore cleanup errors
+            }
             scannerRef.current = null
           })
       }
