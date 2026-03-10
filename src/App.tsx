@@ -34,6 +34,7 @@ import Qualidade from './pages/qualidade/Qualidade'
 import RelatoriosProducao from './pages/relatorios/RelatoriosProducao'
 import RelatoriosVendas from './pages/relatorios/RelatoriosVendas'
 import RelatoriosConsumo from './pages/relatorios/RelatoriosConsumo'
+import RelatoriosHistorico from './pages/relatorios/RelatoriosHistorico'
 import Integracoes from './pages/configuracoes/Integracoes'
 import AuditoriaLog from './pages/auditoria/AuditoriaLog'
 import AuditoriaHistorico from './pages/auditoria/AuditoriaHistorico'
@@ -672,6 +673,7 @@ function App() {
         <Compras
           pageIntent={pageIntent?.page === 'compras' ? pageIntent.action : undefined}
           onConsumeIntent={consumePageIntent}
+          onNavigate={handleNavigate}
         />
       )
     }
@@ -731,6 +733,9 @@ function App() {
     }
     if (activePage === 'relatorios-consumo') {
       return <RelatoriosConsumo />
+    }
+    if (activePage === 'relatorios-historico') {
+      return <RelatoriosHistorico />
     }
     if (activePage === 'dados') {
       return <DataTools />

@@ -123,6 +123,7 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
     items: [
       { id: 'indicadores', label: 'Indicadores', icon: 'bar_chart' },
       { id: 'bi', label: 'BI', icon: 'query_stats' },
+      { id: 'relatorios-historico', label: 'Historico completo', icon: 'history' },
       { id: 'relatorios-producao', label: 'Produção Por Período', icon: 'factory' },
       { id: 'relatorios-vendas', label: 'Vendas por Cliente e Obra', icon: 'trending_up' },
       { id: 'relatorios-consumo', label: 'Consumo de Material', icon: 'science' },

@@ -40,6 +40,7 @@ export type PermissionKey =
   | 'qualidade'
   | 'indicadores'
   | 'bi'
+  | 'relatorios-historico'
   | 'relatorios-producao'
   | 'relatorios-vendas'
   | 'relatorios-consumo'

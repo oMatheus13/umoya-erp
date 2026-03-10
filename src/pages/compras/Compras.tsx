@@ -88,9 +88,10 @@ const createExtraItem = (): PurchaseItemForm => ({
 type ComprasProps = {
   pageIntent?: PageIntentAction
   onConsumeIntent?: () => void
+  onNavigate?: (page: string) => void
 }
 
-const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
+const Compras = ({ pageIntent, onConsumeIntent, onNavigate }: ComprasProps) => {
   const { data, refresh } = useERPData()
   const now = new Date()
   const [status, setStatus] = useState<string | null>(null)
@@ -114,6 +115,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
   const [importData, setImportData] = useState<ImportedNfceData | null>(null)
   const [importItems, setImportItems] = useState<NfceImportItemForm[]>([])
   const [importSaveMode, setImportSaveMode] = useState<NfceSaveMode>('finance')
+  const [importTarget, setImportTarget] = useState<'local' | 'desktop'>('local')
   const deviceIdRef = useRef(resolveDeviceId())
   const importStartRef = useRef<
     (input: { url?: string; accessKey?: string }) => Promise<void>
@@ -152,7 +154,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
     () =>
       [...data.financeiro]
         .filter((entry) => entry.type === 'saida')
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 5),
     [data.financeiro],
   )
@@ -266,7 +268,8 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
 
   const canScanNfce = isMobileDevice() && hasCameraSupport()
   const canBridgeNfce = isSupabaseEnabled()
-  const shouldSendNfceToDesktop = canScanNfce && canBridgeNfce
+  const canSelectImportTarget = canScanNfce && canBridgeNfce
+  const shouldSendNfceToDesktop = canSelectImportTarget && importTarget === 'desktop'
   const shouldListenNfceBridge = !canScanNfce && canBridgeNfce
 
   const getSupplierName = (id?: string) =>
@@ -309,8 +312,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
   const normalizeDocument = (value?: string) => (value ?? '').replace(/\D/g, '')
 
   const buildImportItems = (imported: ImportedNfceData) => {
-    const defaultMapping: NfceImportItemForm['mapping'] =
-      materials.length > 0 ? 'material' : 'uso_interno'
+    const defaultMapping: NfceImportItemForm['mapping'] = 'uso_interno'
     return imported.items.map((item) => {
       const normalized = normalizeNfceLabel(item.description)
       const alias = data.nfceItemAliases?.find(
@@ -365,6 +367,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
     setImportData(null)
     setImportItems([])
     setImportSaveMode('finance')
+    setImportTarget((prev) => (canSelectImportTarget ? prev : 'local'))
     setImportStep(canScanNfce ? 'scan' : 'input')
   }
 
@@ -638,24 +641,33 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
     return true
   }
 
-  const handleImportSubmit = () => {
-    if (!importUrl.trim() && !importAccessKey.trim()) {
+  const handleImportSubmit = async () => {
+    const trimmedUrl = importUrl.trim()
+    const trimmedAccessKey = importAccessKey.trim()
+    if (!trimmedUrl && !trimmedAccessKey) {
       setImportStatus('Informe a URL da NFC-e ou a chave de acesso.')
       return
     }
-    if (!importUrl.trim() && importAccessKey.trim()) {
+    let resolvedUrl = trimmedUrl
+    if (!resolvedUrl && trimmedAccessKey) {
       try {
-        const builtUrl = buildPeNfceUrlFromAccessKey(importAccessKey.trim())
+        const builtUrl = buildPeNfceUrlFromAccessKey(trimmedAccessKey)
+        resolvedUrl = builtUrl
         setImportUrl(builtUrl)
-        handleImportStart({ url: builtUrl, accessKey: importAccessKey.trim() })
       } catch (error) {
         const message =
           error instanceof Error ? error.message : 'Chave de acesso invalida.'
         setImportStatus(message)
+        return
       }
-      return
     }
-    handleImportStart({ url: importUrl.trim(), accessKey: importAccessKey.trim() })
+    if (shouldSendNfceToDesktop && resolvedUrl) {
+      const sent = await sendNfceToDesktop(resolvedUrl)
+      if (sent) {
+        return
+      }
+    }
+    handleImportStart({ url: resolvedUrl, accessKey: trimmedAccessKey })
   }
 
   const handleQrScan = async (value: string) => {
@@ -1192,6 +1204,13 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
               <h2 className="panel__title">Ultimas despesas</h2>
               <p className="panel__subtitle">Saidas registradas no financeiro</p>
             </div>
+            <button
+              className="button button--ghost"
+              type="button"
+              onClick={() => onNavigate?.('relatorios-historico')}
+            >
+              Ver historico completo
+            </button>
           </div>
           <div className="list">
             {recentExpenses.length === 0 && (
@@ -1394,10 +1413,31 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             <p className="modal__description">
               Aponte a camera para o QR Code da NFC-e.
             </p>
-            {shouldSendNfceToDesktop && !bridgeStatus && (
-              <p className="modal__help">
-                A leitura sera enviada automaticamente para o desktop conectado.
-              </p>
+            {canSelectImportTarget && (
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="nfce-import-target">
+                  Destino da importacao
+                </label>
+                <select
+                  id="nfce-import-target"
+                  className="modal__input"
+                  value={importTarget}
+                  onChange={(event) =>
+                    setImportTarget(event.target.value as 'local' | 'desktop')
+                  }
+                >
+                  <option value="local">Importar neste celular</option>
+                  <option value="desktop">Enviar para o desktop</option>
+                </select>
+                <p className="modal__help">
+                  {importTarget === 'desktop'
+                    ? 'A leitura sera enviada para o desktop conectado.'
+                    : 'A leitura sera importada neste dispositivo.'}
+                </p>
+              </div>
+            )}
+            {!canSelectImportTarget && canScanNfce && (
+              <p className="modal__help">A leitura sera importada neste dispositivo.</p>
             )}
             {bridgeStatus && <p className="modal__help">{bridgeStatus}</p>}
             {importStatus && <p className="modal__status">{importStatus}</p>}
@@ -1409,7 +1449,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
               successLabel={
                 shouldSendNfceToDesktop
                   ? 'QR Code lido. Enviando para o desktop...'
-                  : undefined
+                  : 'QR Code lido. Importando...'
               }
             />
             <div className="modal__form-actions">
@@ -1433,12 +1473,35 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
             className="nfce-import"
             onSubmit={(event) => {
               event.preventDefault()
-              handleImportSubmit()
+              void handleImportSubmit()
             }}
           >
             <p className="modal__description">
               Cole a URL da consulta da NFC-e ou digite a chave de acesso.
             </p>
+            {canSelectImportTarget && (
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="nfce-import-target">
+                  Destino da importacao
+                </label>
+                <select
+                  id="nfce-import-target"
+                  className="modal__input"
+                  value={importTarget}
+                  onChange={(event) =>
+                    setImportTarget(event.target.value as 'local' | 'desktop')
+                  }
+                >
+                  <option value="local">Importar neste celular</option>
+                  <option value="desktop">Enviar para o desktop</option>
+                </select>
+                <p className="modal__help">
+                  {importTarget === 'desktop'
+                    ? 'A leitura sera enviada para o desktop conectado.'
+                    : 'A leitura sera importada neste dispositivo.'}
+                </p>
+              </div>
+            )}
             {shouldListenNfceBridge && (
               <p className="modal__help">
                 {bridgeStatus ??
@@ -1642,7 +1705,7 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
                         >
                           <option value="material">Material</option>
                           <option value="produto">Produto</option>
-                          <option value="uso_interno">Uso interno / EPI</option>
+                          <option value="uso_interno">Despesa livre / uso interno</option>
                           <option value="ignorar">Ignorar</option>
                         </select>
                       </div>

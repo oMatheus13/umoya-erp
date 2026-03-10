@@ -88,6 +88,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     items: [
       { key: 'indicadores', label: 'Indicadores' },
       { key: 'bi', label: 'BI' },
+      { key: 'relatorios-historico', label: 'Historico completo' },
       { key: 'relatorios-producao', label: 'Produção por período' },
       { key: 'relatorios-vendas', label: 'Vendas por cliente e obra' },
       { key: 'relatorios-consumo', label: 'Consumo de material' },
