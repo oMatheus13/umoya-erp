@@ -1,10 +1,16 @@
 {
-  "name": "umoya-vite",
+  "name": "umoya-os",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
+    "dev:erp": "vite serve apps/erp --config vite.config.ts --host",
+    "dev:pdv": "vite serve apps/pdv --config vite.config.ts --host",
+    "dev:pop": "vite serve apps/pop --config vite.config.ts --host",
+    "dev:ptc": "vite serve apps/ptc --config vite.config.ts --host",
+    "dev:pas": "vite serve apps/pas --config vite.config.ts --host",
+    "dev:rastreio": "vite serve apps/rastreio --config vite.config.ts --host",
     "build": "node node_modules/typescript/bin/tsc -b && node node_modules/vite/bin/vite.js build",
     "lint": "eslint .",
     "preview": "vite preview",
