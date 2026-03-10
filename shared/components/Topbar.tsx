@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
 import QuickNotice, { type QuickNoticeTone } from './QuickNotice'
-import { NAVIGATION_GROUPS } from '../data/navigation'
+import { NAVIGATION_GROUPS } from '@erp/data/navigation'
 import { useERPData } from '@shared/store/appStore'
 import type { PageIntentAction } from '@shared/types/ui'
 import { resolveOrderInternalCode } from '@shared/utils/orderCode'

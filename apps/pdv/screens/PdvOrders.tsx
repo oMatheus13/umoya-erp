@@ -1,4 +1,4 @@
-import Pedidos from '../../pages/vendas/Pedidos'
+import Pedidos from '../../erp/pages/vendas/Pedidos'
 
 type PdvOrdersProps = {
   openId?: string

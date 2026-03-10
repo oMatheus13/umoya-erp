@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import Sidebar from '../components/Sidebar'
-import Topbar from '../components/Topbar'
+import Topbar from '@shared/components/Topbar'
 import { PageProvider } from '@ui/components/PageContext'
 import type { PageIntentAction, SidebarMode } from '@shared/types/ui'
 

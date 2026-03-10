@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ConfirmDialog from '../../components/ConfirmDialog'
-import QuickNotice from '../../components/QuickNotice'
+import QuickNotice from '@shared/components/QuickNotice'
 import { Page, PageHeader } from '@ui/components'
 import { dataService } from '@shared/services/dataService'
 import { createEmptyState } from '@shared/services/storage'

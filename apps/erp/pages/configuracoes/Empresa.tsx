@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { dataService } from '@shared/services/dataService'
 import { useERPData } from '@shared/store/appStore'
 import { Page, PageHeader } from '@ui/components'
-import QuickNotice from '../../components/QuickNotice'
+import QuickNotice from '@shared/components/QuickNotice'
 import type { CompanyProfile } from '@shared/types/erp'
 
 const Empresa = () => {

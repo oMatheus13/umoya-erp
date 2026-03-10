@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
 import Placeholder from '../shared/Placeholder'
 import { Page, PageHeader } from '@ui/components'
-import QuickNotice from '../../components/QuickNotice'
+import QuickNotice from '@shared/components/QuickNotice'
 import { dataService } from '@shared/services/dataService'
 import { useERPData } from '@shared/store/appStore'
 import type { UserAccount } from '@shared/types/erp'

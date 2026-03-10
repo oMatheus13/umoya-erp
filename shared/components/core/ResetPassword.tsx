@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import logotipo from '@shared/assets/brand/logotipo.svg'
 import loginMockErp from '@shared/assets/brand/login-mock-3.webp'
 import loginMockPdv from '@shared/assets/brand/login-mock-2.webp'
-import QuickNotice from '../../components/QuickNotice'
+import QuickNotice from '@shared/components/QuickNotice'
 import { supabase } from '@shared/services/supabaseClient'
 import { resolveAppKind } from '@shared/utils/appContext'
 

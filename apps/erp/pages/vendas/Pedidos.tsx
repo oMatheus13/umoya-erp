@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
-import DimensionInput from '../../components/DimensionInput'
-import Modal from '../../components/Modal'
-import QuickNotice from '../../components/QuickNotice'
+import DimensionInput from '@shared/components/DimensionInput'
+import Modal from '@shared/components/Modal'
+import QuickNotice from '@shared/components/QuickNotice'
 import logotipo from '@shared/assets/brand/logotipo.svg'
 import { Page, PageHeader } from '@ui/components'
 import {
@@ -12,7 +12,7 @@ import {
   getPaymentMethodId,
   getPaymentMethodLabel,
   getPaymentMethodOptions,
-} from '../../data/paymentMethods'
+} from '@shared/data/paymentMethods'
 import { dataService } from '@shared/services/dataService'
 import { buildTrackingPayloads } from '@shared/services/trackingPayload'
 import { trackingRemote } from '@shared/services/trackingRemote'

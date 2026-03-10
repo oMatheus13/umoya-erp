@@ -28,10 +28,13 @@ export const buildPermissionMap = (permissions?: RolePermissions) => {
   if (!hasCustomPermissions(permissions)) {
     return null
   }
-  return ALL_PERMISSION_KEYS.reduce<RolePermissions>((acc, key) => {
-    acc[key] = permissions?.[key] ?? 'none'
-    return acc
-  }, {})
+  return ALL_PERMISSION_KEYS.reduce<RolePermissions>(
+    (acc: RolePermissions, key: PermissionKey) => {
+      acc[key] = permissions?.[key] ?? 'none'
+      return acc
+    },
+    {} as RolePermissions,
+  )
 }
 
 export const createPermissionCheck = (data: ERPData, user: UserAccount | null): PermissionCheck => {

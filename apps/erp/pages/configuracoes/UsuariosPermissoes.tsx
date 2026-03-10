@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import Placeholder from '../shared/Placeholder'
 import { Page, PageHeader } from '@ui/components'
-import QuickNotice from '../../components/QuickNotice'
+import QuickNotice from '@shared/components/QuickNotice'
 import { dataService } from '@shared/services/dataService'
 import { useERPData } from '@shared/store/appStore'
 import type { PermissionKey, PermissionLevel, RolePermissions, UserAccount } from '@shared/types/erp'
-import { ALL_PERMISSION_KEYS, PERMISSION_GROUPS, PERMISSION_LEVELS } from '../../data/permissions'
+import { ALL_PERMISSION_KEYS, PERMISSION_GROUPS, PERMISSION_LEVELS } from '@shared/data/permissions'
 import { buildPermissionMap } from '@shared/utils/permissions'
 
 const buildPreset = (level: PermissionLevel): RolePermissions =>

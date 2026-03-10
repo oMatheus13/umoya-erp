@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import Login from '../pages/core/Login'
+import Login from '@shared/components/core/Login'
 import logotipo from '@shared/assets/brand/logotipo.svg'
 import {
   dataService,

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import type { User } from '@supabase/supabase-js'
 import logotipo from '@shared/assets/brand/logotipo.svg'
 import loginMock from '@shared/assets/brand/login-mock-3.webp'
-import QuickNotice from '../../components/QuickNotice'
+import QuickNotice from '@shared/components/QuickNotice'
 import { supabase } from '@shared/services/supabaseClient'
 
 type SetupAdminProps = {

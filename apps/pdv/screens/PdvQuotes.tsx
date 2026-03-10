@@ -1,4 +1,4 @@
-import Orcamentos from '../../pages/vendas/Orcamentos'
+import Orcamentos from '../../erp/pages/vendas/Orcamentos'
 
 type PdvQuotesProps = {
   openId?: string

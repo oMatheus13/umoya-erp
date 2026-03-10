@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import DimensionInput from '../../components/DimensionInput'
-import QuickNotice from '../../components/QuickNotice'
+import DimensionInput from '@shared/components/DimensionInput'
+import QuickNotice from '@shared/components/QuickNotice'
 import {
   getPaymentCashboxId,
   getPaymentMethodOptions,
-} from '@erp/data/paymentMethods'
+} from '@shared/data/paymentMethods'
 import { dataService } from '@shared/services/dataService'
 import { useERPData } from '@shared/store/appStore'
 import type { Order, Product, ProductVariant, Quote } from '@shared/types/erp'

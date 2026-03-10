@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import QuickNotice from '../../components/QuickNotice'
-import { getPaymentMethodLabel, getPaymentMethodOptions } from '@erp/data/paymentMethods'
+import QuickNotice from '@shared/components/QuickNotice'
+import { getPaymentMethodLabel, getPaymentMethodOptions } from '@shared/data/paymentMethods'
 import { dataService } from '@shared/services/dataService'
 import { useERPData } from '@shared/store/appStore'
 import type {
