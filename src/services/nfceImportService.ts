@@ -20,9 +20,29 @@ const fetchHtml = async (url: string) => {
 const fetchParsedData = async (url: string) => {
   const response = await fetch(`/api/nfce-parse?url=${encodeURIComponent(url)}`)
   if (!response.ok) {
-    throw new Error('Nao foi possivel consultar a NFC-e pelo servidor.')
+    let message = 'Nao foi possivel consultar a NFC-e pelo servidor.'
+    try {
+      const payload = (await response.json()) as { error?: string }
+      if (payload?.error) {
+        message = payload.error
+      }
+    } catch {
+      // ignore JSON parse errors
+    }
+    throw new Error(message)
   }
-  return (await response.json()) as ImportedNfceData
+  const contentType = response.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) {
+    return (await response.json()) as ImportedNfceData
+  }
+  const html = await response.text()
+  const parsed = parsePeNfceHtmlBrowser(html, url)
+  if (!parsed.items.length || parsed.totalAmount <= 0) {
+    throw new Error(
+      'Nao foi possivel ler a NFC-e. Use a URL completa do QR Code.',
+    )
+  }
+  return parsed
 }
 
 export const importPeNfceData = async (input: {
@@ -41,7 +61,9 @@ export const importPeNfceData = async (input: {
     const html = await fetchHtml(sourceUrl)
     const parsed = parsePeNfceHtmlBrowser(html, sourceUrl)
     if (!parsed.items.length || parsed.totalAmount <= 0) {
-      throw new Error('Parser incompleto.')
+      throw new Error(
+        'Nao foi possivel ler a NFC-e. Use a URL completa do QR Code.',
+      )
     }
     return {
       ...parsed,
