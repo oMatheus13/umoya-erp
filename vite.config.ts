@@ -21,7 +21,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: fileURLToPath(new URL('index.html', import.meta.url)),
+        erp: fileURLToPath(new URL('apps/erp/index.html', import.meta.url)),
         pdv: fileURLToPath(new URL('pdv/index.html', import.meta.url)),
         rastreio: fileURLToPath(new URL('rastreio/index.html', import.meta.url)),
         pop: fileURLToPath(new URL('pop/index.html', import.meta.url)),
