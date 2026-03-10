@@ -633,6 +633,8 @@ const Compras = ({ pageIntent, onConsumeIntent }: ComprasProps) => {
       return false
     }
     setBridgeStatus('QR enviado para o desktop. Abra o ERP no computador para importar.')
+    setStatus('QR enviado para o desktop. Abra o ERP no computador para importar.')
+    closeImportModal()
     return true
   }
 

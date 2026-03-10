@@ -137,6 +137,29 @@
   font-weight: var(--font-weight-medium);
 }
 
+.nfce-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.nfce-qr__preview {
+  width: min(320px, 100%);
+  aspect-ratio: 1 / 1;
+  border-radius: var(--border-radius-md);
+  border: var(--border-thin);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.nfce-qr__status {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-ink-muted);
+  text-align: center;
+}
+
 .compras .nfce-qr {
   display: flex;
   flex-direction: column;
