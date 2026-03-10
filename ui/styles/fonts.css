@@ -1,0 +1,319 @@
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,300,0,0;24,300,1,0");
+
+/**
+* @license
+*
+* Font Family: Archivo
+* Designed by: Omnibus-Type
+* URL: https://www.fontshare.com/fonts/archivo/archivo
+* © 2025 Indian Type Foundry
+*
+* Archivo Thin
+* Archivo ThinItalic
+* Archivo ExtraLight
+* Archivo ExtraLightItalic
+* Archivo Light
+* Archivo LightItalic
+* Archivo Regular
+* Archivo Italic
+* Archivo Medium
+* Archivo MediumItalic
+* Archivo SemiBold
+* Archivo SemiBoldItalic
+* Archivo Bold
+* Archivo BoldItalic
+* Archivo ExtraBold
+* Archivo ExtraBoldItalic
+* Archivo Black
+* Archivo BlackItalic
+* Archivo Variable (Variable font)
+* Archivo VariableItalic (Variable font)
+
+*
+*/
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Thin.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Thin.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Thin.ttf') format('truetype');
+  font-weight: 100;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-ThinItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-ThinItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-ThinItalic.ttf') format('truetype');
+  font-weight: 100;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-ExtraLight.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraLight.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraLight.ttf') format('truetype');
+  font-weight: 200;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-ExtraLightItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraLightItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraLightItalic.ttf') format('truetype');
+  font-weight: 200;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Light.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Light.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-LightItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-LightItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-LightItalic.ttf') format('truetype');
+  font-weight: 300;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Regular.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Regular.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Italic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Italic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Italic.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Medium.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Medium.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-MediumItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-MediumItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-MediumItalic.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-SemiBold.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-SemiBold.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-SemiBoldItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-SemiBoldItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-SemiBoldItalic.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Bold.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Bold.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-BoldItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-BoldItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-BoldItalic.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-ExtraBold.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraBold.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-ExtraBoldItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraBoldItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-ExtraBoldItalic.ttf') format('truetype');
+  font-weight: 800;
+  font-display: swap;
+  font-style: italic;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Black.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Black.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-BlackItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-BlackItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-BlackItalic.ttf') format('truetype');
+  font-weight: 900;
+  font-display: swap;
+  font-style: italic;
+}
+/**
+* This is a variable font
+* You can control variable axes as shown below:
+* font-variation-settings: wght 600.0;
+*
+* available axes:
+'wght' (range from 100.0 to 900.0
+*/
+@font-face {
+  font-family: 'Archivo-Variable';
+  src: url('../../shared/assets/fonts/archivo/Archivo-Variable.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-Variable.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-Variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+}
+/**
+* This is a variable font
+* You can control variable axes as shown below:
+* font-variation-settings: wght 600.0;
+*
+* available axes:
+'wght' (range from 100.0 to 900.0
+*/
+@font-face {
+  font-family: 'Archivo';
+  src: url('../../shared/assets/fonts/archivo/Archivo-VariableItalic.woff2') format('woff2'),
+       url('../../shared/assets/fonts/archivo/Archivo-VariableItalic.woff') format('woff'),
+       url('../../shared/assets/fonts/archivo/Archivo-VariableItalic.ttf') format('truetype');
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: italic;
+}
+
+/**
+* @license
+*
+* Font Family: Clash Display
+* Designed by: Indian Type Foundry
+* URL: https://www.fontshare.com/fonts/clash-display
+* © 2025 Indian Type Foundry
+*
+* Clash Display Extralight
+* Clash Display Light
+* Clash Display Regular
+* Clash Display Medium
+* Clash Display Semibold
+* Clash Display Bold
+* Clash Display Variable (Variable font)
+
+*
+*/
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('../../shared/assets/fonts/clash-display/ClashDisplay-Extralight.woff2') format('woff2'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Extralight.woff') format('woff'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Extralight.ttf') format('truetype');
+  font-weight: 200;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('../../shared/assets/fonts/clash-display/ClashDisplay-Light.woff2') format('woff2'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Light.woff') format('woff'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('../../shared/assets/fonts/clash-display/ClashDisplay-Regular.woff2') format('woff2'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Regular.woff') format('woff'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('../../shared/assets/fonts/clash-display/ClashDisplay-Medium.woff2') format('woff2'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Medium.woff') format('woff'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('../../shared/assets/fonts/clash-display/ClashDisplay-Semibold.woff2') format('woff2'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Semibold.woff') format('woff'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Semibold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'ClashDisplay';
+  src: url('../../shared/assets/fonts/clash-display/ClashDisplay-Bold.woff2') format('woff2'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Bold.woff') format('woff'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+/**
+* This is a variable font
+* You can control variable axes as shown below:
+* font-variation-settings: wght 700.0;
+*
+* available axes:
+'wght' (range from 200.0 to 700.0
+*/
+@font-face {
+  font-family: 'ClashDisplay-Variable';
+  src: url('../../shared/assets/fonts/clash-display/ClashDisplay-Variable.woff2') format('woff2'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Variable.woff') format('woff'),
+       url('../../shared/assets/fonts/clash-display/ClashDisplay-Variable.ttf') format('truetype');
+  font-weight: 200 700;
+  font-display: swap;
+  font-style: normal;
+}
