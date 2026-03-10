@@ -35,7 +35,19 @@ const NfceQrScanner = ({ onScan, onError, successLabel }: NfceQrScannerProps) =>
     }
     scannerRef.current = scanner
 
+    const safeStop = (instance: Html5Qrcode) => {
+      try {
+        const result = instance.stop()
+        if (result && typeof (result as Promise<void>).catch === 'function') {
+          ;(result as Promise<void>).catch(() => undefined)
+        }
+      } catch {
+        // ignore stop errors when not running
+      }
+    }
+
     const start = async () => {
+
       try {
         await scanner.start(
           { facingMode: 'environment' },
@@ -49,7 +61,7 @@ const NfceQrScanner = ({ onScan, onError, successLabel }: NfceQrScannerProps) =>
             onScan(decodedText)
             const instance = scannerRef.current
             if (instance) {
-              instance.stop().catch(() => undefined)
+              safeStop(instance)
             }
           },
           () => {
@@ -69,10 +81,15 @@ const NfceQrScanner = ({ onScan, onError, successLabel }: NfceQrScannerProps) =>
     return () => {
       const instance = scannerRef.current
       if (instance) {
-        instance
-          .stop()
-          .catch(() => undefined)
-          .finally(() => {
+        const stopResult = (() => {
+          try {
+            return instance.stop()
+          } catch {
+            return null
+          }
+        })()
+        if (stopResult && typeof (stopResult as Promise<void>).finally === 'function') {
+          ;(stopResult as Promise<void>).finally(() => {
             try {
               instance.clear()
             } catch {
@@ -80,6 +97,14 @@ const NfceQrScanner = ({ onScan, onError, successLabel }: NfceQrScannerProps) =>
             }
             scannerRef.current = null
           })
+        } else {
+          try {
+            instance.clear()
+          } catch {
+            // ignore cleanup errors
+          }
+          scannerRef.current = null
+        }
       }
     }
   }, [onError, onScan, successLabel])
