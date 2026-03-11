@@ -35,6 +35,7 @@ import RelatoriosProducao from './pages/relatorios/RelatoriosProducao'
 import RelatoriosVendas from './pages/relatorios/RelatoriosVendas'
 import RelatoriosConsumo from './pages/relatorios/RelatoriosConsumo'
 import RelatoriosHistorico from './pages/relatorios/RelatoriosHistorico'
+import MensagensContato from './pages/site/MensagensContato'
 import Integracoes from './pages/configuracoes/Integracoes'
 import AuditoriaLog from './pages/auditoria/AuditoriaLog'
 import AuditoriaHistorico from './pages/auditoria/AuditoriaHistorico'
@@ -736,6 +737,9 @@ function App() {
     }
     if (activePage === 'relatorios-historico') {
       return <RelatoriosHistorico />
+    }
+    if (activePage === 'site-contatos') {
+      return <MensagensContato />
     }
     if (activePage === 'dados') {
       return <DataTools />

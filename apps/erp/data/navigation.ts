@@ -26,6 +26,16 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
     label: 'Visão Geral',
     icon: 'dashboard_2',
   },
+
+  {
+    type: 'group',
+    id: 'site-group',
+    label: 'Site',
+    icon: 'public',
+    items: [
+      { id: 'site-contatos', label: 'Mensagens do Site', icon: 'mail' },
+    ],
+  },
   {
     type: 'group',
     id: 'cadastros',
