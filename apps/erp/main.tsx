@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import '@ui/styles/main.css'
+import './erp.css'
 import App from './App.tsx'
 
 const baseTitle = document.title || 'Umoya ERP'
