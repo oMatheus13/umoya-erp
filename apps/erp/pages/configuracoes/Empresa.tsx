@@ -1,15 +1,26 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { dataService } from '@shared/services/dataService'
 import { useERPData } from '@shared/store/appStore'
 import { Page, PageHeader } from '@ui/components'
 import QuickNotice from '@shared/components/QuickNotice'
 import type { CompanyProfile } from '@shared/types/erp'
+import { useCEP } from '../../../../src/hooks/useCEP'
+
+const formatCep = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 5) {
+    return digits
+  }
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`
+}
 
 const Empresa = () => {
   const { data, refresh } = useERPData()
   const [status, setStatus] = useState<string | null>(null)
   const [form, setForm] = useState<CompanyProfile>(() => ({ ...data.empresa }))
   const [isDirty, setIsDirty] = useState(false)
+  const { buscarCEP, loading: cepLoading, error: cepError } = useCEP()
+  const numberInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (isDirty) {
@@ -21,6 +32,37 @@ const Empresa = () => {
   const updateForm = (patch: Partial<CompanyProfile>) => {
     setForm((prev) => ({ ...prev, ...patch }))
     setIsDirty(true)
+  }
+
+  const handleZipChange = (value: string) => {
+    updateForm({ zip: formatCep(value) })
+  }
+
+  const handleZipBlur = async () => {
+    const currentZip = form.zip?.trim() ?? ''
+    if (!currentZip) {
+      return
+    }
+    const result = await buscarCEP(currentZip)
+    if (!result) {
+      return
+    }
+
+    const complemento = result.complemento.trim()
+    const patch: Partial<CompanyProfile> = {
+      zip: formatCep(result.cep || currentZip),
+      street: result.logradouro,
+      neighborhood: result.bairro,
+      city: result.localidade,
+      state: result.uf,
+    }
+    if (complemento) {
+      patch.complement = complemento
+    }
+    updateForm(patch)
+    requestAnimationFrame(() => {
+      numberInputRef.current?.focus()
+    })
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -40,6 +82,7 @@ const Empresa = () => {
       phone: form.phone?.trim() || undefined,
       street: form.street?.trim() || undefined,
       number: form.number?.trim() || undefined,
+      complement: form.complement?.trim() || undefined,
       neighborhood: form.neighborhood?.trim() || undefined,
       city: form.city?.trim() || undefined,
       state: form.state?.trim() || undefined,
@@ -163,9 +206,16 @@ const Empresa = () => {
                   className="form__input"
                   type="text"
                   value={form.zip ?? ''}
-                  onChange={(event) => updateForm({ zip: event.target.value })}
+                  onChange={(event) => handleZipChange(event.target.value)}
+                  onBlur={() => void handleZipBlur()}
                   placeholder="00000-000"
+                  inputMode="numeric"
+                  maxLength={9}
                 />
+                {cepLoading && <p className="form__status">Buscando CEP...</p>}
+                {!cepLoading && cepError && (
+                  <p className="form__status form__status--danger">{cepError}</p>
+                )}
               </div>
               <div className="form__group">
                 <label className="form__label" htmlFor="company-street">
@@ -194,6 +244,20 @@ const Empresa = () => {
                   value={form.number ?? ''}
                   onChange={(event) => updateForm({ number: event.target.value })}
                   placeholder="Numero"
+                  ref={numberInputRef}
+                />
+              </div>
+              <div className="form__group">
+                <label className="form__label" htmlFor="company-complement">
+                  Complemento
+                </label>
+                <input
+                  id="company-complement"
+                  className="form__input"
+                  type="text"
+                  value={form.complement ?? ''}
+                  onChange={(event) => updateForm({ complement: event.target.value })}
+                  placeholder="Sala, bloco, andar"
                 />
               </div>
               <div className="form__group">
