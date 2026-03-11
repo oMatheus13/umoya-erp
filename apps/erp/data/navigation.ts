@@ -34,6 +34,7 @@ export const NAVIGATION_GROUPS: NavigationGroup[] = [
     icon: 'public',
     items: [
       { id: 'site-contatos', label: 'Mensagens do Site', icon: 'mail' },
+      { id: 'site-produtos', label: 'Produtos do Site', icon: 'inventory_2' },
     ],
   },
   {

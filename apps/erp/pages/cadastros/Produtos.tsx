@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type FormEvent,
+} from 'react'
 import ActionMenu from '../../components/ActionMenu'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import CurrencyInput from '../../components/CurrencyInput'
@@ -7,6 +16,7 @@ import Modal from '@shared/components/Modal'
 import QuickNotice from '@shared/components/QuickNotice'
 import { Page, PageHeader } from '@ui/components'
 import { dataService } from '@shared/services/dataService'
+import { supabase } from '@shared/services/supabaseClient'
 import { useERPData } from '@shared/store/appStore'
 import type { Product, ProductUnit, ProductVariant } from '@shared/types/erp'
 import type { PageIntentAction } from '@shared/types/ui'
@@ -48,6 +58,46 @@ type VariantForm = {
   active: boolean
 }
 
+type SiteProductSpec = {
+  label: string
+  value: string
+}
+
+type SiteProductForm = {
+  enabled: boolean
+  slug: string
+  title: string
+  tag: string
+  shortDescription: string
+  heroSubtitle: string
+  usageTitle: string
+  usageDescription: string
+  specsSummary: string
+  specs: SiteProductSpec[]
+  applications: string[]
+  modelUrl: string
+  posterUrl: string
+}
+
+type SiteProductRow = {
+  id: string
+  product_id: string
+  slug: string
+  title?: string | null
+  tag?: string | null
+  short_description?: string | null
+  hero_subtitle?: string | null
+  usage_title?: string | null
+  usage_description?: string | null
+  specs_summary?: string | null
+  specs?: SiteProductSpec[] | null
+  applications?: string[] | null
+  model_url?: string | null
+  poster_url?: string | null
+  order_index?: number | null
+  enabled?: boolean | null
+}
+
 type ProdutosProps = {
   pageIntent?: PageIntentAction
   onConsumeIntent?: () => void
@@ -63,6 +113,30 @@ const createEmptyVariantForm = (): VariantForm => ({
   priceOverride: null,
   costOverride: null,
   active: true,
+})
+
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '')
+
+const createEmptySiteProductForm = (product?: Product): SiteProductForm => ({
+  enabled: false,
+  slug: product ? slugify(product.name) : '',
+  title: product?.name ?? '',
+  tag: '',
+  shortDescription: '',
+  heroSubtitle: '',
+  usageTitle: '',
+  usageDescription: '',
+  specsSummary: '',
+  specs: [],
+  applications: [],
+  modelUrl: '',
+  posterUrl: '',
 })
 
 const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
@@ -98,6 +172,16 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     hasVariants: false,
   })
   const [variantForm, setVariantForm] = useState<VariantForm>(createEmptyVariantForm())
+  const [isSiteModalOpen, setIsSiteModalOpen] = useState(false)
+  const [siteStatus, setSiteStatus] = useState<string | null>(null)
+  const [siteForm, setSiteForm] = useState<SiteProductForm>(createEmptySiteProductForm())
+  const [siteProduct, setSiteProduct] = useState<Product | null>(null)
+  const [siteRow, setSiteRow] = useState<SiteProductRow | null>(null)
+  const [siteSlugTouched, setSiteSlugTouched] = useState(false)
+  const [siteLoading, setSiteLoading] = useState(false)
+  const [siteSaving, setSiteSaving] = useState(false)
+  const [siteUploading, setSiteUploading] = useState({ model: false, poster: false })
+  const [applicationsInput, setApplicationsInput] = useState('')
   const productFormId = 'produto-form'
   const variantFormId = 'produto-variacao-form'
 
@@ -142,6 +226,10 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     setVariantForm((prev) => ({ ...prev, ...patch }))
   }
 
+  const updateSiteForm = (patch: Partial<SiteProductForm>) => {
+    setSiteForm((prev) => ({ ...prev, ...patch }))
+  }
+
   const resetForm = () => {
     setForm({
       name: '',
@@ -168,6 +256,15 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     setVariantForm(createEmptyVariantForm())
     setEditingVariantId(null)
     setVariantStatus(null)
+  }
+
+  const resetSiteForm = (product?: Product) => {
+    const empty = createEmptySiteProductForm(product)
+    setSiteForm(empty)
+    setSiteRow(null)
+    setSiteStatus(null)
+    setSiteSlugTouched(false)
+    setApplicationsInput(empty.applications.join('\n'))
   }
 
   const closeProductModal = () => {
@@ -216,6 +313,98 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     resetVariantForm()
     variantSubmitModeRef.current = 'close'
     setIsVariantModalOpen(true)
+  }
+
+  const closeSiteModal = () => {
+    setIsSiteModalOpen(false)
+    setSiteProduct(null)
+    setSiteStatus(null)
+  }
+
+  const resolveWorkspaceId = () => data.meta?.workspaceId
+
+  const mapRowToForm = (product: Product, row: SiteProductRow): SiteProductForm => ({
+    enabled: row.enabled ?? false,
+    slug: row.slug ?? slugify(product.name),
+    title: row.title ?? product.name,
+    tag: row.tag ?? '',
+    shortDescription: row.short_description ?? '',
+    heroSubtitle: row.hero_subtitle ?? '',
+    usageTitle: row.usage_title ?? '',
+    usageDescription: row.usage_description ?? '',
+    specsSummary: row.specs_summary ?? '',
+    specs: Array.isArray(row.specs)
+      ? row.specs.filter((spec) => !!spec?.label && !!spec?.value)
+      : [],
+    applications: Array.isArray(row.applications)
+      ? row.applications.filter((entry) => typeof entry === 'string' && entry.trim() !== '')
+      : [],
+    modelUrl: row.model_url ?? '',
+    posterUrl: row.poster_url ?? '',
+  })
+
+  const loadSiteProduct = async (product: Product) => {
+    if (!supabase) {
+      setSiteStatus('Supabase nao configurado.')
+      return
+    }
+    const workspaceId = resolveWorkspaceId()
+    if (!workspaceId) {
+      setSiteStatus('Workspace ID nao configurado.')
+      return
+    }
+    setSiteLoading(true)
+    const { data: row, error } = await supabase
+      .from('site_products')
+      .select(
+        [
+          'id',
+          'product_id',
+          'slug',
+          'title',
+          'tag',
+          'short_description',
+          'hero_subtitle',
+          'usage_title',
+          'usage_description',
+          'specs_summary',
+          'specs',
+          'applications',
+          'model_url',
+          'poster_url',
+          'order_index',
+          'enabled',
+        ].join(','),
+      )
+      .eq('workspace_id', workspaceId)
+      .eq('product_id', product.id)
+      .maybeSingle()
+    if (error) {
+      setSiteStatus(`Falha ao carregar dados do site. ${error.message}`)
+      setSiteLoading(false)
+      return
+    }
+    if (row) {
+      const mapped = mapRowToForm(product, row as SiteProductRow)
+      setSiteForm(mapped)
+      setSiteRow(row as SiteProductRow)
+      setSiteSlugTouched(true)
+      setApplicationsInput(mapped.applications.join('\n'))
+    } else {
+      const empty = createEmptySiteProductForm(product)
+      setSiteForm(empty)
+      setSiteRow(null)
+      setSiteSlugTouched(false)
+      setApplicationsInput('')
+    }
+    setSiteLoading(false)
+  }
+
+  const openSiteModal = (product: Product) => {
+    setSiteProduct(product)
+    resetSiteForm(product)
+    setIsSiteModalOpen(true)
+    void loadSiteProduct(product)
   }
 
   const handleEdit = useCallback((product: Product) => {
@@ -390,6 +579,220 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     if (!editingId) {
       resetForm()
     }
+  }
+
+  const sanitizeText = (value: string) => value.trim()
+
+  const normalizeApplications = (raw: string) =>
+    raw
+      .split(/\n|,/)
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0)
+
+  const sanitizeSpecs = (specs: SiteProductSpec[]) =>
+    specs
+      .map((spec) => ({
+        label: sanitizeText(spec.label),
+        value: sanitizeText(spec.value),
+      }))
+      .filter((spec) => spec.label && spec.value)
+
+  const ensureSlug = (value: string, fallback: string) => {
+    const resolved = value.trim() || fallback.trim()
+    return slugify(resolved)
+  }
+
+  const handleSiteTitleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value
+    updateSiteForm({ title: value })
+    if (!siteSlugTouched) {
+      updateSiteForm({ slug: slugify(value) })
+    }
+  }
+
+  const handleSiteSlugChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSiteSlugTouched(true)
+    updateSiteForm({ slug: event.target.value })
+  }
+
+  const handleApplicationsChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    const value = event.target.value
+    setApplicationsInput(value)
+    updateSiteForm({ applications: normalizeApplications(value) })
+  }
+
+  const updateSpec = (index: number, patch: Partial<SiteProductSpec>) => {
+    setSiteForm((prev) => {
+      const next = [...prev.specs]
+      next[index] = { ...next[index], ...patch }
+      return { ...prev, specs: next }
+    })
+  }
+
+  const addSpec = () => {
+    setSiteForm((prev) => ({ ...prev, specs: [...prev.specs, { label: '', value: '' }] }))
+  }
+
+  const removeSpec = (index: number) => {
+    setSiteForm((prev) => ({
+      ...prev,
+      specs: prev.specs.filter((_, specIndex) => specIndex !== index),
+    }))
+  }
+
+  const getStorageBucket = () =>
+    import.meta.env.VITE_SUPABASE_BUCKET || 'umoya-files'
+
+  const uploadSiteFile = async (file: File, kind: 'model' | 'poster') => {
+    if (!supabase) {
+      return { error: 'Supabase nao configurado.', url: null }
+    }
+    if (!siteProduct) {
+      return { error: 'Produto nao selecionado.', url: null }
+    }
+    const bucket = getStorageBucket()
+    const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `site-products/${siteProduct.id}/${kind}-${Date.now()}-${cleanName}`
+    try {
+      const { error } = await supabase.storage.from(bucket).upload(path, file, {
+        upsert: true,
+        contentType: file.type || 'application/octet-stream',
+      })
+      if (error) {
+        return { error: error.message, url: null }
+      }
+      const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+      return { error: null, url: data?.publicUrl ?? null }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha ao enviar arquivo.'
+      return { error: message, url: null }
+    }
+  }
+
+  const handleSiteFileUpload = async (file: File, kind: 'model' | 'poster') => {
+    if (kind === 'model' && !file.name.toLowerCase().endsWith('.glb')) {
+      setSiteStatus('Envie um arquivo .glb para o modelo 3D.')
+      return
+    }
+    if (kind === 'poster' && !file.type.startsWith('image/')) {
+      setSiteStatus('Envie uma imagem valida para o poster.')
+      return
+    }
+    setSiteUploading((prev) => ({ ...prev, [kind]: true }))
+    const result = await uploadSiteFile(file, kind)
+    setSiteUploading((prev) => ({ ...prev, [kind]: false }))
+    if (result.error || !result.url) {
+      setSiteStatus(result.error ?? 'Falha ao enviar arquivo.')
+      return
+    }
+    if (kind === 'model') {
+      updateSiteForm({ modelUrl: result.url })
+    } else {
+      updateSiteForm({ posterUrl: result.url })
+    }
+    setSiteStatus('Arquivo enviado.')
+  }
+
+  const handleSiteFileChange =
+    (kind: 'model' | 'poster') => async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (!file) {
+        return
+      }
+      await handleSiteFileUpload(file, kind)
+      event.target.value = ''
+    }
+
+  const handleSiteFileDrop =
+    (kind: 'model' | 'poster') => async (event: DragEvent<HTMLDivElement>) => {
+      event.preventDefault()
+      const file = event.dataTransfer.files?.[0]
+      if (!file) {
+        return
+      }
+      await handleSiteFileUpload(file, kind)
+    }
+
+  const handleSaveSiteProduct = async () => {
+    if (!supabase) {
+      setSiteStatus('Supabase nao configurado.')
+      return
+    }
+    if (!siteProduct) {
+      setSiteStatus('Produto nao selecionado.')
+      return
+    }
+    const workspaceId = resolveWorkspaceId()
+    if (!workspaceId) {
+      setSiteStatus('Workspace ID nao configurado.')
+      return
+    }
+    const title = sanitizeText(siteForm.title) || siteProduct.name
+    const slug = ensureSlug(siteForm.slug, title)
+    if (!slug) {
+      setSiteStatus('Informe um slug valido.')
+      return
+    }
+
+    const { data: conflict } = await supabase
+      .from('site_products')
+      .select('id')
+      .eq('workspace_id', workspaceId)
+      .eq('slug', slug)
+      .neq('product_id', siteProduct.id)
+      .maybeSingle()
+
+    if (conflict) {
+      setSiteStatus('Slug ja utilizado por outro produto.')
+      return
+    }
+
+    setSiteSaving(true)
+    const specs = sanitizeSpecs(siteForm.specs)
+    const applications = normalizeApplications(applicationsInput)
+    let orderIndex = siteRow?.order_index ?? null
+    if (orderIndex === null) {
+      const { data: lastRow } = await supabase
+        .from('site_products')
+        .select('order_index')
+        .eq('workspace_id', workspaceId)
+        .order('order_index', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      orderIndex = (lastRow?.order_index ?? 0) + 1
+    }
+
+    const payload = {
+      workspace_id: workspaceId,
+      product_id: siteProduct.id,
+      enabled: siteForm.enabled,
+      slug,
+      title,
+      tag: sanitizeText(siteForm.tag) || null,
+      short_description: sanitizeText(siteForm.shortDescription) || null,
+      hero_subtitle: sanitizeText(siteForm.heroSubtitle) || null,
+      usage_title: sanitizeText(siteForm.usageTitle) || null,
+      usage_description: sanitizeText(siteForm.usageDescription) || null,
+      specs_summary: sanitizeText(siteForm.specsSummary) || null,
+      specs,
+      applications,
+      model_url: sanitizeText(siteForm.modelUrl) || null,
+      poster_url: sanitizeText(siteForm.posterUrl) || null,
+      order_index: orderIndex,
+    }
+
+    const { error } = await supabase
+      .from('site_products')
+      .upsert(payload, { onConflict: 'workspace_id,product_id' })
+
+    if (error) {
+      setSiteStatus(`Falha ao salvar dados do site. ${error.message}`)
+      setSiteSaving(false)
+      return
+    }
+    setSiteStatus('Dados do site atualizados.')
+    setSiteSaving(false)
+    await loadSiteProduct(siteProduct)
   }
 
   const buildVariantLabel = (variant: VariantForm) => {
@@ -993,6 +1396,291 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
         </form>
       </Modal>
 
+      <Modal
+        open={isSiteModalOpen}
+        onClose={closeSiteModal}
+        title={siteProduct ? `Informacoes do site: ${siteProduct.name}` : 'Informacoes do site'}
+        size="lg"
+        actions={
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={() => void handleSaveSiteProduct()}
+            disabled={siteSaving || siteLoading}
+          >
+            <span className="material-symbols-outlined modal__action-icon" aria-hidden="true">
+              save_as
+            </span>
+            <span className="modal__action-label">
+              {siteSaving ? 'Salvando...' : 'Salvar'}
+            </span>
+          </button>
+        }
+      >
+        <QuickNotice message={siteStatus} onClear={() => setSiteStatus(null)} />
+        {siteLoading ? (
+          <p className="modal__help">Carregando dados do site...</p>
+        ) : siteProduct ? (
+          <form
+            className="modal__form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void handleSaveSiteProduct()
+            }}
+          >
+            <label className="toggle modal__checkbox">
+              <input
+                type="checkbox"
+                checked={siteForm.enabled}
+                onChange={(event) => updateSiteForm({ enabled: event.target.checked })}
+              />
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">Exibir produto no site</span>
+            </label>
+
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="site-title">
+                  Titulo no site
+                </label>
+                <input
+                  id="site-title"
+                  className="modal__input"
+                  type="text"
+                  value={siteForm.title}
+                  onChange={handleSiteTitleChange}
+                  placeholder={siteProduct.name}
+                />
+              </div>
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="site-slug">
+                  Slug
+                </label>
+                <input
+                  id="site-slug"
+                  className="modal__input"
+                  type="text"
+                  value={siteForm.slug}
+                  onChange={handleSiteSlugChange}
+                  placeholder={slugify(siteProduct.name)}
+                />
+                <p className="modal__help">URL: /produtos/{siteForm.slug || 'seu-slug'}</p>
+              </div>
+            </div>
+
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="site-tag">
+                  Tag
+                </label>
+                <input
+                  id="site-tag"
+                  className="modal__input"
+                  type="text"
+                  value={siteForm.tag}
+                  onChange={(event) => updateSiteForm({ tag: event.target.value })}
+                  placeholder="Ex: VIGOTA H8"
+                />
+              </div>
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="site-specs-summary">
+                  Specs resumidas (card)
+                </label>
+                <input
+                  id="site-specs-summary"
+                  className="modal__input"
+                  type="text"
+                  value={siteForm.specsSummary}
+                  onChange={(event) => updateSiteForm({ specsSummary: event.target.value })}
+                  placeholder="Ex: Vao max 7m · Altura 8cm · Modulo 42cm"
+                />
+              </div>
+            </div>
+
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="site-short">
+                Descricao curta (card)
+              </label>
+              <textarea
+                id="site-short"
+                className="modal__textarea"
+                value={siteForm.shortDescription}
+                onChange={(event) => updateSiteForm({ shortDescription: event.target.value })}
+                placeholder="Descricao para aparecer no card de produtos."
+              />
+            </div>
+
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="site-hero-subtitle">
+                Subtitulo do hero (pagina do produto)
+              </label>
+              <textarea
+                id="site-hero-subtitle"
+                className="modal__textarea"
+                value={siteForm.heroSubtitle}
+                onChange={(event) => updateSiteForm({ heroSubtitle: event.target.value })}
+                placeholder="Texto tecnico ou explicativo para a pagina do produto."
+              />
+            </div>
+
+            <div className="modal__row">
+              <div className="modal__group">
+                <label className="modal__label" htmlFor="site-usage-title">
+                  Titulo da secao de uso
+                </label>
+                <input
+                  id="site-usage-title"
+                  className="modal__input"
+                  type="text"
+                  value={siteForm.usageTitle}
+                  onChange={(event) => updateSiteForm({ usageTitle: event.target.value })}
+                  placeholder="Ex: Como usar"
+                />
+              </div>
+            </div>
+
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="site-usage-desc">
+                Descricao de uso
+              </label>
+              <textarea
+                id="site-usage-desc"
+                className="modal__textarea"
+                value={siteForm.usageDescription}
+                onChange={(event) => updateSiteForm({ usageDescription: event.target.value })}
+                placeholder="Explique como instalar ou aplicar o produto."
+              />
+            </div>
+
+            <div className="modal__section">
+              <div className="modal__group">
+                <label className="modal__label">Especificacoes tecnicas</label>
+                {siteForm.specs.length === 0 && (
+                  <p className="modal__help">Nenhuma especificacao adicionada ainda.</p>
+                )}
+              </div>
+              {siteForm.specs.map((spec, index) => (
+                <div className="modal__row" key={`spec-${index}`}>
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`site-spec-label-${index}`}>
+                      Label
+                    </label>
+                    <input
+                      id={`site-spec-label-${index}`}
+                      className="modal__input"
+                      type="text"
+                      value={spec.label}
+                      onChange={(event) => updateSpec(index, { label: event.target.value })}
+                    />
+                  </div>
+                  <div className="modal__group">
+                    <label className="modal__label" htmlFor={`site-spec-value-${index}`}>
+                      Valor
+                    </label>
+                    <input
+                      id={`site-spec-value-${index}`}
+                      className="modal__input"
+                      type="text"
+                      value={spec.value}
+                      onChange={(event) => updateSpec(index, { value: event.target.value })}
+                    />
+                  </div>
+                  <div className="modal__group">
+                    <label className="modal__label">&nbsp;</label>
+                    <button
+                      type="button"
+                      className="button button--ghost button--sm"
+                      onClick={() => removeSpec(index)}
+                    >
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="modal__actions">
+                <button type="button" className="button button--ghost" onClick={addSpec}>
+                  <span
+                    className="material-symbols-outlined modal__action-icon"
+                    aria-hidden="true"
+                  >
+                    add
+                  </span>
+                  <span className="modal__action-label">Adicionar especificacao</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="modal__group">
+              <label className="modal__label" htmlFor="site-applications">
+                Aplicacoes (uma por linha)
+              </label>
+              <textarea
+                id="site-applications"
+                className="modal__textarea"
+                value={applicationsInput}
+                onChange={handleApplicationsChange}
+                placeholder="Ex:\nResidencias\nPredios\nGalpoes"
+              />
+            </div>
+
+            <div className="modal__section">
+              <div className="modal__group">
+                <label className="modal__label">Modelo 3D (.glb)</label>
+                <div
+                  className={`site-upload ${siteUploading.model ? 'site-upload--loading' : ''}`}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={handleSiteFileDrop('model')}
+                >
+                  <p className="site-upload__text">
+                    Arraste o arquivo .glb ou clique para selecionar.
+                  </p>
+                  <label className="button button--ghost button--sm">
+                    <input
+                      className="sr-only"
+                      type="file"
+                      accept=".glb,model/gltf-binary"
+                      onChange={handleSiteFileChange('model')}
+                    />
+                    Selecionar arquivo
+                  </label>
+                  {siteForm.modelUrl && (
+                    <p className="site-upload__meta">Arquivo atual: {siteForm.modelUrl}</p>
+                  )}
+                </div>
+              </div>
+              <div className="modal__group">
+                <label className="modal__label">Imagem estatica</label>
+                <div
+                  className={`site-upload ${siteUploading.poster ? 'site-upload--loading' : ''}`}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={handleSiteFileDrop('poster')}
+                >
+                  <p className="site-upload__text">
+                    Arraste uma imagem ou clique para selecionar.
+                  </p>
+                  <label className="button button--ghost button--sm">
+                    <input
+                      className="sr-only"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleSiteFileChange('poster')}
+                    />
+                    Selecionar imagem
+                  </label>
+                  {siteForm.posterUrl && (
+                    <p className="site-upload__meta">Imagem atual: {siteForm.posterUrl}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </form>
+        ) : (
+          <p className="modal__help">Selecione um produto para configurar.</p>
+        )}
+      </Modal>
+
       <div className="produtos__layout">
         <section className="panel">
           <div className="panel__header">
@@ -1076,6 +1764,10 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
                           <ActionMenu
                             items={[
                               { label: 'Editar', onClick: () => handleEdit(product) },
+                              {
+                                label: 'Informacoes do site',
+                                onClick: () => openSiteModal(product),
+                              },
                             ]}
                           />
                         </div>
