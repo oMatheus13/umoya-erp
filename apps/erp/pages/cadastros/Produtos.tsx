@@ -645,10 +645,12 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     const bucket = getStorageBucket()
     const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
     const path = `site-products/${siteProduct.id}/${kind}-${Date.now()}-${cleanName}`
+    const isGlb = file.name.toLowerCase().endsWith('.glb')
+    const contentType = isGlb ? 'model/gltf-binary' : file.type || 'application/octet-stream'
     try {
       const { error } = await supabase.storage.from(bucket).upload(path, file, {
         upsert: true,
-        contentType: file.type || 'application/octet-stream',
+        contentType,
       })
       if (error) {
         return { error: error.message, url: null }
