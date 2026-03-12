@@ -65,6 +65,8 @@ type SiteProductSpec = {
 
 type SiteProductForm = {
   enabled: boolean
+  quoteEnabled: boolean
+  quoteAllowLengthCalc: boolean
   slug: string
   title: string
   tag: string
@@ -95,6 +97,8 @@ type SiteProductRow = {
   model_url?: string | null
   poster_url?: string | null
   order_index?: number | null
+  quote_enabled?: boolean | null
+  quote_allow_length_calc?: boolean | null
   enabled?: boolean | null
 }
 
@@ -125,6 +129,8 @@ const slugify = (value: string) =>
 
 const createEmptySiteProductForm = (product?: Product): SiteProductForm => ({
   enabled: false,
+  quoteEnabled: false,
+  quoteAllowLengthCalc: false,
   slug: product ? slugify(product.name) : '',
   title: product?.name ?? '',
   tag: '',
@@ -325,6 +331,8 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
 
   const mapRowToForm = (product: Product, row: SiteProductRow): SiteProductForm => ({
     enabled: row.enabled ?? false,
+    quoteEnabled: row.quote_enabled ?? false,
+    quoteAllowLengthCalc: row.quote_allow_length_calc ?? false,
     slug: row.slug ?? slugify(product.name),
     title: row.title ?? product.name,
     tag: row.tag ?? '',
@@ -373,6 +381,8 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
           'model_url',
           'poster_url',
           'order_index',
+          'quote_enabled',
+          'quote_allow_length_calc',
           'enabled',
         ].join(','),
       )
@@ -766,6 +776,8 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
       workspace_id: workspaceId,
       product_id: siteProduct.id,
       enabled: siteForm.enabled,
+      quote_enabled: siteForm.quoteEnabled,
+      quote_allow_length_calc: siteForm.quoteAllowLengthCalc,
       slug,
       title,
       tag: sanitizeText(siteForm.tag) || null,
@@ -1438,6 +1450,32 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
                 <span className="toggle__thumb" />
               </span>
               <span className="toggle__label">Exibir produto no site</span>
+            </label>
+
+            <label className="toggle modal__checkbox">
+              <input
+                type="checkbox"
+                checked={siteForm.quoteEnabled}
+                onChange={(event) => updateSiteForm({ quoteEnabled: event.target.checked })}
+              />
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">Disponivel para cotacao no site</span>
+            </label>
+
+            <label className="toggle modal__checkbox">
+              <input
+                type="checkbox"
+                checked={siteForm.quoteAllowLengthCalc}
+                onChange={(event) =>
+                  updateSiteForm({ quoteAllowLengthCalc: event.target.checked })
+                }
+              />
+              <span className="toggle__track" aria-hidden="true">
+                <span className="toggle__thumb" />
+              </span>
+              <span className="toggle__label">Permitir calculo por comprimento</span>
             </label>
 
             <div className="modal__row">

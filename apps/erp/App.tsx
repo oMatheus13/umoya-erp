@@ -37,6 +37,7 @@ import RelatoriosConsumo from './pages/relatorios/RelatoriosConsumo'
 import RelatoriosHistorico from './pages/relatorios/RelatoriosHistorico'
 import MensagensContato from './pages/site/MensagensContato'
 import ProdutosSite from './pages/site/ProdutosSite'
+import CotacoesSite from './pages/site/CotacoesSite'
 import Integracoes from './pages/configuracoes/Integracoes'
 import AuditoriaLog from './pages/auditoria/AuditoriaLog'
 import AuditoriaHistorico from './pages/auditoria/AuditoriaHistorico'
@@ -741,6 +742,9 @@ function App() {
     }
     if (activePage === 'site-contatos') {
       return <MensagensContato />
+    }
+    if (activePage === 'site-cotacoes') {
+      return <CotacoesSite />
     }
     if (activePage === 'site-produtos') {
       return <ProdutosSite />

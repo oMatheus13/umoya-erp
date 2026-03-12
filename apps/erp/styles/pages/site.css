@@ -32,3 +32,11 @@
 .site-produtos .list__item.is-dragging {
   opacity: 0.5;
 }
+
+.site-cotacoes .table__select[data-status='novo'],
+.site-cotacoes .table__select[data-status='em_atendimento'],
+.site-cotacoes .table__select[data-status='aguardando_cliente'] {
+  --select-bg: rgba(255, 179, 71, 0.18);
+  --select-fg: var(--color-warning);
+  --select-border: rgba(255, 179, 71, 0.35);
+}
