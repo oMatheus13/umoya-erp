@@ -603,6 +603,7 @@ export type CompanyProfile = {
   stateRegistration?: string
   email?: string
   phone?: string
+  whatsapp?: string
   street?: string
   number?: string
   complement?: string
@@ -611,6 +612,14 @@ export type CompanyProfile = {
   state?: string
   zip?: string
   website?: string
+  mapsUrl?: string
+  hoursWeekdays?: string
+  hoursSunday?: string
+  instagram?: string
+  facebook?: string
+  youtube?: string
+  linkedin?: string
+  tiktok?: string
   notes?: string
 }
 

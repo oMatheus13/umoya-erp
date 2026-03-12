@@ -80,6 +80,7 @@ const Empresa = () => {
       stateRegistration: form.stateRegistration?.trim() || undefined,
       email: form.email?.trim() || undefined,
       phone: form.phone?.trim() || undefined,
+      whatsapp: form.whatsapp?.trim() || undefined,
       street: form.street?.trim() || undefined,
       number: form.number?.trim() || undefined,
       complement: form.complement?.trim() || undefined,
@@ -88,6 +89,14 @@ const Empresa = () => {
       state: form.state?.trim() || undefined,
       zip: form.zip?.trim() || undefined,
       website: form.website?.trim() || undefined,
+      mapsUrl: form.mapsUrl?.trim() || undefined,
+      hoursWeekdays: form.hoursWeekdays?.trim() || undefined,
+      hoursSunday: form.hoursSunday?.trim() || undefined,
+      instagram: form.instagram?.trim() || undefined,
+      facebook: form.facebook?.trim() || undefined,
+      youtube: form.youtube?.trim() || undefined,
+      linkedin: form.linkedin?.trim() || undefined,
+      tiktok: form.tiktok?.trim() || undefined,
       notes: form.notes?.trim() || undefined,
     }
     setIsDirty(false)
@@ -141,7 +150,7 @@ const Empresa = () => {
             <div className="form__row">
               <div className="form__group">
                 <label className="form__label" htmlFor="company-document">
-                  CNPJ/CPF
+                  CNPJ
                 </label>
                 <input
                   id="company-document"
@@ -149,7 +158,7 @@ const Empresa = () => {
                   type="text"
                   value={form.document ?? ''}
                   onChange={(event) => updateForm({ document: event.target.value })}
-                  placeholder="Documento oficial"
+                  placeholder="00.000.000/0000-00"
                 />
               </div>
               <div className="form__group">
@@ -194,6 +203,51 @@ const Empresa = () => {
                   placeholder="(00) 00000-0000"
                 />
               </div>
+              <div className="form__group">
+                <label className="form__label" htmlFor="company-whatsapp">
+                  WhatsApp
+                </label>
+                <input
+                  id="company-whatsapp"
+                  className="form__input"
+                  type="text"
+                  value={form.whatsapp ?? ''}
+                  onChange={(event) => updateForm({ whatsapp: event.target.value })}
+                  placeholder="(00) 00000-0000"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="form__row">
+                <div className="form__group">
+                  <label className="form__label" htmlFor="company-hours-weekdays">
+                    Horario (seg a sex)
+                  </label>
+                  <input
+                    id="company-hours-weekdays"
+                    className="form__input"
+                    type="text"
+                    value={form.hoursWeekdays ?? ''}
+                    onChange={(event) => updateForm({ hoursWeekdays: event.target.value })}
+                    placeholder="07:00 - 17:00"
+                  />
+                </div>
+                <div className="form__group">
+                  <label className="form__label" htmlFor="company-hours-sunday">
+                    Horario (domingo)
+                  </label>
+                  <input
+                    id="company-hours-sunday"
+                    className="form__input"
+                    type="text"
+                    value={form.hoursSunday ?? ''}
+                    onChange={(event) => updateForm({ hoursSunday: event.target.value })}
+                    placeholder="Fechado"
+                  />
+                </div>
+              </div>
+              <p className="form__status">Sabado: fechado (Exodo 20:8-11).</p>
             </div>
 
             <div className="form__row">
@@ -316,6 +370,92 @@ const Empresa = () => {
                 onChange={(event) => updateForm({ website: event.target.value })}
                 placeholder="www.suaempresa.com"
               />
+            </div>
+
+            <div className="form__group">
+              <label className="form__label" htmlFor="company-maps">
+                Link do mapa
+              </label>
+              <input
+                id="company-maps"
+                className="form__input"
+                type="text"
+                value={form.mapsUrl ?? ''}
+                onChange={(event) => updateForm({ mapsUrl: event.target.value })}
+                placeholder="https://maps.google.com/..."
+              />
+            </div>
+
+            <div>
+              <div className="form__row">
+                <div className="form__group">
+                  <label className="form__label" htmlFor="company-instagram">
+                    Instagram
+                  </label>
+                  <input
+                    id="company-instagram"
+                    className="form__input"
+                    type="text"
+                    value={form.instagram ?? ''}
+                    onChange={(event) => updateForm({ instagram: event.target.value })}
+                    placeholder="@umoya"
+                  />
+                </div>
+                <div className="form__group">
+                  <label className="form__label" htmlFor="company-facebook">
+                    Facebook
+                  </label>
+                  <input
+                    id="company-facebook"
+                    className="form__input"
+                    type="text"
+                    value={form.facebook ?? ''}
+                    onChange={(event) => updateForm({ facebook: event.target.value })}
+                    placeholder="facebook.com/suaempresa"
+                  />
+                </div>
+                <div className="form__group">
+                  <label className="form__label" htmlFor="company-youtube">
+                    YouTube
+                  </label>
+                  <input
+                    id="company-youtube"
+                    className="form__input"
+                    type="text"
+                    value={form.youtube ?? ''}
+                    onChange={(event) => updateForm({ youtube: event.target.value })}
+                    placeholder="youtube.com/@suaempresa"
+                  />
+                </div>
+              </div>
+              <div className="form__row">
+                <div className="form__group">
+                  <label className="form__label" htmlFor="company-linkedin">
+                    LinkedIn
+                  </label>
+                  <input
+                    id="company-linkedin"
+                    className="form__input"
+                    type="text"
+                    value={form.linkedin ?? ''}
+                    onChange={(event) => updateForm({ linkedin: event.target.value })}
+                    placeholder="linkedin.com/in/suaempresa"
+                  />
+                </div>
+                <div className="form__group">
+                  <label className="form__label" htmlFor="company-tiktok">
+                    TikTok
+                  </label>
+                  <input
+                    id="company-tiktok"
+                    className="form__input"
+                    type="text"
+                    value={form.tiktok ?? ''}
+                    onChange={(event) => updateForm({ tiktok: event.target.value })}
+                    placeholder="tiktok.com/@suaempresa"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="form__group">
