@@ -107,26 +107,8 @@ type ProdutosProps = {
   onConsumeIntent?: () => void
 }
 
-const siteProductSelect = [
-  'id',
-  'product_id',
-  'slug',
-  'title',
-  'tag',
-  'short_description',
-  'hero_subtitle',
-  'usage_title',
-  'usage_description',
-  'specs_summary',
-  'specs',
-  'applications',
-  'model_url',
-  'poster_url',
-  'order_index',
-  'quote_enabled',
-  'quote_allow_length_calc',
-  'enabled',
-].join(',') as const
+const siteProductSelect =
+  'id,product_id,slug,title,tag,short_description,hero_subtitle,usage_title,usage_description,specs_summary,specs,applications,model_url,poster_url,order_index,quote_enabled,quote_allow_length_calc,enabled'
 
 const createEmptyVariantForm = (): VariantForm => ({
   name: '',

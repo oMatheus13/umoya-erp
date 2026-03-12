@@ -80,23 +80,8 @@ type SiteQuote = {
   payload?: QuotePayload | null
 }
 
-const quoteSelect = [
-  'id',
-  'created_at',
-  'name',
-  'email',
-  'phone',
-  'message',
-  'source',
-  'status',
-  'quote_type',
-  'quote_mode',
-  'product_title',
-  'product_slug',
-  'product_unit',
-  'variant_label',
-  'payload',
-].join(',') as const
+const quoteSelect =
+  'id,created_at,name,email,phone,message,source,status,quote_type,quote_mode,product_title,product_slug,product_unit,variant_label,payload'
 
 const formatNumber = (value?: number, digits = 2) => {
   if (!Number.isFinite(value)) {
