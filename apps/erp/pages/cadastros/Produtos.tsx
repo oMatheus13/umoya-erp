@@ -107,6 +107,27 @@ type ProdutosProps = {
   onConsumeIntent?: () => void
 }
 
+const siteProductSelect = [
+  'id',
+  'product_id',
+  'slug',
+  'title',
+  'tag',
+  'short_description',
+  'hero_subtitle',
+  'usage_title',
+  'usage_description',
+  'specs_summary',
+  'specs',
+  'applications',
+  'model_url',
+  'poster_url',
+  'order_index',
+  'quote_enabled',
+  'quote_allow_length_calc',
+  'enabled',
+].join(',') as const
+
 const createEmptyVariantForm = (): VariantForm => ({
   name: '',
   sku: '',
@@ -364,28 +385,7 @@ const Produtos = ({ pageIntent, onConsumeIntent }: ProdutosProps) => {
     setSiteLoading(true)
     const { data: row, error } = await supabase
       .from('site_products')
-      .select(
-        [
-          'id',
-          'product_id',
-          'slug',
-          'title',
-          'tag',
-          'short_description',
-          'hero_subtitle',
-          'usage_title',
-          'usage_description',
-          'specs_summary',
-          'specs',
-          'applications',
-          'model_url',
-          'poster_url',
-          'order_index',
-          'quote_enabled',
-          'quote_allow_length_calc',
-          'enabled',
-        ].join(','),
-      )
+      .select(siteProductSelect)
       .eq('workspace_id', workspaceId)
       .eq('product_id', product.id)
       .maybeSingle()

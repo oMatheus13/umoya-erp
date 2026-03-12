@@ -80,6 +80,24 @@ type SiteQuote = {
   payload?: QuotePayload | null
 }
 
+const quoteSelect = [
+  'id',
+  'created_at',
+  'name',
+  'email',
+  'phone',
+  'message',
+  'source',
+  'status',
+  'quote_type',
+  'quote_mode',
+  'product_title',
+  'product_slug',
+  'product_unit',
+  'variant_label',
+  'payload',
+].join(',') as const
+
 const formatNumber = (value?: number, digits = 2) => {
   if (!Number.isFinite(value)) {
     return '-'
@@ -132,25 +150,7 @@ const CotacoesSite = () => {
     setLoading(true)
     const { data: rows, error } = await supabase
       .from('site_quotes')
-      .select(
-        [
-          'id',
-          'created_at',
-          'name',
-          'email',
-          'phone',
-          'message',
-          'source',
-          'status',
-          'quote_type',
-          'quote_mode',
-          'product_title',
-          'product_slug',
-          'product_unit',
-          'variant_label',
-          'payload',
-        ].join(','),
-      )
+      .select(quoteSelect)
       .eq('workspace_id', workspaceId)
       .order('created_at', { ascending: false })
 
